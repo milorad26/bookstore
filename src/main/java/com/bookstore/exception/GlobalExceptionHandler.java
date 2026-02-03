@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -30,15 +32,29 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex, WebRequest request) {
-        ErrorResponse error = new ErrorResponse(
-            HttpStatus.BAD_REQUEST.value(),
-            "Invalid parameter: " + ex.getName() + " should be of type " + ex.getRequiredType().getSimpleName(),
-            "Bad Request"
-        );
-        return ResponseEntity.badRequest().body(error);
-    }
+public ResponseEntity<ErrorResponse> handleTypeMismatch(
+        MethodArgumentTypeMismatchException ex) {
+
+    String param = Objects.requireNonNullElse(ex.getName(), "parameter");
+    String expected = Optional.ofNullable(ex.getRequiredType())
+        .map(Class::getSimpleName)
+        .or(() -> Optional.ofNullable(ex.getParameter())
+            .map(p -> p.getParameterType().getSimpleName()))
+        .orElse("expected type");
+
+    String invalid = ex.getValue() != null ? " (got: '" + ex.getValue() + "')" : "";
+
+    String message = "Invalid parameter '%s': expected %s%s"
+        .formatted(param, expected, invalid);
+
+    var error = new ErrorResponse(
+        HttpStatus.BAD_REQUEST.value(),
+        message,
+        "Bad Request - Type Mismatch"
+    );
+
+    return ResponseEntity.badRequest().body(error);
+}
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
@@ -49,6 +65,17 @@ public class GlobalExceptionHandler {
             "Internal Server Error"
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(
+            ResourceNotFoundException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            ex.getMessage(),
+            "Not Found"
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

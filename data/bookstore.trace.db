@@ -606,3 +606,5 @@ Caused by: org.h2.mvstore.MVStoreException: The file is locked: D:/virtual-books
 	... 55 more
 2026-02-02 21:00:38.575203+01:00 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]
+2026-02-03 21:50:58.865277+01:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLNonTransientException: The object is already closed [90007-224]

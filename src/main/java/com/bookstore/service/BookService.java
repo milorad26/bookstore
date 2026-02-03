@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.bookstore.exception.ResourceNotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -24,13 +25,13 @@ public class BookService {
 
     public BookDTO getBookById(Long id) {
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
         return convertToDTO(book);
     }
 
     public BookDTO getBookByIsbn(String isbn) {
         Book book = bookRepository.findByIsbn(isbn)
-                .orElseThrow(() -> new RuntimeException("Book not found with ISBN: " + isbn));
+                .orElseThrow(() -> new ResourceNotFoundException("Book not found with ISBN: " + isbn));
         return convertToDTO(book);
     }
 
@@ -49,7 +50,7 @@ public class BookService {
     @Transactional
     public BookDTO createBook(BookDTO bookDTO) {
         if (bookRepository.existsByIsbn(bookDTO.getIsbn())) {
-            throw new RuntimeException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
+            throw new IllegalArgumentException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
         }
         Book book = convertToEntity(bookDTO);
         Book savedBook = bookRepository.save(book);
@@ -59,12 +60,12 @@ public class BookService {
     @Transactional
     public BookDTO updateBook(Long id, BookDTO bookDTO) {
         Book existingBook = bookRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Book not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
 
         // Check if ISBN is being changed and if new ISBN already exists
         if (!existingBook.getIsbn().equals(bookDTO.getIsbn()) 
             && bookRepository.existsByIsbn(bookDTO.getIsbn())) {
-            throw new RuntimeException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
+            throw new IllegalArgumentException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
         }
 
         existingBook.setTitle(bookDTO.getTitle());
@@ -81,7 +82,7 @@ public class BookService {
     @Transactional
     public void deleteBook(Long id) {
         if (!bookRepository.existsById(id)) {
-            throw new RuntimeException("Book not found with id: " + id);
+            throw new ResourceNotFoundException("Book not found with id: " + id);
         }
         bookRepository.deleteById(id);
     }
