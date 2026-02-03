@@ -1,0 +1,36 @@
+meta {
+  name: Create New Book
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/books
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "title": "Kad su cvetale tikve",
+    "author": "Dragoljub Mihailovic",
+    "isbn": "2313-5896-4523-9632",
+    "price": 23.00,
+    "description": "Great serbian novel of black wave",
+    "stockQuantity": 15
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+
+docs {
+  Add a new book to the bookstore inventory
+}

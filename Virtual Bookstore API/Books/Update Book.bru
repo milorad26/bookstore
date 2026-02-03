@@ -1,0 +1,35 @@
+meta {
+  name: Update Book
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/books/1
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "title": "Clean Code (Updated)",
+    "author": "Robert C. Martin",
+    "isbn": "978-0-13-235088-4",
+    "price": 45.99,
+    "description": "A Handbook of Agile Software Craftsmanship - Updated Edition",
+    "stockQuantity": 15
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Update an existing book's information
+}

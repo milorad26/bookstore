@@ -1,0 +1,27 @@
+meta {
+  name: Search Books by Author
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/books/search/author?author=Martin
+  body: none
+  auth: inherit
+}
+
+params:query {
+  author: Martin
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Find all books by a specific author name (case-insensitive partial match)
+}

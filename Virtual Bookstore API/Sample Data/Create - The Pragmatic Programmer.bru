@@ -1,0 +1,30 @@
+meta {
+  name: Create - The Pragmatic Programmer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/books
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "The Pragmatic Programmer",
+    "author": "Andrew Hunt",
+    "isbn": "978-0-13-595705-9",
+    "price": 39.99,
+    "description": "Your Journey to Mastery",
+    "stockQuantity": 8
+  }
+}
+
+settings {
+  encodeUrl: true
+}

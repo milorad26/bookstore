@@ -1,6 +1,7 @@
 package com.bookstore.controller;
 
 import com.bookstore.dto.BookDTO;
+import com.bookstore.dto.ErrorResponse;
 import com.bookstore.service.BookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,11 +37,16 @@ public class BookController {
         @ApiResponse(responseCode = "404", description = "Book not found")
     })
     @GetMapping("/{id}")
-    public ResponseEntity<BookDTO> getBookById(@PathVariable Long id) {
+    public ResponseEntity<?> getBookById(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(bookService.getBookById(id));
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                e.getMessage(),
+                "Book Not Found"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
     }
 
@@ -50,26 +56,49 @@ public class BookController {
         @ApiResponse(responseCode = "404", description = "Book not found")
     })
     @GetMapping("/isbn/{isbn}")
-    public ResponseEntity<BookDTO> getBookByIsbn(@PathVariable String isbn) {
+    public ResponseEntity<?> getBookByIsbn(@PathVariable String isbn) {
         try {
             return ResponseEntity.ok(bookService.getBookByIsbn(isbn));
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                e.getMessage(),
+                "Book Not Found"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
     }
 
     @Operation(summary = "Search books by author", description = "Find all books by a specific author name")
     @ApiResponse(responseCode = "200", description = "Books found")
     @GetMapping("/search/author")
-    public ResponseEntity<List<BookDTO>> searchByAuthor(@RequestParam String author) {
-        return ResponseEntity.ok(bookService.searchByAuthor(author));
+    public ResponseEntity<?> searchByAuthor(@RequestParam String author) {
+        List<BookDTO> books = bookService.searchByAuthor(author);
+        if (books.isEmpty()) {
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "No books found for author: " + author,
+                "No Books Found"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        }
+        return ResponseEntity.ok(books);
     }
 
     @Operation(summary = "Search books by title", description = "Find all books matching the title keyword")
     @ApiResponse(responseCode = "200", description = "Books found")
     @GetMapping("/search/title")
-    public ResponseEntity<List<BookDTO>> searchByTitle(@RequestParam String title) {
-        return ResponseEntity.ok(bookService.searchByTitle(title));
+    public ResponseEntity<?> searchByTitle(@RequestParam String title) {
+        List<BookDTO> books = bookService.searchByTitle(title);
+        if (books.isEmpty()) {
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "No books found with title containing: " + title,
+                "No Books Found"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+        }
+        return ResponseEntity.ok(books);
     }
 
     @Operation(summary = "Create a new book", description = "Add a new book to the bookstore inventory")
@@ -78,12 +107,17 @@ public class BookController {
         @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
     @PostMapping
-    public ResponseEntity<BookDTO> createBook(@Valid @RequestBody BookDTO bookDTO) {
+    public ResponseEntity<?> createBook(@Valid @RequestBody BookDTO bookDTO) {
         try {
             BookDTO createdBook = bookService.createBook(bookDTO);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdBook);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                e.getMessage(),
+                "Book Creation Failed"
+            );
+            return ResponseEntity.badRequest().body(error);
         }
     }
 
@@ -93,13 +127,19 @@ public class BookController {
         @ApiResponse(responseCode = "404", description = "Book not found")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<BookDTO> updateBook(@PathVariable Long id, 
+    public ResponseEntity<?> updateBook(@PathVariable Long id, 
                                                @Valid @RequestBody BookDTO bookDTO) {
         try {
             BookDTO updatedBook = bookService.updateBook(id, bookDTO);
             return ResponseEntity.ok(updatedBook);
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            HttpStatus status = e.getMessage().contains("not found") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            ErrorResponse error = new ErrorResponse(
+                status.value(),
+                e.getMessage(),
+                status == HttpStatus.NOT_FOUND ? "Book Not Found" : "Book Update Failed"
+            );
+            return ResponseEntity.status(status).body(error);
         }
     }
 
@@ -109,12 +149,17 @@ public class BookController {
         @ApiResponse(responseCode = "404", description = "Book not found")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+    public ResponseEntity<?> deleteBook(@PathVariable Long id) {
         try {
             bookService.deleteBook(id);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                e.getMessage(),
+                "Book Not Found"
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
     }
 }

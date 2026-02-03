@@ -1,0 +1,23 @@
+meta {
+  name: Get All Books
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/books
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieve a list of all books in the bookstore
+}

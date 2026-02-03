@@ -1,0 +1,371 @@
+{
+	"info": {
+		"_postman_id": "virtual-bookstore-api",
+		"name": "Virtual Bookstore API",
+		"description": "Complete API collection for the Virtual Bookstore application. Includes all CRUD operations and search functionality for managing books.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Books",
+			"item": [
+				{
+					"name": "Get All Books",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books"
+							]
+						},
+						"description": "Retrieve a list of all books in the bookstore"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Book by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"1"
+							]
+						},
+						"description": "Retrieve a specific book by its ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Book by ISBN",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books/isbn/978-0-13-235088-4",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"isbn",
+								"978-0-13-235088-4"
+							]
+						},
+						"description": "Retrieve a specific book by its ISBN number"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Books by Author",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books/search/author?author=Martin",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"search",
+								"author"
+							],
+							"query": [
+								{
+									"key": "author",
+									"value": "Martin",
+									"description": "Author name or partial name (case-insensitive)"
+								}
+							]
+						},
+						"description": "Find all books by a specific author name (case-insensitive partial match)"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Books by Title",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books/search/title?title=Clean",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"search",
+								"title"
+							],
+							"query": [
+								{
+									"key": "title",
+									"value": "Clean",
+									"description": "Title or partial title (case-insensitive)"
+								}
+							]
+						},
+						"description": "Find all books matching the title keyword (case-insensitive partial match)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create New Book",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Clean Code\",\n  \"author\": \"Robert C. Martin\",\n  \"isbn\": \"978-0-13-235088-4\",\n  \"price\": 42.99,\n  \"description\": \"A Handbook of Agile Software Craftsmanship\",\n  \"stockQuantity\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/books",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books"
+							]
+						},
+						"description": "Add a new book to the bookstore inventory"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Book",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Clean Code (Updated)\",\n  \"author\": \"Robert C. Martin\",\n  \"isbn\": \"978-0-13-235088-4\",\n  \"price\": 45.99,\n  \"description\": \"A Handbook of Agile Software Craftsmanship - Updated Edition\",\n  \"stockQuantity\": 15\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/books/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"1"
+							]
+						},
+						"description": "Update an existing book's information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Book",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/books/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books",
+								"1"
+							]
+						},
+						"description": "Remove a book from the bookstore inventory"
+					},
+					"response": []
+				}
+			],
+			"description": "Book management endpoints - CRUD operations and search functionality"
+		},
+		{
+			"name": "Sample Data",
+			"item": [
+				{
+					"name": "Create - The Pragmatic Programmer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"The Pragmatic Programmer\",\n  \"author\": \"Andrew Hunt\",\n  \"isbn\": \"978-0-13-595705-9\",\n  \"price\": 39.99,\n  \"description\": \"Your Journey to Mastery\",\n  \"stockQuantity\": 8\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/books",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Design Patterns",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Design Patterns\",\n  \"author\": \"Erich Gamma\",\n  \"isbn\": \"978-0-20-163361-0\",\n  \"price\": 54.99,\n  \"description\": \"Elements of Reusable Object-Oriented Software\",\n  \"stockQuantity\": 5\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/books",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create - Effective Java",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Effective Java\",\n  \"author\": \"Joshua Bloch\",\n  \"isbn\": \"978-0-13-468599-1\",\n  \"price\": 49.99,\n  \"description\": \"Best Practices for the Java Platform\",\n  \"stockQuantity\": 12\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/books",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"books"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Pre-configured requests to quickly populate your bookstore with sample data"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+}
