@@ -22,3 +22,18 @@ VALUES ('The Hobbit', 'J.R.R. Tolkien', '978-0547928227', 19.99, 'A fantasy nove
 
 INSERT INTO books (title, author, isbn, price, description, stock_quantity, created_at, updated_at) 
 VALUES ('Brave New World', 'Aldous Huxley', '978-0060850524', 15.50, 'A dystopian novel set in a futuristic World State of genetically modified citizens.', 70, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Sample user data
+-- Note: Passwords are BCrypt encrypted. Plain text passwords for reference:
+-- johndoe: password123
+-- janesmith: password456
+-- admin: admin123
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
+VALUES ('johndoe', '$2a$10$N9qo8uLOickgx2ZMRZoMye6J954rKdgE4T7.5izzKhA7jU8qVrGFy', 'John', 'Doe', 'john.doe@example.com', '+1-555-0101', '123 Main St, New York, NY 10001', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
+VALUES ('janesmith', '$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG', 'Jane', 'Smith', 'jane.smith@example.com', '+1-555-0102', '456 Oak Ave, Los Angeles, CA 90001', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
+VALUES ('admin', '$2a$10$fGHQf8AYDFz7xhOE6YJiXOZhldLQ2sMDXMEkD/PCJIgQQqXBk5MYG', 'Admin', 'User', 'admin@bookstore.com', '+1-555-0100', '1 Bookstore Way, Chicago, IL 60601', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
