@@ -1,0 +1,41 @@
+meta {
+  name: Create User
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/users
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  X-User-Id: 1
+}
+
+body:json {
+  {
+    "username": "newuser",
+    "password": "password123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john.doe@example.com",
+    "phoneNumber": "+1-555-0123",
+    "address": "123 Main St, City, State 12345",
+    "userType": "USER"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Creates a new user with encrypted password. Requires X-User-Id header for permission validation.
+  - Regular users cannot create other users
+  - Super users can only create regular users
+  - Admins can create any user type
+}

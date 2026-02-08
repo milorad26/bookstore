@@ -1,0 +1,23 @@
+meta {
+  name: Cancel Order
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/orders/1/cancel
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Cancel an existing order. Only specific statuses can be cancelled.
+}

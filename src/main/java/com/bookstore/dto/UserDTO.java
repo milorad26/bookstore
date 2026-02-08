@@ -1,5 +1,6 @@
 package com.bookstore.dto;
 
+import com.bookstore.model.UserType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -27,6 +28,7 @@ public class UserDTO {
     private String phoneNumber;
     private String address;
     private Boolean enabled;
+    private UserType userType;
     
     // Note: Password is intentionally excluded from this DTO for security
 }

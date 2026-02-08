@@ -1,5 +1,6 @@
 package com.bookstore.dto;
 
+import com.bookstore.model.UserType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -23,4 +24,5 @@ public class UpdateUserRequest {
     private String phoneNumber;
     private String address;
     private Boolean enabled;
+    private UserType userType;
 }

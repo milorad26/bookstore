@@ -1,0 +1,23 @@
+meta {
+  name: Get User by Username
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/users/username/admin
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieves a user by their username
+}

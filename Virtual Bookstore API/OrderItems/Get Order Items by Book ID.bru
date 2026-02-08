@@ -1,0 +1,23 @@
+meta {
+  name: Get Order Items by Book ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/order-items/book/1
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieve all order items for a specific book (useful for tracking book sales history)
+}

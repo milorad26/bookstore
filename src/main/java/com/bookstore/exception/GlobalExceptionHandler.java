@@ -88,4 +88,48 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
         );
         return ResponseEntity.badRequest().body(error);
     }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.FORBIDDEN.value(),
+            ex.getMessage(),
+            "Access Denied"
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(
+            InsufficientStockException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            "Insufficient Stock"
+        );
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(InvalidOrderStatusException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOrderStatus(
+            InvalidOrderStatusException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            "Invalid Order Status"
+        );
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+            IllegalStateException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.CONFLICT.value(),
+            ex.getMessage(),
+            "Illegal State"
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
 }

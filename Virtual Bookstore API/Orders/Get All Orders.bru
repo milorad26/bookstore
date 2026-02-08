@@ -1,0 +1,23 @@
+meta {
+  name: Get All Orders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/orders
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Retrieve a list of all orders in the system
+}

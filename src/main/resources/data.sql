@@ -28,12 +28,46 @@ VALUES ('Brave New World', 'Aldous Huxley', '978-0060850524', 15.50, 'A dystopia
 -- johndoe: password123
 -- janesmith: password456
 -- admin: admin123
-INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
-VALUES ('johndoe', '$2a$10$N9qo8uLOickgx2ZMRZoMye6J954rKdgE4T7.5izzKhA7jU8qVrGFy', 'John', 'Doe', 'john.doe@example.com', '+1-555-0101', '123 Main St, New York, NY 10001', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, user_type, created_at, updated_at) 
+VALUES ('johndoe', '$2a$10$N9qo8uLOickgx2ZMRZoMye6J954rKdgE4T7.5izzKhA7jU8qVrGFy', 'John', 'Doe', 'john.doe@example.com', '+1-555-0101', '123 Main St, New York, NY 10001', true, 'USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
-VALUES ('janesmith', '$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG', 'Jane', 'Smith', 'jane.smith@example.com', '+1-555-0102', '456 Oak Ave, Los Angeles, CA 90001', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, user_type, created_at, updated_at) 
+VALUES ('janesmith', '$2a$10$xn3LI/AjqicFYZFruSwve.681477XaVNaUQbr1gioaWPn4t1KsnmG', 'Jane', 'Smith', 'jane.smith@example.com', '+1-555-0102', '456 Oak Ave, Los Angeles, CA 90001', true, 'SUPER_USER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
-INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, created_at, updated_at) 
-VALUES ('admin', '$2a$10$fGHQf8AYDFz7xhOE6YJiXOZhldLQ2sMDXMEkD/PCJIgQQqXBk5MYG', 'Admin', 'User', 'admin@bookstore.com', '+1-555-0100', '1 Bookstore Way, Chicago, IL 60601', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO users (username, password, first_name, last_name, email, phone_number, address, enabled, user_type, created_at, updated_at) 
+VALUES ('admin', '$2a$10$fGHQf8AYDFz7xhOE6YJiXOZhldLQ2sMDXMEkD/PCJIgQQqXBk5MYG', 'Admin', 'User', 'admin@bookstore.com', '+1-555-0100', '1 Bookstore Way, Chicago, IL 60601', true, 'ADMIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Sample order data
+-- Order 1: John Doe's completed order
+INSERT INTO orders (user_id, order_date, total_amount, status, shipping_address, billing_address, order_notes, created_at, updated_at)
+VALUES (1, CURRENT_TIMESTAMP - INTERVAL '7' DAY, 58.97, 'DELIVERED', '123 Main St, New York, NY 10001', '123 Main St, New York, NY 10001', 'Please leave at front door', CURRENT_TIMESTAMP - INTERVAL '7' DAY, CURRENT_TIMESTAMP - INTERVAL '7' DAY);
+
+-- Order items for Order 1
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (1, 1, 2, 15.99, CURRENT_TIMESTAMP - INTERVAL '7' DAY, CURRENT_TIMESTAMP - INTERVAL '7' DAY); -- 2x The Great Gatsby
+
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (1, 3, 1, 16.99, CURRENT_TIMESTAMP - INTERVAL '7' DAY, CURRENT_TIMESTAMP - INTERVAL '7' DAY); -- 1x 1984
+
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (1, 5, 1, 17.50, CURRENT_TIMESTAMP - INTERVAL '7' DAY, CURRENT_TIMESTAMP - INTERVAL '7' DAY); -- 1x The Catcher in the Rye
+
+-- Order 2: Jane Smith's processing order  
+INSERT INTO orders (user_id, order_date, total_amount, status, shipping_address, billing_address, order_notes, created_at, updated_at)
+VALUES (2, CURRENT_TIMESTAMP - INTERVAL '3' DAY, 37.98, 'PROCESSING', '456 Oak Ave, Los Angeles, CA 90001', '456 Oak Ave, Los Angeles, CA 90001', 'Express delivery requested', CURRENT_TIMESTAMP - INTERVAL '3' DAY, CURRENT_TIMESTAMP - INTERVAL '3' DAY);
+
+-- Order items for Order 2
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (2, 2, 2, 18.99, CURRENT_TIMESTAMP - INTERVAL '3' DAY, CURRENT_TIMESTAMP - INTERVAL '3' DAY); -- 2x To Kill a Mockingbird
+
+-- Order 3: Admin's pending order (to demonstrate pending order functionality)
+INSERT INTO orders (user_id, order_date, total_amount, status, shipping_address, billing_address, created_at, updated_at)
+VALUES (3, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, 42.98, 'PENDING', '1 Bookstore Way, Chicago, IL 60601', '1 Bookstore Way, Chicago, IL 60601', CURRENT_TIMESTAMP - INTERVAL '1' HOUR, CURRENT_TIMESTAMP - INTERVAL '1' HOUR);
+
+-- Order items for Order 3
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (3, 6, 1, 22.99, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, CURRENT_TIMESTAMP - INTERVAL '1' HOUR); -- 1x Harry Potter
+
+INSERT INTO order_items (order_id, book_id, quantity, price, created_at, updated_at)
+VALUES (3, 7, 1, 19.99, CURRENT_TIMESTAMP - INTERVAL '1' HOUR, CURRENT_TIMESTAMP - INTERVAL '1' HOUR); -- 1x The Hobbit
 

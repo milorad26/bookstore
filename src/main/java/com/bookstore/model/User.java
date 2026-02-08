@@ -61,6 +61,10 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_type", nullable = false)
+    private UserType userType = UserType.USER;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

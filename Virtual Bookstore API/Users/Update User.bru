@@ -1,0 +1,40 @@
+meta {
+  name: Update User
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/users/2
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  X-User-Id: 1
+}
+
+body:json {
+  {
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "email": "jane.smith@example.com",
+    "phoneNumber": "+1-555-0124",
+    "address": "456 Oak Ave, City, State 12345",
+    "enabled": true,
+    "userType": "USER"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Updates user information (excluding username and password). Requires X-User-Id header for permission validation.
+  - Regular users can only edit themselves and cannot change user type
+  - Super users can only edit regular users
+  - Admins can edit everyone
+}

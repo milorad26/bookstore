@@ -73,6 +73,9 @@ public class UserService {
         if (updatedUser.getEnabled() != null) {
             existingUser.setEnabled(updatedUser.getEnabled());
         }
+        if (updatedUser.getUserType() != null) {
+            existingUser.setUserType(updatedUser.getUserType());
+        }
         
         return userRepository.save(existingUser);
     }

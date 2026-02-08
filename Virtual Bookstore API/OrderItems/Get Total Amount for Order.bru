@@ -1,0 +1,23 @@
+meta {
+  name: Get Total Amount for Order
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/order-items/order/1/total-amount
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Calculate the total amount for a specific order (analytics endpoint)
+}

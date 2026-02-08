@@ -1,0 +1,23 @@
+meta {
+  name: Get Total Quantity Sold for Book
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/order-items/book/1/total-sold
+  body: none
+  auth: inherit
+}
+
+headers {
+  Accept: application/json
+}
+
+settings {
+  encodeUrl: true
+}
+
+docs {
+  Get the total quantity sold for a specific book (analytics endpoint)
+}
