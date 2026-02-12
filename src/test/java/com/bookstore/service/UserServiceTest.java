@@ -231,8 +231,9 @@ class UserServiceTest {
         List<User> result = userService.getAllUsers();
 
         // Then
-        assertThat(result).hasSize(2);
-        assertThat(result).containsExactly(testUser, user2);
+        assertThat(result)
+            .hasSize(2)
+            .containsExactly(testUser, user2);
         verify(userRepository).findAll();
     }
 

@@ -7,6 +7,123 @@
 	},
 	"item": [
 		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticate with username and password to receive a JWT token. Test users: johndoe/password123 (USER), janesmith/password123 (SUPER_USER), admin/password123 (ADMIN)"
+					},
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"password123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phoneNumber\": \"+1-555-0123\",\n  \"address\": \"123 Main Street, City, State 12345\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Register a new user account and receive a JWT token immediately. Username and email must be unique."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Token",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"1"
+							]
+						},
+						"description": "Test endpoint to verify your JWT token is working. Returns 200 OK if authenticated, 401 if token is invalid."
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints - Login and register to receive JWT tokens"
+		},
+		{
 			"name": "Books",
 			"item": [
 				{
@@ -257,6 +374,89 @@
 			"name": "Users",
 			"item": [
 				{
+					"name": "Get My Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						},
+						"description": "Retrieves the authenticated user's own profile. User ID is automatically extracted from JWT token."
+					},
+					"response": []
+				},
+				{
+					"name": "Update My Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.updated@example.com\",\n  \"phoneNumber\": \"+1-555-9999\",\n  \"address\": \"456 New Street, City, State 12345\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						},
+						"description": "Updates the authenticated user's own profile. User ID is automatically extracted from JWT token. Cannot change own user type."
+					},
+					"response": []
+				},
+				{
 					"name": "Get All Users",
 					"request": {
 						"method": "GET",
@@ -448,6 +648,41 @@
 			"name": "Orders",
 			"item": [
 				{
+					"name": "Get My Orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/orders/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"orders",
+								"me"
+							]
+						},
+						"description": "Retrieves all orders for the authenticated user. User ID is automatically extracted from JWT token. Available to all authenticated users."
+					},
+					"response": []
+				},
+				{
 					"name": "Get All Orders",
 					"request": {
 						"method": "GET",
@@ -562,6 +797,16 @@
 				{
 					"name": "Confirm Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -570,24 +815,34 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/orders/1/confirm",
+							"raw": "{{baseUrl}}/api/orders/confirm/1",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"orders",
-								"1",
-								"confirm"
+								"confirm",
+								"1"
 							]
 						},
-						"description": "Confirm a pending order and deduct stock"
+						"description": "Confirm a pending order and deduct stock. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Update Order Status",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -596,31 +851,41 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/orders/1/status?status=PROCESSING",
+							"raw": "{{baseUrl}}/api/orders/status/1?status=PROCESSING",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"orders",
-								"1",
-								"status"
+								"status",
+								"1"
 							],
 							"query": [
 								{
 									"key": "status",
 									"value": "PROCESSING",
-									"description": "New status for the order"
+									"description": "New status for the order (PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED)"
 								}
 							]
 						},
-						"description": "Update the status of an existing order"
+						"description": "Update the status of an existing order. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Cancel Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "PUT",
 						"header": [
 							{
@@ -629,24 +894,34 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/orders/1/cancel",
+							"raw": "{{baseUrl}}/api/orders/cancel/1",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"orders",
-								"1",
-								"cancel"
+								"cancel",
+								"1"
 							]
 						},
-						"description": "Cancel an existing order"
+						"description": "Cancel an existing order. Users can only cancel their own orders, SUPER_USER and ADMIN can cancel any order."
 					},
 					"response": []
 				},
 				{
 					"name": "Delete Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "DELETE",
 						"header": [
 							{
@@ -655,17 +930,18 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/orders/1",
+							"raw": "{{baseUrl}}/api/orders/delete/1",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"orders",
+								"delete",
 								"1"
 							]
 						},
-						"description": "Delete a cancelled or pending order"
+						"description": "Delete a cancelled or pending order. Access: ADMIN ONLY"
 					},
 					"response": []
 				}
@@ -678,6 +954,16 @@
 				{
 					"name": "Get Order Item by ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -696,13 +982,23 @@
 								"1"
 							]
 						},
-						"description": "Retrieve a specific order item by its ID"
+						"description": "Retrieve a specific order item by its ID. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Get Order Items by Order ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -722,13 +1018,23 @@
 								"1"
 							]
 						},
-						"description": "Retrieve all items for a specific order"
+						"description": "Retrieve all items for a specific order. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Get Order Items by Book ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -748,13 +1054,23 @@
 								"1"
 							]
 						},
-						"description": "Retrieve all order items for a specific book"
+						"description": "Retrieve all order items for a specific book. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Get Total Quantity Sold for Book",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -775,13 +1091,23 @@
 								"total-sold"
 							]
 						},
-						"description": "Get the total quantity sold for a specific book"
+						"description": "Get the total quantity sold for a specific book. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				},
 				{
 					"name": "Get Total Amount for Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authToken}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [
 							{
@@ -802,7 +1128,7 @@
 								"total-amount"
 							]
 						},
-						"description": "Calculate the total amount for a specific order"
+						"description": "Calculate the total amount for a specific order. Access: SUPER_USER, ADMIN"
 					},
 					"response": []
 				}

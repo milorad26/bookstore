@@ -66,10 +66,10 @@ class BookRepositoryTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
+    @CsvSource(value = {
         "978-0-13-235088-4, true, Clean Code, Robert C. Martin",
-        "999-9-99-999999-9, false, , "
-    })
+        "999-9-99-999999-9, false, null, null"
+    }, nullValues = "null")
     void testFindByIsbn(String isbn, boolean shouldExist, String expectedTitle, String expectedAuthor) {
         // When
         Optional<Book> found = bookRepository.findByIsbn(isbn);
@@ -85,11 +85,11 @@ class BookRepositoryTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
+    @CsvSource(value = {
         "martin, 1, Robert C. Martin",
         "ROBERT, 1, Robert C. Martin",
-        "NonExistent Author, 0, "
-    })
+        "NonExistent Author, 0, null"
+    }, nullValues = "null")
     void testFindByAuthorContainingIgnoreCase(String searchTerm, int expectedSize, String expectedAuthor) {
         // When
         List<Book> books = bookRepository.findByAuthorContainingIgnoreCase(searchTerm);

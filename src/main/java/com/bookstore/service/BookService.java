@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import com.bookstore.exception.ResourceNotFoundException;
 
 @Service
@@ -20,7 +19,7 @@ public class BookService {
     public List<BookDTO> getAllBooks() {
         return bookRepository.findAll().stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public BookDTO getBookById(Long id) {
@@ -38,13 +37,13 @@ public class BookService {
     public List<BookDTO> searchByAuthor(String author) {
         return bookRepository.findByAuthorContainingIgnoreCase(author).stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<BookDTO> searchByTitle(String title) {
         return bookRepository.findByTitleContainingIgnoreCase(title).stream()
                 .map(this::convertToDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
