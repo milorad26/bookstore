@@ -3,6 +3,7 @@ package com.bookstore.controller;
 import com.bookstore.dto.CreateUserRequest;
 import com.bookstore.dto.UpdateUserRequest;
 import com.bookstore.dto.UserDTO;
+import com.bookstore.dto.UserProfileDTO;
 import com.bookstore.exception.AccessDeniedException;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.User;
@@ -18,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -77,8 +79,8 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get current user profile", description = "Retrieves the authenticated user's own profile")
-    public ResponseEntity<UserDTO> getCurrentUser(HttpServletRequest request) {
+    @Operation(summary = "Get current user profile", description = "Retrieves the authenticated user's own profile with permissions and available endpoints")
+    public ResponseEntity<UserProfileDTO> getCurrentUser(HttpServletRequest request) {
         // Get the current user who is making the request from JWT
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
@@ -89,7 +91,7 @@ public class UserController {
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Current user not found with ID: " + currentUserId));
         
-        return ResponseEntity.ok(toDTO(user));
+        return ResponseEntity.ok(toProfileDTO(user));
     }
 
     @GetMapping
@@ -303,6 +305,121 @@ public class UserController {
         dto.setAddress(user.getAddress());
         dto.setEnabled(user.getEnabled());
         dto.setUserType(user.getUserType());
+        return dto;
+    }
+    
+    // Helper method to convert User entity to UserProfileDTO with permissions
+    private UserProfileDTO toProfileDTO(User user) {
+        UserProfileDTO dto = new UserProfileDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setFirstName(user.getFirstName());
+        dto.setLastName(user.getLastName());
+        dto.setEmail(user.getEmail());
+        dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setAddress(user.getAddress());
+        dto.setEnabled(user.getEnabled());
+        dto.setUserType(user.getUserType());
+        
+        // Set permissions and available endpoints based on user type
+        List<String> permissions = new ArrayList<>();
+        List<String> endpoints = new ArrayList<>();
+        
+        switch (user.getUserType()) {
+            case ADMIN:
+                // ADMIN has all permissions
+                permissions.add("manage_users");
+                permissions.add("create_any_user");
+                permissions.add("edit_any_user");
+                permissions.add("delete_any_user");
+                permissions.add("view_all_users");
+                permissions.add("manage_orders");
+                permissions.add("view_all_orders");
+                permissions.add("confirm_orders");
+                permissions.add("update_order_status");
+                permissions.add("delete_orders");
+                permissions.add("manage_books");
+                permissions.add("create_books");
+                permissions.add("edit_books");
+                permissions.add("delete_books");
+                
+                // ADMIN endpoints
+                endpoints.add("GET /api/users");
+                endpoints.add("GET /api/users/{id}");
+                endpoints.add("GET /api/users/username/{username}");
+                endpoints.add("POST /api/users");
+                endpoints.add("PUT /api/users/{id}");
+                endpoints.add("DELETE /api/users/{id}");
+                endpoints.add("GET /api/orders");
+                endpoints.add("GET /api/orders/{id}");
+                endpoints.add("GET /api/orders/user/{userId}");
+                endpoints.add("POST /api/orders");
+                endpoints.add("PUT /api/orders/confirm/{id}");
+                endpoints.add("PUT /api/orders/cancel/{id}");
+                endpoints.add("DELETE /api/orders/delete/{id}");
+                endpoints.add("GET /api/books");
+                endpoints.add("GET /api/books/{id}");
+                endpoints.add("POST /api/books");
+                endpoints.add("PUT /api/books/{id}");
+                endpoints.add("DELETE /api/books/{id}");
+                endpoints.add("GET /api/order-items/{id}");
+                endpoints.add("GET /api/order-items/order/{orderId}");
+                endpoints.add("GET /api/order-items/book/{bookId}");
+                break;
+                
+            case SUPER_USER:
+                // SUPER_USER has limited admin permissions
+                permissions.add("manage_regular_users");
+                permissions.add("create_regular_users");
+                permissions.add("edit_regular_users");
+                permissions.add("view_all_users");
+                permissions.add("view_all_orders");
+                permissions.add("confirm_orders");
+                permissions.add("update_order_status");
+                permissions.add("view_books");
+                
+                // SUPER_USER endpoints
+                endpoints.add("GET /api/users");
+                endpoints.add("GET /api/users/{id}");
+                endpoints.add("GET /api/users/username/{username}");
+                endpoints.add("POST /api/users");
+                endpoints.add("PUT /api/users/{id}");
+                endpoints.add("GET /api/orders");
+                endpoints.add("GET /api/orders/{id}");
+                endpoints.add("GET /api/orders/user/{userId}");
+                endpoints.add("POST /api/orders");
+                endpoints.add("PUT /api/orders/confirm/{id}");
+                endpoints.add("PUT /api/orders/cancel/{id}");
+                endpoints.add("GET /api/books");
+                endpoints.add("GET /api/books/{id}");
+                endpoints.add("GET /api/order-items/{id}");
+                endpoints.add("GET /api/order-items/order/{orderId}");
+                endpoints.add("GET /api/order-items/book/{bookId}");
+                break;
+                
+            case USER:
+                // Regular USER has basic permissions
+                permissions.add("view_own_profile");
+                permissions.add("edit_own_profile");
+                permissions.add("view_own_orders");
+                permissions.add("create_orders");
+                permissions.add("cancel_own_orders");
+                permissions.add("view_books");
+                
+                // Regular USER endpoints
+                endpoints.add("GET /api/users/me");
+                endpoints.add("PUT /api/users/me");
+                endpoints.add("GET /api/orders/me");
+                endpoints.add("POST /api/orders");
+                endpoints.add("PUT /api/orders/cancel/{id}");
+                endpoints.add("GET /api/books");
+                endpoints.add("GET /api/books/{id}");
+                break;
+        }
+        
+        dto.setPermissions(permissions);
+        dto.setAvailableEndpoints(endpoints);
+        
         return dto;
     }
 }

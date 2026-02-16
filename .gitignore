@@ -1,41 +1,29 @@
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# Backend (Java/Spring Boot)
+bookstore/target/
+bookstore/.mvn/
+bookstore/HELP.md
+bookstore/*.iml
+bookstore/.idea/
+bookstore/.vscode/
+bookstore/*.log
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Database files
+bookstore/data/*.db
+bookstore/data/*.mv.db
+bookstore/data/*.trace.db
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+# Frontend (Vue/Node)
+bookstore-frontend/node_modules/
+bookstore-frontend/dist/
+bookstore-frontend/.env
+bookstore-frontend/.env.local
+bookstore-frontend/.DS_Store
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+# Root level
+package-lock.json
+node_modules/
 
-### VS Code ###
-.vscode/
-
-### macOS ###
+# OS
 .DS_Store
-
-### Windows ###
 Thumbs.db
-ehthumbs.db
 Desktop.ini

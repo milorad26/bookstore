@@ -171,35 +171,6 @@ public class OrderController {
         return ResponseEntity.ok(confirmedOrder);
     }
 
-    @Operation(summary = "Update order status", description = "Update the status of an existing order")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Order status updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Order not found"),
-        @ApiResponse(responseCode = "400", description = "Invalid status transition"),
-        @ApiResponse(responseCode = "403", description = "Access denied")
-    })
-    @PutMapping("/status/{id}")
-    public ResponseEntity<OrderDTO> updateOrderStatus(@PathVariable Long id, 
-                                                     @RequestParam OrderStatus status,
-                                                     HttpServletRequest request) {
-        Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
-        if (currentUserId == null) {
-            throw new AccessDeniedException("Authentication required");
-        }
-        
-        User currentUser = userService.findById(currentUserId)
-            .orElseThrow(() -> new ResourceNotFoundException(
-                "Current user not found with ID: " + currentUserId));
-        
-        if (currentUser.getUserType() == UserType.USER) {
-            throw new AccessDeniedException(
-                "Permission denied: Only SUPER_USER and ADMIN can update order status");
-        }
-        
-        OrderDTO updatedOrder = orderService.updateOrderStatus(id, status);
-        return ResponseEntity.ok(updatedOrder);
-    }
-
     @Operation(summary = "Cancel an order", description = "Cancel an existing order")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Order cancelled successfully"),

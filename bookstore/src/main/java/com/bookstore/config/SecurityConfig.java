@@ -20,6 +20,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -59,14 +63,30 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .headers(headers -> headers
                 .frameOptions(frame -> frame.sameOrigin())
+                .cacheControl(cache -> cache.disable())
             )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)
@@ -112,9 +132,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
                 .requestMatchers(HttpMethod.GET, ORDERS_API_PATTERN).authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/orders/cancel/**").authenticated()
-                // Only SUPER_USER and ADMIN can confirm orders and update status
+                // Only SUPER_USER and ADMIN can confirm orders
                 .requestMatchers(HttpMethod.PUT, "/api/orders/confirm/**").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
-                .requestMatchers(HttpMethod.PUT, "/api/orders/status/**").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 // Only ADMIN can delete orders
                 .requestMatchers(HttpMethod.DELETE, ORDERS_API_PATTERN).hasRole(ROLE_ADMIN)
                 

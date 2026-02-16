@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -46,21 +45,5 @@ public class OrderItemController {
     @GetMapping("/book/{bookId}")
     public ResponseEntity<List<OrderItemDTO>> getOrderItemsByBookId(@PathVariable Long bookId) {
         return ResponseEntity.ok(orderItemService.getOrderItemsByBookId(bookId));
-    }
-
-    @Operation(summary = "Get total quantity sold for book", description = "Get the total quantity sold for a specific book")
-    @ApiResponse(responseCode = "200", description = "Total quantity retrieved")
-    @ApiResponse(responseCode = "404", description = "Book not found")
-    @GetMapping("/book/{bookId}/total-sold")
-    public ResponseEntity<Integer> getTotalQuantitySoldForBook(@PathVariable Long bookId) {
-        return ResponseEntity.ok(orderItemService.getTotalQuantitySoldForBook(bookId));
-    }
-
-    @Operation(summary = "Get total amount for order", description = "Calculate the total amount for a specific order")
-    @ApiResponse(responseCode = "200", description = "Total amount calculated")
-    @ApiResponse(responseCode = "404", description = "Order not found")
-    @GetMapping("/order/{orderId}/total-amount")
-    public ResponseEntity<BigDecimal> getTotalAmountForOrder(@PathVariable Long orderId) {
-        return ResponseEntity.ok(orderItemService.getTotalAmountForOrder(orderId));
     }
 }

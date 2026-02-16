@@ -1,0 +1,164 @@
+<template>
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card shadow">
+          <div class="card-body p-5">
+            <h2 class="card-title text-center mb-4">
+              <i class="bi bi-box-arrow-in-right"></i> Login
+            </h2>
+
+            <Alert
+              v-model="showAlert"
+              :message="alertMessage"
+              :type="alertType"
+            />
+
+            <form @submit.prevent="handleLogin">
+              <FormField
+                id="username"
+                v-model="form.username"
+                label="Username"
+                placeholder="Enter your username"
+                :error="errors.username"
+                required
+                @blur="validateField('username')"
+              />
+
+              <FormField
+                id="password"
+                v-model="form.password"
+                label="Password"
+                type="password"
+                placeholder="Enter your password"
+                :error="errors.password"
+                required
+                @blur="validateField('password')"
+              />
+
+              <button
+                type="submit"
+                class="btn btn-primary w-100 mb-3"
+                :disabled="isLoading"
+              >
+                <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ isLoading ? 'Logging in...' : 'Login' }}
+              </button>
+            </form>
+
+            <div class="text-center">
+              <p class="text-muted">Don't have an account?</p>
+              <router-link to="/auth/register" class="btn btn-outline-primary">
+                Register here
+              </router-link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useAuthStore } from '../stores/authStore'
+import { useRouter } from 'vue-router'
+import { authService } from '../services/authService'
+import { validateField } from '../utils/validators'
+import Alert from '../components/Alert.vue'
+import FormField from '../components/FormField.vue'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+const form = ref({
+  username: '',
+  password: ''
+})
+
+const errors = ref({
+  username: '',
+  password: ''
+})
+
+const isLoading = ref(false)
+const showAlert = ref(false)
+const alertMessage = ref('')
+const alertType = ref('info')
+
+const validate = () => {
+  let isValid = true
+  
+  for (const field of ['username', 'password']) {
+    const error = validateField(field, form.value[field])
+    if (error) {
+      errors.value[field] = error
+      isValid = false
+    }
+  }
+
+  return isValid
+}
+
+const validateFieldFn = (field) => {
+  const error = validateField(field, form.value[field])
+  errors.value[field] = error || ''
+}
+
+const handleLogin = async () => {
+  // Clear previous alerts and errors on new submission
+  showAlert.value = false
+  errors.value = { username: '', password: '' }
+
+  if (!validate()) {
+    showError('Please fix the errors above')
+    return
+  }
+
+  isLoading.value = true
+
+  try {
+    const response = await authService.login(
+      form.value.username,
+      form.value.password
+    )
+
+    authStore.setAuth(response.token, {
+      userId: response.userId,
+      username: response.username,
+      email: response.email,
+      firstName: response.firstName,
+      lastName: response.lastName
+    })
+
+    showSuccess('Login successful!')
+    setTimeout(() => router.push('/'), 1000)
+  } catch (error) {
+    showError(error.message || 'Login failed')
+    if (error.message.includes(':')) {
+      // Parse field-specific validation errors
+      const fieldErrors = error.message.split(',').map(err => err.trim())
+      fieldErrors.forEach(fieldErr => {
+        const [field, message] = fieldErr.split(':').map(s => s.trim())
+        if (field in form.value) {
+          errors.value[field] = message
+        }
+      })
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const showError = (message) => {
+  alertMessage.value = message
+  alertType.value = 'danger'
+  showAlert.value = true
+}
+
+const showSuccess = (message) => {
+  alertMessage.value = message
+  alertType.value = 'success'
+  showAlert.value = true
+}
+</script>

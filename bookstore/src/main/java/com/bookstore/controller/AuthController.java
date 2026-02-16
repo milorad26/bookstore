@@ -32,31 +32,42 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(summary = "Login", description = "Authenticate user and return JWT token")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
-                        loginRequest.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getUsername(),
+                            loginRequest.getPassword()
+                    )
+            );
 
-        User user = userService.findByUsername(loginRequest.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            User user = userService.findByUsername(loginRequest.getUsername())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String token = jwtUtil.generateToken(user.getUsername(), user.getId());
+            String token = jwtUtil.generateToken(user.getUsername(), user.getId());
 
-        LoginResponse response = LoginResponse.builder()
-                .token(token)
-                .type("Bearer")
-                .userId(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .build();
+            LoginResponse response = LoginResponse.builder()
+                    .token(token)
+                    .type("Bearer")
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .email(user.getEmail())
+                    .firstName(user.getFirstName())
+                    .lastName(user.getLastName())
+                    .build();
 
-        log.info("User {} logged in successfully", user.getUsername());
+            log.info("User {} logged in successfully", user.getUsername());
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok()
+                    .cacheControl(org.springframework.http.CacheControl.noStore())
+                    .header("Pragma", "no-cache")
+                    .body(response);
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            log.warn("Login failed for user {}: Invalid credentials", loginRequest.getUsername());
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid username or password");
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            log.warn("Login failed for user {}: {}", loginRequest.getUsername(), e.getMessage());
+            throw new org.springframework.security.authentication.BadCredentialsException("Authentication failed: " + e.getMessage());
+        }
     }
 
     @PostMapping("/register")

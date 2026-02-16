@@ -43,7 +43,25 @@ public class GlobalExceptionHandler {
             "Invalid username or password",
             "Unauthorized"
         );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(error);
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException ex, WebRequest request) {
+        log.error("Authentication error: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.UNAUTHORIZED.value(),
+            "Authentication failed: Invalid username or password",
+            "Unauthorized"
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(error);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
