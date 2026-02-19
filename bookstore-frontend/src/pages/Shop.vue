@@ -63,9 +63,10 @@
 
     <!-- Alert Messages -->
     <Alert
-      v-model="showAlert"
+      v-if="showAlert"
       :message="alertMessage"
       :type="alertType"
+      @close="showAlert = false"
     />
 
     <!-- Loading State -->

@@ -134,17 +134,6 @@
 
               <!-- Change Password Form -->
               <form v-else @submit.prevent="changePassword">
-                <!-- Password Requirements Info -->
-                <div class="alert alert-info mb-3">
-                  <strong><i class="bi bi-info-circle"></i> Password Requirements:</strong>
-                  <ul class="mb-0 mt-2">
-                    <li>At least 8 characters long</li>
-                    <li>One uppercase letter (A-Z)</li>
-                    <li>One lowercase letter (a-z)</li>
-                    <li>One special character (!@#$%^&*)</li>
-                  </ul>
-                </div>
-                
                 <div class="mb-3">
                   <FormField
                     id="password-current"
@@ -279,7 +268,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '../services/userService'
 import { useRouter } from 'vue-router'
 import Alert from '../components/Alert.vue'
@@ -322,6 +311,15 @@ const alert = reactive({
   show: false,
   type: 'success',
   message: ''
+})
+
+// Ensure alert is hidden on component mount
+watch(() => alert.show, (newVal) => {
+  if (newVal) {
+    setTimeout(() => {
+      alert.show = false
+    }, 5000)
+  }
 })
 
 // Computed permissions based on user role

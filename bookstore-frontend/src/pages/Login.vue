@@ -9,9 +9,10 @@
             </h2>
 
             <Alert
-              v-model="showAlert"
+              v-if="showAlert"
               :message="alertMessage"
               :type="alertType"
+              @close="showAlert = false"
             />
 
             <form @submit.prevent="handleLogin">

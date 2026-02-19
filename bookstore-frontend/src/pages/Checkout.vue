@@ -6,9 +6,10 @@
 
     <!-- Alert Messages -->
     <Alert
-      v-model="showAlert"
+      v-if="showAlert"
       :message="alertMessage"
       :type="alertType"
+      @close="showAlert = false"
     />
 
     <!-- Empty Cart Redirect -->
