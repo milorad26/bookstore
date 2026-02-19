@@ -10,6 +10,14 @@
       :value="modelValue"
       :class="['form-control', { 'is-invalid': error }]"
       :placeholder="placeholder"
+      :required="required"
+      :disabled="disabled"
+      :min="min"
+      :max="max"
+      :step="step"
+      :minlength="minlength"
+      :maxlength="maxlength"
+      :pattern="pattern"
       @input="$emit('update:modelValue', $event.target.value)"
       @blur="$emit('blur')"
     />
@@ -34,7 +42,7 @@ defineProps({
     default: 'text'
   },
   modelValue: {
-    type: String,
+    type: [String, Number],
     default: ''
   },
   placeholder: {
@@ -48,6 +56,34 @@ defineProps({
   required: {
     type: Boolean,
     default: false
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  min: {
+    type: [String, Number],
+    default: undefined
+  },
+  max: {
+    type: [String, Number],
+    default: undefined
+  },
+  step: {
+    type: [String, Number],
+    default: undefined
+  },
+  minlength: {
+    type: Number,
+    default: undefined
+  },
+  maxlength: {
+    type: Number,
+    default: undefined
+  },
+  pattern: {
+    type: String,
+    default: undefined
   }
 })
 

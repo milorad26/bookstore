@@ -3,6 +3,7 @@ package com.bookstore.service;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.User;
 import com.bookstore.repository.UserRepository;
+import com.bookstore.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +38,12 @@ public class UserService {
         if (user.getEmail() != null && userRepository.existsByEmail(user.getEmail())) {
             throw new IllegalArgumentException(
                 "Email address '" + user.getEmail() + "' is already registered. Please use a different email.");
+        }
+        
+        // Validate password strength
+        String validationMessage = PasswordValidator.getValidationMessage(user.getPassword());
+        if (validationMessage != null) {
+            throw new IllegalArgumentException(validationMessage);
         }
         
         // Encrypt the password before saving
@@ -94,6 +101,36 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         
         return userRepository.save(user);
+    }
+
+    /**
+     * Change user password with verification of current password
+     */
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        log.info("Changing password for user ID: {}", userId);
+        
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Cannot change password. User not found with ID: " + userId));
+        
+        // Verify current password
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            log.warn("Failed password change attempt for user ID: {} - incorrect current password", userId);
+            throw new IllegalArgumentException("Current password is incorrect. Please try again.");
+        }
+        
+        // Validate new password strength
+        String validationMessage = PasswordValidator.getValidationMessage(newPassword);
+        if (validationMessage != null) {
+            throw new IllegalArgumentException(validationMessage);
+        }
+        
+        // Encode and set new password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        
+        userRepository.save(user);
+        log.info("Password changed successfully for user ID: {}", userId);
     }
 
     /**

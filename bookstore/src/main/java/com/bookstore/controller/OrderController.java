@@ -3,7 +3,6 @@ package com.bookstore.controller;
 import com.bookstore.dto.*;
 import com.bookstore.exception.AccessDeniedException;
 import com.bookstore.exception.ResourceNotFoundException;
-import com.bookstore.model.OrderStatus;
 import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.AuthenticationHelper;
@@ -198,6 +197,32 @@ public class OrderController {
         
         orderService.cancelOrder(id);
         return ResponseEntity.ok(orderService.getOrderById(id));
+    }
+
+    @Operation(summary = "Mark order as delivered", description = "User confirms delivery of their order")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Order marked as delivered successfully"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "400", description = "Order cannot be marked as delivered"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @PutMapping("/deliver/{id}")
+    public ResponseEntity<OrderDTO> deliverOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
+        if (currentUserId == null) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        
+        OrderDTO order = orderService.getOrderById(id);
+        
+        // Only the order owner can mark it as delivered
+        if (!order.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException(
+                "Permission denied: You can only confirm delivery of your own orders");
+        }
+        
+        OrderDTO deliveredOrder = orderService.deliverOrder(id);
+        return ResponseEntity.ok(deliveredOrder);
     }
 
     @Operation(summary = "Delete an order", description = "Delete a cancelled or pending order")

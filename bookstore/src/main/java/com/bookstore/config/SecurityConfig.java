@@ -114,6 +114,7 @@ public class SecurityConfig {
                 // /me endpoint for regular users to access own profile
                 .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/users/me/change-password").authenticated()
                 // Only SUPER_USER and ADMIN can list all users
                 .requestMatchers(HttpMethod.GET, "/api/users").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 .requestMatchers(HttpMethod.GET, USERS_API_PATTERN).hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)           
@@ -132,6 +133,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/orders").authenticated()
                 .requestMatchers(HttpMethod.GET, ORDERS_API_PATTERN).authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/orders/cancel/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/orders/deliver/**").authenticated()
                 // Only SUPER_USER and ADMIN can confirm orders
                 .requestMatchers(HttpMethod.PUT, "/api/orders/confirm/**").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 // Only ADMIN can delete orders

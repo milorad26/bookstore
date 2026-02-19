@@ -1,5 +1,6 @@
 package com.bookstore.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,5 +15,6 @@ public class LoginRequest {
     private String username;
 
     @NotBlank(message = "Password is required")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 }

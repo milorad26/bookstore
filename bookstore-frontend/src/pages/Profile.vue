@@ -57,6 +57,7 @@
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <FormField
+                      id="profile-firstName"
                       v-model="editForm.firstName"
                       label="First Name"
                       type="text"
@@ -66,6 +67,7 @@
                   </div>
                   <div class="col-md-6">
                     <FormField
+                      id="profile-lastName"
                       v-model="editForm.lastName"
                       label="Last Name"
                       type="text"
@@ -77,6 +79,7 @@
                 <div class="row mb-3">
                   <div class="col-md-6">
                     <FormField
+                      id="profile-email"
                       v-model="editForm.email"
                       label="Email"
                       type="email"
@@ -85,6 +88,7 @@
                   </div>
                   <div class="col-md-6">
                     <FormField
+                      id="profile-phoneNumber"
                       v-model="editForm.phoneNumber"
                       label="Phone Number"
                       type="text"
@@ -94,6 +98,7 @@
                 </div>
                 <div class="mb-3">
                   <FormField
+                    id="profile-address"
                     v-model="editForm.address"
                     label="Address"
                     type="text"
@@ -107,6 +112,76 @@
                     Save Changes
                   </button>
                   <button type="button" @click="cancelEdit" class="btn btn-secondary" :disabled="loading">
+                    <i class="bi bi-x-lg"></i> Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Change Password -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark">
+              <h5 class="mb-0"><i class="bi bi-key-fill"></i> Change Password</h5>
+            </div>
+            <div class="card-body">
+              <div v-if="!changePasswordMode">
+                <p class="text-muted">Update your account password</p>
+                <button @click="changePasswordMode = true" class="btn btn-warning">
+                  <i class="bi bi-key"></i> Change Password
+                </button>
+              </div>
+
+              <!-- Change Password Form -->
+              <form v-else @submit.prevent="changePassword">
+                <!-- Password Requirements Info -->
+                <div class="alert alert-info mb-3">
+                  <strong><i class="bi bi-info-circle"></i> Password Requirements:</strong>
+                  <ul class="mb-0 mt-2">
+                    <li>At least 8 characters long</li>
+                    <li>One uppercase letter (A-Z)</li>
+                    <li>One lowercase letter (a-z)</li>
+                    <li>One special character (!@#$%^&*)</li>
+                  </ul>
+                </div>
+                
+                <div class="mb-3">
+                  <FormField
+                    id="password-current"
+                    v-model="passwordForm.currentPassword"
+                    label="Current Password"
+                    type="password"
+                    placeholder="Enter current password"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <FormField
+                    id="password-new"
+                    v-model="passwordForm.newPassword"
+                    label="New Password"
+                    type="password"
+                    placeholder="e.g., MyP@ssw0rd"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <FormField
+                    id="password-confirm"
+                    v-model="passwordForm.confirmPassword"
+                    label="Confirm New Password"
+                    type="password"
+                    placeholder="Confirm new password"
+                    required
+                  />
+                </div>
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-success" :disabled="loading">
+                    <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                    <i v-else class="bi bi-check-lg"></i>
+                    Change Password
+                  </button>
+                  <button type="button" @click="cancelPasswordChange" class="btn btn-secondary" :disabled="loading">
                     <i class="bi bi-x-lg"></i> Cancel
                   </button>
                 </div>
@@ -183,30 +258,6 @@
                   </button>
                 </div>
 
-                <!-- Create Order (ALL USERS) -->
-                <div class="action-card">
-                  <div class="action-icon bg-danger">
-                    <i class="bi bi-cart-plus-fill"></i>
-                  </div>
-                  <h6>Create Order</h6>
-                  <p class="text-muted small">Place a new book order</p>
-                  <button @click="createOrder" class="btn btn-danger btn-sm w-100">
-                    <i class="bi bi-plus-circle"></i> New Order
-                  </button>
-                </div>
-
-                <!-- Delete Users (ADMIN ONLY) -->
-                <div v-if="canDeleteUsers" class="action-card">
-                  <div class="action-icon bg-dark">
-                    <i class="bi bi-trash-fill"></i>
-                  </div>
-                  <h6>Delete Users</h6>
-                  <p class="text-muted small">Remove user accounts</p>
-                  <button @click="deleteUsers" class="btn btn-dark btn-sm w-100">
-                    <i class="bi bi-person-x"></i> Manage Deletions
-                  </button>
-                </div>
-
                 <!-- Confirm Orders (ADMIN & SUPER_USER) -->
                 <div v-if="canConfirmOrders" class="action-card">
                   <div class="action-icon bg-primary">
@@ -250,6 +301,7 @@ const profile = ref({
 })
 
 const editMode = ref(false)
+const changePasswordMode = ref(false)
 const loading = ref(false)
 
 const editForm = reactive({
@@ -258,6 +310,12 @@ const editForm = reactive({
   email: '',
   phoneNumber: '',
   address: ''
+})
+
+const passwordForm = reactive({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
 const alert = reactive({
@@ -279,10 +337,6 @@ const canManageOrders = computed(() =>
   profile.value.userType === 'ADMIN' || profile.value.userType === 'SUPER_USER'
 )
 
-const canDeleteUsers = computed(() => 
-  profile.value.userType === 'ADMIN'
-)
-
 const canConfirmOrders = computed(() => 
   profile.value.userType === 'ADMIN' || profile.value.userType === 'SUPER_USER'
 )
@@ -291,6 +345,10 @@ const showAlert = (type, message) => {
   alert.type = type
   alert.message = message
   alert.show = true
+  
+  // Scroll to top to ensure user sees the notification
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  
   setTimeout(() => {
     alert.show = false
   }, 5000)
@@ -340,6 +398,93 @@ const cancelEdit = () => {
   editForm.address = profile.value.address
 }
 
+const changePassword = async () => {
+  // Client-side validation
+  if (!passwordForm.currentPassword) {
+    showAlert('danger', 'Please enter your current password')
+    return
+  }
+
+  if (!passwordForm.newPassword) {
+    showAlert('danger', 'Please enter a new password')
+    return
+  }
+
+  if (!passwordForm.confirmPassword) {
+    showAlert('danger', 'Please confirm your new password')
+    return
+  }
+
+  // Validate passwords match
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    showAlert('danger', 'New passwords do not match. Please try again.')
+    return
+  }
+
+  // Validate password length
+  if (passwordForm.newPassword.length < 8) {
+    showAlert('danger', 'New password must be at least 8 characters long')
+    return
+  }
+
+  // Validate uppercase letter
+  if (!/[A-Z]/.test(passwordForm.newPassword)) {
+    showAlert('danger', 'Password must contain at least one uppercase letter')
+    return
+  }
+
+  // Validate lowercase letter
+  if (!/[a-z]/.test(passwordForm.newPassword)) {
+    showAlert('danger', 'Password must contain at least one lowercase letter')
+    return
+  }
+
+  // Validate special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordForm.newPassword)) {
+    showAlert('danger', 'Password must contain at least one special character (!@#$%^&*...)')
+    return
+  }
+
+  // Check if new password is same as current
+  if (passwordForm.currentPassword === passwordForm.newPassword) {
+    showAlert('warning', 'New password must be different from current password')
+    return
+  }
+
+  loading.value = true
+  try {
+    await userService.changePassword({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword
+    })
+    showAlert('success', '✓ Password changed successfully! Please use your new password for future logins.')
+    cancelPasswordChange()
+  } catch (error) {
+    // Provide specific error messages
+    let errorMessage = 'Failed to change password. '
+    
+    if (error.message && error.message.includes('incorrect')) {
+      errorMessage = 'Current password is incorrect. Please try again.'
+    } else if (error.message) {
+      errorMessage = error.message
+    } else {
+      errorMessage += 'Please try again or contact support if the problem persists.'
+    }
+    
+    showAlert('danger', errorMessage)
+  } finally {
+    loading.value = false
+  }
+}
+
+const cancelPasswordChange = () => {
+  changePasswordMode.value = false
+  // Reset password form
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+}
+
 const formatRole = (role) => {
   if (!role) return ''
   return role.replace('_', ' ')
@@ -361,43 +506,23 @@ const getRoleBadgeClass = (role) => {
 
 // Action handlers
 const viewAllUsers = () => {
-  showAlert('info', 'User management interface coming soon!')
-  // TODO: Navigate to user management page
-  // router.push('/users')
+  router.push('/users')
 }
 
 const manageBooks = () => {
-  showAlert('info', 'Book management interface coming soon!')
-  // TODO: Navigate to book management page
-  // router.push('/books/manage')
+  router.push('/books')
 }
 
 const viewAllOrders = () => {
-  showAlert('info', 'Order management interface coming soon!')
-  // TODO: Navigate to order management page
-  // router.push('/orders/all')
+  router.push('/admin/orders')
 }
 
 const viewMyOrders = () => {
-  showAlert('info', 'My orders page coming soon!')
-  // TODO: Navigate to user's orders page
-  // router.push('/orders/my')
+  router.push('/orders')
 }
 
 const browseBooks = () => {
   router.push('/')
-}
-
-const createOrder = () => {
-  showAlert('info', 'Order creation interface coming soon!')
-  // TODO: Navigate to create order page
-  // router.push('/orders/create')
-}
-
-const deleteUsers = () => {
-  showAlert('info', 'User deletion interface coming soon!')
-  // TODO: Navigate to user deletion page
-  // router.push('/users/delete')
 }
 
 const confirmOrders = () => {

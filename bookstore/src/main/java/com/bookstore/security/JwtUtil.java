@@ -57,15 +57,10 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
-    }
-
     public String generateToken(String username, Long userId) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", userId);
-        return createToken(claims, username);
+        // Use userId as subject to avoid exposing username in JWT payload
+        return createToken(claims, userId.toString());
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
@@ -103,7 +98,8 @@ public class JwtUtil {
     }
 
     public Long extractUserId(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("userId", Long.class);
+        // Extract userId from subject
+        String subject = extractClaim(token, Claims::getSubject);
+        return Long.parseLong(subject);
     }
 }

@@ -57,7 +57,6 @@ class BookControllerTest {
         testBookDTO1.setIsbn("978-0-13-235088-4");
         testBookDTO1.setPrice(new BigDecimal("42.99"));
         testBookDTO1.setDescription("A Handbook of Agile Software Craftsmanship");
-        testBookDTO1.setStockQuantity(10);
 
         testBookDTO2 = new BookDTO();
         testBookDTO2.setId(2L);
@@ -66,7 +65,6 @@ class BookControllerTest {
         testBookDTO2.setIsbn("978-0-13-595705-9");
         testBookDTO2.setPrice(new BigDecimal("39.99"));
         testBookDTO2.setDescription("Your Journey to Mastery");
-        testBookDTO2.setStockQuantity(5);
     }
 
     @Test
@@ -100,8 +98,7 @@ class BookControllerTest {
                 .andExpect(jsonPath("$.title", is("Clean Code")))
                 .andExpect(jsonPath("$.author", is("Robert C. Martin")))
                 .andExpect(jsonPath("$.isbn", is("978-0-13-235088-4")))
-                .andExpect(jsonPath("$.price", is(42.99)))
-                .andExpect(jsonPath("$.stockQuantity", is(10)));
+                .andExpect(jsonPath("$.price", is(42.99)));
 
         verify(bookService).getBookById(1L);
     }
@@ -219,7 +216,6 @@ class BookControllerTest {
         newBookDTO.setAuthor("Joshua Bloch");
         newBookDTO.setIsbn("978-0-13-468599-1");
         newBookDTO.setPrice(new BigDecimal("49.99"));
-        newBookDTO.setStockQuantity(15);
 
         BookDTO createdBookDTO = new BookDTO();
         createdBookDTO.setId(3L);
@@ -227,7 +223,6 @@ class BookControllerTest {
         createdBookDTO.setAuthor("Joshua Bloch");
         createdBookDTO.setIsbn("978-0-13-468599-1");
         createdBookDTO.setPrice(new BigDecimal("49.99"));
-        createdBookDTO.setStockQuantity(15);
 
         when(bookService.createBook(any(BookDTO.class))).thenReturn(createdBookDTO);
 
@@ -240,8 +235,7 @@ class BookControllerTest {
                 .andExpect(jsonPath("$.title", is("Effective Java")))
                 .andExpect(jsonPath("$.author", is("Joshua Bloch")))
                 .andExpect(jsonPath("$.isbn", is("978-0-13-468599-1")))
-                .andExpect(jsonPath("$.price", is(49.99)))
-                .andExpect(jsonPath("$.stockQuantity", is(15)));
+                .andExpect(jsonPath("$.price", is(49.99)));
 
         verify(bookService).createBook(any(BookDTO.class));
     }
@@ -254,7 +248,6 @@ class BookControllerTest {
         duplicateBookDTO.setAuthor("Robert C. Martin");
         duplicateBookDTO.setIsbn("978-0-13-235088-4");
         duplicateBookDTO.setPrice(new BigDecimal("42.99"));
-        duplicateBookDTO.setStockQuantity(10);
 
         when(bookService.createBook(any(BookDTO.class)))
                 .thenThrow(new IllegalArgumentException("Book with ISBN 978-0-13-235088-4 already exists"));
@@ -295,7 +288,6 @@ class BookControllerTest {
         updatedBookDTO.setAuthor("Robert C. Martin");
         updatedBookDTO.setIsbn("978-0-13-235088-4");
         updatedBookDTO.setPrice(new BigDecimal("45.99"));
-        updatedBookDTO.setStockQuantity(20);
 
         when(bookService.updateBook(eq(1L), any(BookDTO.class))).thenReturn(updatedBookDTO);
 
@@ -306,8 +298,7 @@ class BookControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)))
                 .andExpect(jsonPath("$.title", is("Clean Code - Updated")))
-                .andExpect(jsonPath("$.price", is(45.99)))
-                .andExpect(jsonPath("$.stockQuantity", is(20)));
+                .andExpect(jsonPath("$.price", is(45.99)));
 
         verify(bookService).updateBook(eq(1L), any(BookDTO.class));
     }

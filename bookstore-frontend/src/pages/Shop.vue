@@ -97,15 +97,11 @@
               <span class="h5 mb-0 text-success">
                 ${{ formatPrice(book.price) }}
               </span>
-              <span v-if="book.stockQuantity > 0" class="badge bg-success">
-                In Stock ({{ book.stockQuantity }})
-              </span>
-              <span v-else class="badge bg-danger">Out of Stock</span>
             </div>
 
             <button
               class="btn btn-primary w-100 mt-3"
-              :disabled="book.stockQuantity === 0"
+              @click="addToCart(book)"
             >
               <i class="bi bi-cart-plus"></i> Add to Cart
             </button>
@@ -125,8 +121,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { bookService } from '../services/bookService'
+import { useAuthStore } from '../stores/authStore'
+import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const books = ref([])
 const isLoading = ref(false)
@@ -206,6 +209,27 @@ const showInfo = (message) => {
   alertMessage.value = message
   alertType.value = 'info'
   showAlert.value = true
+}
+
+const showSuccess = (message) => {
+  alertMessage.value = message
+  alertType.value = 'success'
+  showAlert.value = true
+}
+
+const addToCart = (book) => {
+  // Check if user is logged in
+  if (!authStore.isAuthenticated) {
+    showError('Please log in to add items to your cart')
+    setTimeout(() => {
+      router.push('/auth/login')
+    }, 2000)
+    return
+  }
+
+  // Add to cart
+  cartStore.addToCart(book)
+  showSuccess(`"${book.title}" added to cart!`)
 }
 
 onMounted(() => {

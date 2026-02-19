@@ -64,6 +64,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
 import { authService } from '../services/authService'
+import { userService } from '../services/userService'
 import { validateField } from '../utils/validators'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
@@ -123,13 +124,14 @@ const handleLogin = async () => {
       form.value.password
     )
 
-    authStore.setAuth(response.token, {
-      userId: response.userId,
-      username: response.username,
-      email: response.email,
-      firstName: response.firstName,
-      lastName: response.lastName
-    })
+    // Set token first so subsequent API calls are authenticated
+    authStore.setAuth(response.token, null)
+    
+    // Fetch user data after successful login
+    const userData = await userService.getCurrentUser()
+    
+    // Update store with user data
+    authStore.setAuth(response.token, userData)
 
     showSuccess('Login successful!')
     setTimeout(() => router.push('/'), 1000)

@@ -72,7 +72,9 @@ public class BookService {
         existingBook.setIsbn(bookDTO.getIsbn());
         existingBook.setPrice(bookDTO.getPrice());
         existingBook.setDescription(bookDTO.getDescription());
-        existingBook.setStockQuantity(bookDTO.getStockQuantity());
+        if (bookDTO.getStockQuantity() != null) {
+            existingBook.setStockQuantity(bookDTO.getStockQuantity());
+        }
 
         Book updatedBook = bookRepository.save(existingBook);
         return convertToDTO(updatedBook);

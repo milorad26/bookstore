@@ -30,6 +30,6 @@ public class BookDTO {
     private BigDecimal price;
 
     private String description;
-
+    
     private Integer stockQuantity;
 }

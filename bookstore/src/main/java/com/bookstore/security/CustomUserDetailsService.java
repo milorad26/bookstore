@@ -38,4 +38,25 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .disabled(!user.getEnabled())
                 .build();
     }
+
+    public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "User not found with id: " + userId));
+
+        if (Boolean.FALSE.equals(user.getEnabled())) {
+            throw new UsernameNotFoundException("User account is disabled");
+        }
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .authorities(Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + user.getUserType().name())))
+                .accountExpired(false)
+                .accountLocked(false)
+                .credentialsExpired(false)
+                .disabled(!user.getEnabled())
+                .build();
+    }
 }

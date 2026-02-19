@@ -1,5 +1,6 @@
 package com.bookstore.controller;
 
+import com.bookstore.dto.ChangePasswordRequest;
 import com.bookstore.dto.CreateUserRequest;
 import com.bookstore.dto.UpdateUserRequest;
 import com.bookstore.dto.UserDTO;
@@ -11,6 +12,8 @@ import com.bookstore.model.UserType;
 import com.bookstore.security.AuthenticationHelper;
 import com.bookstore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -204,6 +207,33 @@ public class UserController {
         
         User updatedUser = userService.updateUser(currentUserId, user);
         return ResponseEntity.ok(toDTO(updatedUser));
+    }
+
+    @PutMapping("/me/change-password")
+    @Operation(summary = "Change password", description = "Allows a user to change their own password")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+        @ApiResponse(responseCode = "400", description = "Current password is incorrect or invalid new password"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public ResponseEntity<String> changePassword(
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody ChangePasswordRequest changePasswordRequest) {
+        
+        // Get the current user who is making the request from JWT
+        Long currentUserId = authenticationHelper.getUserIdFromRequest(httpRequest);
+        if (currentUserId == null) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        
+        // Change password - only user can change their own password
+        userService.changePassword(
+            currentUserId, 
+            changePasswordRequest.getCurrentPassword(), 
+            changePasswordRequest.getNewPassword()
+        );
+        
+        return ResponseEntity.ok("Password changed successfully");
     }
 
     @PutMapping("/{id}")

@@ -31,27 +31,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = extractJwtFromRequest(request);
 
             if (jwt != null && Boolean.TRUE.equals(jwtUtil.validateToken(jwt))) {
-                String username = jwtUtil.extractUsername(jwt);
+                Long userId = jwtUtil.extractUserId(jwt);
 
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = userDetailsService.loadUserById(userId);
 
-                if (Boolean.TRUE.equals(jwtUtil.validateToken(jwt, userDetails))) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities());
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities());
 
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    
-                    // Add userId to request attribute for controllers to use
-                    Long userId = jwtUtil.extractUserId(jwt);
-                    request.setAttribute("userId", userId);
-                    
-                    log.debug("Set authentication for user: {}", username);
-                }
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                
+                // Add userId to request attribute for controllers to use
+                request.setAttribute("userId", userId);
+                
+                log.debug("Set authentication for user ID: {}", userId);
             }
         } catch (Exception e) {
             log.error("Cannot set user authentication: {}", e.getMessage());

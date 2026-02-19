@@ -61,16 +61,25 @@
                 @blur="validateFieldFn('email')"
               />
 
+              <!-- Password Requirements Info -->
+              <div class="alert alert-info mb-3 py-2">
+                <small>
+                  <strong><i class="bi bi-info-circle"></i> Password must have:</strong>
+                  8+ chars, uppercase, lowercase & special character (!@#$%...)
+                </small>
+              </div>
+
               <FormField
                 id="password"
                 v-model="form.password"
                 label="Password"
                 type="password"
-                placeholder="At least 6 characters"
+                placeholder="e.g., MyP@ssw0rd"
                 :error="errors.password"
                 required
                 @blur="validateFieldFn('password')"
               />
+              <small class="text-muted d-block mb-3">Min. 8 characters with uppercase, lowercase & special character</small>
 
               <FormField
                 id="phoneNumber"
@@ -116,6 +125,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
 import { authService } from '../services/authService'
+import { userService } from '../services/userService'
 import { validateField } from '../utils/validators'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
@@ -151,7 +161,7 @@ const alertType = ref('info')
 const validate = () => {
   let isValid = true
   
-  const requiredFields = ['firstName', 'lastName', 'username', 'email', 'password']
+  const requiredFields = ['firstName', 'lastName', 'username', 'email']
   for (const field of requiredFields) {
     const error = validateField(field, form.value[field])
     if (error) {
@@ -159,12 +169,21 @@ const validate = () => {
       isValid = false
     }
   }
+  
+  // Validate password with strong validation rules
+  const passwordError = validateField('registerPassword', form.value.password)
+  if (passwordError) {
+    errors.value.password = passwordError
+    isValid = false
+  }
 
   return isValid
 }
 
 const validateFieldFn = (field) => {
-  const error = validateField(field, form.value[field])
+  // Use registerPassword validator for password field
+  const validationField = field === 'password' ? 'registerPassword' : field
+  const error = validateField(validationField, form.value[field])
   errors.value[field] = error || ''
 }
 
@@ -185,13 +204,14 @@ const handleRegister = async () => {
   try {
     const response = await authService.register(form.value)
 
-    authStore.setAuth(response.token, {
-      userId: response.userId,
-      username: response.username,
-      email: response.email,
-      firstName: response.firstName,
-      lastName: response.lastName
-    })
+    // Set token first so subsequent API calls are authenticated
+    authStore.setAuth(response.token, null)
+    
+    // Fetch user data after successful registration
+    const userData = await userService.getCurrentUser()
+    
+    // Update store with user data
+    authStore.setAuth(response.token, userData)
 
     showSuccess('Registration successful!')
     setTimeout(() => router.push('/'), 1000)

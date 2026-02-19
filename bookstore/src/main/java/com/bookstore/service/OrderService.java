@@ -180,6 +180,11 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderDTO deliverOrder(Long orderId) {
+        return updateOrderStatus(orderId, OrderStatus.DELIVERED);
+    }
+
+    @Transactional
     public void deleteOrder(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
@@ -195,7 +200,7 @@ public class OrderService {
     private boolean isValidStatusTransition(OrderStatus current, OrderStatus target) {
         return switch (current) {
             case PENDING -> target == OrderStatus.CONFIRMED || target == OrderStatus.CANCELLED;
-            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.CANCELLED;
+            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.CANCELLED || target == OrderStatus.DELIVERED;
             case PROCESSING -> target == OrderStatus.SHIPPED || target == OrderStatus.CANCELLED;
             case SHIPPED -> target == OrderStatus.DELIVERED;
             case DELIVERED -> target == OrderStatus.REFUNDED;

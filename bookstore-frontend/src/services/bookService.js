@@ -19,6 +19,15 @@ export const bookService = {
     }
   },
 
+  getBookByIsbn: async (isbn) => {
+    try {
+      const response = await apiClient.get(`/books/isbn/${isbn}`)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   searchByTitle: async (title) => {
     try {
       const response = await apiClient.get('/books/search/title', {
@@ -39,22 +48,51 @@ export const bookService = {
     } catch (error) {
       throw parseError(error)
     }
+  },
+
+  createBook: async (bookData) => {
+    try {
+      const response = await apiClient.post('/books', bookData)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
+  updateBook: async (id, bookData) => {
+    try {
+      const response = await apiClient.put(`/books/${id}`, bookData)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
+  deleteBook: async (id) => {
+    try {
+      const response = await apiClient.delete(`/books/${id}`)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
   }
 }
 
 function parseError(error) {
   if (error.response?.data) {
+    // Handle validation errors and other backend errors
     if (error.response.data.message) {
       return {
         message: error.response.data.message,
         status: error.response.status,
-        type: error.response.data.type
+        type: error.response.data.type || error.response.data.title
       }
     }
   }
   
+  // Network or other errors
   return {
-    message: error.message || 'An unexpected error occurred',
+    message: error.message || 'An unexpected error occurred. Please check your connection and try again.',
     status: error.response?.status || 500
   }
 }

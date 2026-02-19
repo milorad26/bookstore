@@ -10,6 +10,19 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
+            <!-- Cart Icon (visible to everyone) -->
+            <li class="nav-item">
+              <router-link to="/cart" class="nav-link position-relative">
+                <i class="bi bi-cart3" style="font-size: 1.2rem;"></i>
+                <span 
+                  v-if="cartStore.totalItems > 0" 
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                  style="font-size: 0.7rem;"
+                >
+                  {{ cartStore.totalItems }}
+                </span>
+              </router-link>
+            </li>
             <li class="nav-item" v-if="!authStore.isAuthenticated">
               <router-link to="/auth/login" class="nav-link">Login</router-link>
             </li>
@@ -22,7 +35,7 @@
               </router-link>
             </li>
             <li class="nav-item" v-if="authStore.isAuthenticated">
-              <span class="nav-link">Welcome, {{ authStore.user?.username }}</span>
+              <span class="nav-link">Welcome, {{ authStore.user?.firstName || authStore.user?.username }}</span>
             </li>
             <li class="nav-item" v-if="authStore.isAuthenticated">
               <button @click="logout" class="btn btn-outline-light nav-link">Logout</button>
@@ -38,9 +51,11 @@
 
 <script setup>
 import { useAuthStore } from './stores/authStore'
+import { useCartStore } from './stores/cartStore'
 import { useRouter } from 'vue-router'
 
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 const router = useRouter()
 
 const logout = () => {

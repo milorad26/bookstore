@@ -1,72 +1,90 @@
 import apiClient from './api'
 
-export const userService = {
-  getCurrentUser: async () => {
+export const orderService = {
+  // Get all orders (admin/super_user only)
+  getAllOrders: async () => {
     try {
-      const response = await apiClient.get('/users/me')
+      const response = await apiClient.get('/orders')
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  updateCurrentUser: async (userData) => {
+  // Get my orders (authenticated user)
+  getMyOrders: async () => {
     try {
-      const response = await apiClient.put('/users/me', userData)
+      const response = await apiClient.get('/orders/me')
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  changePassword: async (passwordData) => {
+  // Get order by ID
+  getOrderById: async (id) => {
     try {
-      const response = await apiClient.put('/users/me/change-password', passwordData)
+      const response = await apiClient.get(`/orders/${id}`)
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  getAllUsers: async () => {
+  // Get orders by user ID (admin/super_user only)
+  getOrdersByUserId: async (userId) => {
     try {
-      const response = await apiClient.get('/users')
+      const response = await apiClient.get(`/orders/user/${userId}`)
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  getUserById: async (id) => {
+  // Create a new order
+  createOrder: async (orderData) => {
     try {
-      const response = await apiClient.get(`/users/${id}`)
+      const response = await apiClient.post('/orders', orderData)
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  createUser: async (userData) => {
+  // Confirm an order (admin/super_user only)
+  confirmOrder: async (id) => {
     try {
-      const response = await apiClient.post('/users', userData)
+      const response = await apiClient.put(`/orders/confirm/${id}`)
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  updateUser: async (id, userData) => {
+  // Cancel an order
+  cancelOrder: async (id) => {
     try {
-      const response = await apiClient.put(`/users/${id}`, userData)
+      const response = await apiClient.put(`/orders/cancel/${id}`)
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  deleteUser: async (id) => {
+  // Mark order as delivered (user confirms delivery)
+  deliverOrder: async (id) => {
     try {
-      const response = await apiClient.delete(`/users/${id}`)
+      const response = await apiClient.put(`/orders/deliver/${id}`)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
+  // Delete an order (admin only)
+  deleteOrder: async (id) => {
+    try {
+      const response = await apiClient.delete(`/orders/delete/${id}`)
       return response.data
     } catch (error) {
       throw parseError(error)

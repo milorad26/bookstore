@@ -48,11 +48,6 @@ public class AuthController {
             LoginResponse response = LoginResponse.builder()
                     .token(token)
                     .type("Bearer")
-                    .userId(user.getId())
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .firstName(user.getFirstName())
-                    .lastName(user.getLastName())
                     .build();
 
             log.info("User {} logged in successfully", user.getUsername());
@@ -91,11 +86,6 @@ public class AuthController {
         LoginResponse response = LoginResponse.builder()
                 .token(token)
                 .type("Bearer")
-                .userId(savedUser.getId())
-                .username(savedUser.getUsername())
-                .email(savedUser.getEmail())
-                .firstName(savedUser.getFirstName())
-                .lastName(savedUser.getLastName())
                 .build();
 
         log.info("User {} registered successfully", savedUser.getUsername());

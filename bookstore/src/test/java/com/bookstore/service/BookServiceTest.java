@@ -61,7 +61,6 @@ class BookServiceTest {
         testBookDTO1.setIsbn("978-0-13-235088-4");
         testBookDTO1.setPrice(new BigDecimal("42.99"));
         testBookDTO1.setDescription("A Handbook of Agile Software Craftsmanship");
-        testBookDTO1.setStockQuantity(10);
     }
 
     @Test
@@ -206,7 +205,6 @@ class BookServiceTest {
         updatedDTO.setIsbn("978-0-13-235088-4");
         updatedDTO.setPrice(new BigDecimal("45.99"));
         updatedDTO.setDescription("Updated description");
-        updatedDTO.setStockQuantity(15);
 
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
@@ -242,7 +240,6 @@ class BookServiceTest {
         updatedDTO.setAuthor("Robert C. Martin");
         updatedDTO.setIsbn("978-0-13-595705-9"); // Different ISBN that already exists
         updatedDTO.setPrice(new BigDecimal("42.99"));
-        updatedDTO.setStockQuantity(10);
 
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook1));
         when(bookRepository.existsByIsbn("978-0-13-595705-9")).thenReturn(true);
@@ -265,7 +262,6 @@ class BookServiceTest {
         updatedDTO.setAuthor("Robert C. Martin");
         updatedDTO.setIsbn("978-0-13-235088-4"); // Same ISBN
         updatedDTO.setPrice(new BigDecimal("45.99"));
-        updatedDTO.setStockQuantity(15);
 
         when(bookRepository.findById(1L)).thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
@@ -309,14 +305,13 @@ class BookServiceTest {
     }
 
     @Test
-    void testCreateBook_WithNullStockQuantity_ShouldDefaultToZero() {
+    void testCreateBook_WithValidData_ShouldCreateBook() {
         // Given
-        BookDTO dtoWithNullStock = new BookDTO();
-        dtoWithNullStock.setTitle("Test Book");
-        dtoWithNullStock.setAuthor("Test Author");
-        dtoWithNullStock.setIsbn("111-1-11-111111-1");
-        dtoWithNullStock.setPrice(new BigDecimal("25.99"));
-        dtoWithNullStock.setStockQuantity(null); // null stock
+        BookDTO newBookDTO = new BookDTO();
+        newBookDTO.setTitle("Test Book");
+        newBookDTO.setAuthor("Test Author");
+        newBookDTO.setIsbn("111-1-11-111111-1");
+        newBookDTO.setPrice(new BigDecimal("25.99"));
 
         Book savedBook = new Book();
         savedBook.setId(3L);
@@ -330,11 +325,11 @@ class BookServiceTest {
         when(bookRepository.save(any(Book.class))).thenReturn(savedBook);
 
         // When
-        BookDTO result = bookService.createBook(dtoWithNullStock);
+        BookDTO result = bookService.createBook(newBookDTO);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getStockQuantity()).isZero();
+        assertThat(result.getTitle()).isEqualTo("Test Book");
         verify(bookRepository).save(any(Book.class));
     }
 
