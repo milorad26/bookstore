@@ -1,7 +1,7 @@
 <template>
   <div class="container py-5">
     <h2 class="mb-4">
-      <i class="bi bi-credit-card"></i> Checkout
+      <i class="bi bi-credit-card"></i> {{ t('checkout.title') }}
     </h2>
 
     <!-- Alert Messages -->
@@ -15,10 +15,10 @@
     <!-- Empty Cart Redirect -->
     <div v-if="cartStore.cartItems.length === 0" class="text-center py-5">
       <i class="bi bi-cart-x" style="font-size: 5rem; color: #ccc;"></i>
-      <h3 class="mt-4">Your cart is empty</h3>
-      <p class="text-muted mb-4">Add items to your cart before checking out</p>
+      <h3 class="mt-4">{{ t('cart.empty') }}</h3>
+      <p class="text-muted mb-4">{{ t('checkout.emptyMessage') }}</p>
       <router-link to="/" class="btn btn-primary">
-        <i class="bi bi-shop"></i> Start Shopping
+        <i class="bi bi-shop"></i> {{ t('checkout.startShopping') }}
       </router-link>
     </div>
 
@@ -30,18 +30,18 @@
           <div class="card shadow-sm mb-4">
             <div class="card-body">
               <h5 class="card-title mb-3">
-                <i class="bi bi-truck"></i> Shipping Address
+                <i class="bi bi-truck"></i> {{ t('checkout.shippingAddress') }}
               </h5>
               <div class="mb-3">
                 <label for="shippingAddress" class="form-label">
-                  Full Address <span class="text-danger">*</span>
+                  {{ t('checkout.fullAddress') }} <span class="text-danger">*</span>
                 </label>
                 <textarea
                   id="shippingAddress"
                   v-model="shippingAddress"
                   class="form-control"
                   rows="3"
-                  placeholder="Street address, City, State/Province, ZIP/Postal Code, Country"
+                  :placeholder="t('checkout.addressPlaceholder')"
                   required
                 ></textarea>
               </div>
@@ -52,7 +52,7 @@
           <div class="card shadow-sm mb-4">
             <div class="card-body">
               <h5 class="card-title mb-3">
-                <i class="bi bi-receipt"></i> Billing Address
+                <i class="bi bi-receipt"></i> {{ t('checkout.billingAddress') }}
               </h5>
               
               <div class="form-check mb-3">
@@ -63,20 +63,20 @@
                   v-model="sameAsShipping"
                 >
                 <label class="form-check-label" for="sameAsShipping">
-                  Same as shipping address
+                  {{ t('checkout.sameAsShipping') }}
                 </label>
               </div>
 
               <div v-if="!sameAsShipping" class="mb-3">
                 <label for="billingAddress" class="form-label">
-                  Full Address <span class="text-danger">*</span>
+                  {{ t('checkout.fullAddress') }} <span class="text-danger">*</span>
                 </label>
                 <textarea
                   id="billingAddress"
                   v-model="billingAddress"
                   class="form-control"
                   rows="3"
-                  placeholder="Street address, City, State/Province, ZIP/Postal Code, Country"
+                  :placeholder="t('checkout.addressPlaceholder')"
                   :required="!sameAsShipping"
                 ></textarea>
               </div>
@@ -87,18 +87,18 @@
           <div class="card shadow-sm mb-4">
             <div class="card-body">
               <h5 class="card-title mb-3">
-                <i class="bi bi-chat-left-text"></i> Order Notes (Optional)
+                <i class="bi bi-chat-left-text"></i> {{ t('checkout.orderNotes.title') }}
               </h5>
               <div class="mb-0">
                 <label for="orderNotes" class="form-label">
-                  Special instructions or delivery notes
+                  {{ t('checkout.orderNotes.label') }}
                 </label>
                 <textarea
                   id="orderNotes"
                   v-model="orderNotes"
                   class="form-control"
                   rows="3"
-                  placeholder="E.g., Please call before delivery, Leave at doorstep, etc."
+                  :placeholder="t('checkout.orderNotes.placeholder')"
                 ></textarea>
               </div>
             </div>
@@ -107,12 +107,12 @@
           <!-- Payment Notice -->
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
-            <strong>Note:</strong> This is a demo system. No actual payment will be processed.
+            <strong>{{ t('checkout.payment.note') }}</strong> {{ t('checkout.payment.demoMessage') }}
           </div>
 
           <div class="d-flex justify-content-between">
             <router-link to="/cart" class="btn btn-outline-secondary">
-              <i class="bi bi-arrow-left"></i> Back to Cart
+              <i class="bi bi-arrow-left"></i> {{ t('checkout.backToCart') }}
             </router-link>
             <button 
               type="submit" 
@@ -121,7 +121,7 @@
             >
               <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
               <i v-else class="bi bi-check-circle"></i>
-              {{ isSubmitting ? 'Processing...' : 'Place Order' }}
+              {{ isSubmitting ? t('checkout.processing') : t('checkout.placeOrder') }}
             </button>
           </div>
         </form>
@@ -131,7 +131,7 @@
       <div class="col-lg-4">
         <div class="card shadow-sm sticky-top" style="top: 20px;">
           <div class="card-body">
-            <h5 class="card-title mb-4">Order Summary</h5>
+            <h5 class="card-title mb-4">{{ t('checkout.summary.title') }}</h5>
             
             <!-- Items List -->
             <div class="mb-3">
@@ -146,17 +146,17 @@
             <hr>
             
             <div class="d-flex justify-content-between mb-2">
-              <span>Subtotal ({{ cartStore.totalItems }} items):</span>
+              <span>{{ t('checkout.summary.subtotal', { count: cartStore.totalItems }) }}:</span>
               <span>${{ formatPrice(cartStore.totalAmount) }}</span>
             </div>
             
             <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-              <span>Shipping:</span>
-              <span class="text-success">FREE</span>
+              <span>{{ t('checkout.summary.shipping') }}:</span>
+              <span class="text-success">{{ t('checkout.summary.free') }}</span>
             </div>
             
             <div class="d-flex justify-content-between mb-0">
-              <strong class="h5">Total:</strong>
+              <strong class="h5">{{ t('checkout.summary.total') }}:</strong>
               <strong class="text-primary h4 mb-0">${{ formatPrice(cartStore.totalAmount) }}</strong>
             </div>
           </div>
@@ -169,6 +169,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCartStore } from '../stores/cartStore'
 import { useAuthStore } from '../stores/authStore'
 import { orderService } from '../services/orderService'
@@ -177,6 +178,7 @@ import Alert from '../components/Alert.vue'
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const shippingAddress = ref('')
 const billingAddress = ref('')
@@ -193,13 +195,13 @@ const formatPrice = (price) => {
 
 const submitOrder = async () => {
   if (!authStore.isAuthenticated) {
-    showError('You must be logged in to place an order')
+    showError(t('checkout.loginRequired'))
     setTimeout(() => router.push('/auth/login'), 2000)
     return
   }
 
   if (cartStore.cartItems.length === 0) {
-    showError('Your cart is empty')
+    showError(t('checkout.cartEmpty'))
     return
   }
 
@@ -226,7 +228,7 @@ const submitOrder = async () => {
     cartStore.clearCart()
 
     // Show success message
-    showSuccess(`Order placed successfully! Order ID: ${createdOrder.id}`)
+    showSuccess(t('checkout.orderSuccess', { id: createdOrder.id }))
 
     // Redirect to orders page after 2 seconds
     setTimeout(() => {
@@ -235,7 +237,7 @@ const submitOrder = async () => {
 
   } catch (error) {
     console.error('Order creation failed:', error)
-    showError(error.message || 'Failed to create order. Please try again.')
+    showError(error.message || t('checkout.orderFailed'))
   } finally {
     isSubmitting.value = false
   }

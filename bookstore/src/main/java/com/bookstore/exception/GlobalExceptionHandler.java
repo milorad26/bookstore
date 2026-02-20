@@ -1,7 +1,10 @@
 package com.bookstore.exception;
 
 import com.bookstore.dto.ErrorResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -11,17 +14,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 @Slf4j
 public class GlobalExceptionHandler {
+
+    private final MessageSource messageSource;
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
@@ -29,7 +37,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             message,
-            "Validation Failed"
+            messageSource.getMessage("validation.failed", null, locale)
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -37,11 +45,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(
             BadCredentialsException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         log.error("Authentication failed: {}", ex.getMessage());
         ErrorResponse error = new ErrorResponse(
             HttpStatus.UNAUTHORIZED.value(),
-            "Invalid username or password",
-            "Unauthorized"
+            messageSource.getMessage("auth.invalid.credentials", null, locale),
+            messageSource.getMessage("error.unauthorized", null, locale)
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .cacheControl(org.springframework.http.CacheControl.noStore())
@@ -52,11 +61,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             org.springframework.security.core.AuthenticationException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         log.error("Authentication error: {}", ex.getMessage());
         ErrorResponse error = new ErrorResponse(
             HttpStatus.UNAUTHORIZED.value(),
-            "Authentication failed: Invalid username or password",
-            "Unauthorized"
+            messageSource.getMessage("auth.failed", null, locale),
+            messageSource.getMessage("error.unauthorized", null, locale)
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .cacheControl(org.springframework.http.CacheControl.noStore())
@@ -67,6 +77,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
 public ResponseEntity<ErrorResponse> handleTypeMismatch(
         MethodArgumentTypeMismatchException ex) {
+    Locale locale = LocaleContextHolder.getLocale();
 
     String param = Objects.requireNonNullElse(ex.getName(), "parameter");
     String expected = Optional.ofNullable(ex.getRequiredType())
@@ -77,13 +88,13 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
 
     String invalid = ex.getValue() != null ? " (got: '" + ex.getValue() + "')" : "";
 
-    String message = "Invalid parameter '%s': expected %s%s"
-        .formatted(param, expected, invalid);
+    String message = messageSource.getMessage("validation.parameter.invalid", 
+        new Object[]{param, expected, invalid}, locale);
 
     var error = new ErrorResponse(
         HttpStatus.BAD_REQUEST.value(),
         message,
-        "Bad Request - Type Mismatch"
+        messageSource.getMessage("error.badrequest", null, locale)
     );
 
     return ResponseEntity.badRequest().body(error);
@@ -92,10 +103,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         log.error("Unexpected error occurred: ", ex);
         ErrorResponse error = new ErrorResponse(
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "An unexpected error occurred. Please try again later.",
+            messageSource.getMessage("error.unexpected", null, locale),
             "Internal Server Error"
         );
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
@@ -104,10 +116,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(
             ResourceNotFoundException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.NOT_FOUND.value(),
             ex.getMessage(),
-            "Not Found"
+            messageSource.getMessage("error.notfound", null, locale)
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
@@ -115,10 +128,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             ex.getMessage(),
-            "Invalid Request"
+            messageSource.getMessage("error.badrequest", null, locale)
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -126,10 +140,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(
             AccessDeniedException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.FORBIDDEN.value(),
             ex.getMessage(),
-            "Access Denied"
+            messageSource.getMessage("error.forbidden", null, locale)
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
@@ -137,10 +152,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientStock(
             InsufficientStockException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             ex.getMessage(),
-            "Insufficient Stock"
+            messageSource.getMessage("error.insufficientstock", null, locale)
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -148,10 +164,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(InvalidOrderStatusException.class)
     public ResponseEntity<ErrorResponse> handleInvalidOrderStatus(
             InvalidOrderStatusException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.BAD_REQUEST.value(),
             ex.getMessage(),
-            "Invalid Order Status"
+            messageSource.getMessage("error.invalidorderstatus", null, locale)
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -159,10 +176,11 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalState(
             IllegalStateException ex, WebRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         ErrorResponse error = new ErrorResponse(
             HttpStatus.CONFLICT.value(),
             ex.getMessage(),
-            "Illegal State"
+            messageSource.getMessage("error.conflict", null, locale)
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }

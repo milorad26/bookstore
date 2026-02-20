@@ -10,13 +10,13 @@
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h2>
-                <i class="bi bi-list-check"></i> All Orders Management
+                <i class="bi bi-list-check"></i> {{ t('orders.title') }}
               </h2>
-              <p class="text-muted">View and manage all orders in the system</p>
+              <p class="text-muted">{{ t('orders.subtitle') }}</p>
             </div>
             <div>
               <button @click="goBack" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Profile
+                <i class="bi bi-arrow-left"></i> {{ t('orders.backToProfile') }}
               </button>
             </div>
           </div>
@@ -26,28 +26,28 @@
             <div class="card-body">
               <div v-if="loading" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+                  <span class="visually-hidden">{{ t('common.loading') }}</span>
                 </div>
-                <p class="mt-3 text-muted">Loading all orders...</p>
+                <p class="mt-3 text-muted">{{ t('orders.loadingOrders') }}</p>
               </div>
 
               <div v-else-if="orders.length === 0" class="text-center py-5">
                 <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-3 text-muted">No orders found</p>
+                <p class="mt-3 text-muted">{{ t('orders.noOrdersFound') }}</p>
               </div>
 
               <div v-else class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>Order ID</th>
-                      <th>User ID</th>
-                      <th>Order Date</th>
-                      <th>Total Amount</th>
-                      <th>Status</th>
-                      <th>Items</th>
-                      <th>Shipping Address</th>
-                      <th>Actions</th>
+                      <th>{{ t('orders.table.orderId') }}</th>
+                      <th>{{ t('users.table.id') }}</th>
+                      <th>{{ t('orders.table.date') }}</th>
+                      <th>{{ t('orders.table.total') }}</th>
+                      <th>{{ t('orders.table.status') }}</th>
+                      <th>{{ t('orders.table.items') }}</th>
+                      <th>{{ t('orders.details.shippingAddress') }}</th>
+                      <th>{{ t('orders.table.actions') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -71,7 +71,7 @@
                         <button 
                           @click="viewOrder(order)" 
                           class="btn btn-sm btn-info me-1"
-                          title="View Details"
+                          :title="t('orders.actions.viewDetails')"
                         >
                           <i class="bi bi-eye"></i>
                         </button>
@@ -79,7 +79,7 @@
                           v-if="canConfirm(order)"
                           @click="confirmOrderAction(order)" 
                           class="btn btn-sm btn-success me-1"
-                          title="Confirm Order"
+                          :title="t('orders.actions.confirmOrder')"
                         >
                           <i class="bi bi-check-circle"></i>
                         </button>
@@ -87,7 +87,7 @@
                           v-if="canCancel(order)"
                           @click="cancelOrderAction(order)" 
                           class="btn btn-sm btn-warning me-1"
-                          title="Cancel Order"
+                          :title="t('orders.actions.cancelOrder')"
                         >
                           <i class="bi bi-x-circle"></i>
                         </button>
@@ -95,7 +95,7 @@
                           v-if="canDelete(order)"
                           @click="confirmDelete(order)" 
                           class="btn btn-sm btn-danger"
-                          title="Delete Order"
+                          :title="t('common.delete')"
                         >
                           <i class="bi bi-trash"></i>
                         </button>
@@ -116,7 +116,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-receipt"></i>
-            Order Details #{{ selectedOrder?.id }}
+            {{ t('orders.details.title') }} #{{ selectedOrder?.id }}
           </h5>
           <button @click="closeViewModal" class="btn-close"></button>
         </div>
@@ -124,36 +124,36 @@
           <div v-if="selectedOrder">
             <div class="row mb-3">
               <div class="col-md-6">
-                <p><strong>User ID:</strong> {{ selectedOrder.userId }}</p>
-                <p><strong>Order Date:</strong> {{ formatDate(selectedOrder.orderDate) }}</p>
-                <p><strong>Status:</strong> 
+                <p><strong>{{ t('users.table.id') }}:</strong> {{ selectedOrder.userId }}</p>
+                <p><strong>{{ t('orders.table.date') }}:</strong> {{ formatDate(selectedOrder.orderDate) }}</p>
+                <p><strong>{{ t('orders.details.status') }}:</strong> 
                   <span :class="getStatusBadgeClass(selectedOrder.status)">
                     {{ formatStatus(selectedOrder.status) }}
                   </span>
                 </p>
               </div>
               <div class="col-md-6">
-                <p><strong>Total Amount:</strong> ${{ formatPrice(selectedOrder.totalAmount) }}</p>
-                <p><strong>Shipping Address:</strong><br>{{ selectedOrder.shippingAddress || 'N/A' }}</p>
-                <p><strong>Billing Address:</strong><br>{{ selectedOrder.billingAddress || 'N/A' }}</p>
+                <p><strong>{{ t('orders.details.totalAmount') }}:</strong> ${{ formatPrice(selectedOrder.totalAmount) }}</p>
+                <p><strong>{{ t('orders.details.shippingAddress') }}:</strong><br>{{ selectedOrder.shippingAddress || 'N/A' }}</p>
+                <p><strong>{{ t('orders.details.billingAddress') }}:</strong><br>{{ selectedOrder.billingAddress || 'N/A' }}</p>
               </div>
             </div>
             
             <div v-if="selectedOrder.orderNotes" class="mb-3">
-              <p><strong>Order Notes:</strong></p>
+              <p><strong>{{ t('orders.details.orderNotes') }}:</strong></p>
               <div class="alert alert-secondary">{{ selectedOrder.orderNotes }}</div>
             </div>
 
             <div>
-              <h6>Order Items:</h6>
+              <h6>{{ t('orders.details.orderItems') }}:</h6>
               <table class="table table-sm">
                 <thead>
                   <tr>
-                    <th>Book</th>
-                    <th>Author</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                    <th>Subtotal</th>
+                    <th>{{ t('books.table.title') }}</th>
+                    <th>{{ t('books.table.author') }}</th>
+                    <th>{{ t('orders.details.quantity') }}</th>
+                    <th>{{ t('orders.details.price') }}</th>
+                    <th>{{ t('orders.details.subtotal') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,7 +170,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="closeViewModal" class="btn btn-secondary">Close</button>
+          <button @click="closeViewModal" class="btn btn-secondary">{{ t('common.close') }}</button>
         </div>
       </div>
     </div>
@@ -181,20 +181,20 @@
         <div class="modal-header">
           <h5 class="modal-title text-danger">
             <i class="bi bi-exclamation-triangle"></i>
-            Confirm Delete
+            {{ t('orders.delete.title') }}
           </h5>
           <button @click="closeDeleteModal" class="btn-close"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete Order #{{ orderToDelete?.id }}?</p>
-          <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+          <p>{{ t('orders.delete.message') }} #{{ orderToDelete?.id }}?</p>
+          <p class="text-danger"><strong>{{ t('orders.delete.warning') }}</strong></p>
         </div>
         <div class="modal-footer">
-          <button @click="closeDeleteModal" class="btn btn-secondary">Cancel</button>
+          <button @click="closeDeleteModal" class="btn btn-secondary">{{ t('common.cancel') }}</button>
           <button @click="deleteOrder" class="btn btn-danger" :disabled="deleting">
             <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="bi bi-trash"></i>
-            Delete Order
+            {{ t('orders.delete.button') }}
           </button>
         </div>
       </div>
@@ -205,12 +205,14 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { orderService } from '../services/orderService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const orders = ref([])
 const loading = ref(false)

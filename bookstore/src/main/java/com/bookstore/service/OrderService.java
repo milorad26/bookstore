@@ -7,24 +7,24 @@ import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.*;
 import com.bookstore.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
-    private static final String ORDER_NOT_FOUND_WITH_ID = "Order not found with id: ";
-
-    private static final String USER_NOT_FOUND_MESSAGE = "User not found with id: ";
-
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
     private final BookRepository bookRepository;
+    private final MessageSource messageSource;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -33,15 +33,19 @@ public class OrderService {
     }
 
     public OrderDTO getOrderById(Long id) {
+        Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(OrderService.ORDER_NOT_FOUND_WITH_ID + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("order.notfound.id", new Object[]{id}, locale)));
         return convertToDTO(order);
     }
 
     public List<OrderDTO> getOrdersByUserId(Long userId) {
+        Locale locale = LocaleContextHolder.getLocale();
         // Validate user exists first
         userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(OrderService.USER_NOT_FOUND_MESSAGE + userId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("user.notfound.id", new Object[]{userId}, locale)));
 
         return orderRepository.findByUserIdOrderByOrderDateDesc(userId).stream()
                 .map(this::convertToDTO)
@@ -50,22 +54,23 @@ public class OrderService {
 
     @Transactional
     public OrderDTO createOrder(CreateOrderRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
         // Validate user exists
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException(OrderService.USER_NOT_FOUND_MESSAGE + request.getUserId()));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("user.notfound.id", new Object[]{request.getUserId()}, locale)));
 
         // Validate that we have items to order
         List<CreateOrderItemRequest> itemRequests = request.getOrderItems();
         if (itemRequests == null || itemRequests.isEmpty()) {
-            throw new IllegalArgumentException("Order items are required");
+            throw new IllegalArgumentException(messageSource.getMessage("order.items.required", null, locale));
         }
 
         // Check if user has any pending orders (business rule: one user can make one
         // order at a time)
         long pendingOrders = orderRepository.countPendingOrdersByUserId(request.getUserId());
         if (pendingOrders > 0) {
-            throw new IllegalStateException(
-                    "User already has a pending order. Please complete or cancel the existing order first.");
+            throw new IllegalStateException(messageSource.getMessage("order.pending.exists", null, locale));
         }
 
         // Create the order
@@ -86,8 +91,9 @@ public class OrderService {
 
             // Check stock availability
             if (book.getStockQuantity() < itemRequest.getQuantity()) {
-                throw new InsufficientStockException("Insufficient stock for book: " + book.getTitle() +
-                        ". Available: " + book.getStockQuantity() + ", Requested: " + itemRequest.getQuantity());
+                String message = messageSource.getMessage("order.stock.insufficient", 
+                    new Object[]{book.getTitle(), book.getStockQuantity(), itemRequest.getQuantity()}, locale);
+                throw new InsufficientStockException(message);
             }
 
             // Deduct stock immediately when order is created
@@ -119,8 +125,10 @@ public class OrderService {
 
     @Transactional
     public OrderDTO confirmOrder(Long orderId) {
+        Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
         // If order is already confirmed, just return it
         if (order.getStatus() == OrderStatus.CONFIRMED) {
@@ -128,7 +136,8 @@ public class OrderService {
         }
 
         if (order.getStatus() != OrderStatus.PENDING) {
-            throw new InvalidOrderStatusException("Only pending orders can be confirmed");
+            throw new InvalidOrderStatusException(
+                messageSource.getMessage("order.status.invalid.confirm", null, locale));
         }
 
         // Deduct stock quantities (for legacy pending orders)
@@ -137,7 +146,9 @@ public class OrderService {
             int newStockQuantity = book.getStockQuantity() - orderItem.getQuantity();
 
             if (newStockQuantity < 0) {
-                throw new InsufficientStockException("Insufficient stock for book: " + book.getTitle());
+                String message = messageSource.getMessage("order.stock.insufficient", 
+                    new Object[]{book.getTitle(), book.getStockQuantity(), orderItem.getQuantity()}, locale);
+                throw new InsufficientStockException(message);
             }
 
             book.setStockQuantity(newStockQuantity);
@@ -153,14 +164,17 @@ public class OrderService {
 
     @Transactional
     public OrderDTO updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
         // Business logic for status transitions
         OrderStatus currentStatus = order.getStatus();
         if (!isValidStatusTransition(currentStatus, newStatus)) {
-            throw new InvalidOrderStatusException(
-                    "Invalid status transition from " + currentStatus + " to " + newStatus);
+            String message = messageSource.getMessage("order.status.invalid.transition", 
+                new Object[]{currentStatus, newStatus}, locale);
+            throw new InvalidOrderStatusException(message);
         }
 
         // If canceling a confirmed order, restore stock
@@ -186,12 +200,15 @@ public class OrderService {
 
     @Transactional
     public void deleteOrder(Long id) {
+        Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("order.notfound.id", new Object[]{id}, locale)));
 
         // Only allow deletion of cancelled or pending orders
         if (order.getStatus() != OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Only cancelled or pending orders can be deleted");
+            throw new IllegalStateException(
+                messageSource.getMessage("order.delete.invalid", null, locale));
         }
 
         orderRepository.deleteById(id);

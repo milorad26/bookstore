@@ -9,15 +9,15 @@
           <!-- Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-              <h2><i class="bi bi-book-fill"></i> Book Management</h2>
-              <p class="text-muted">Manage book inventory and details</p>
+              <h2><i class="bi bi-book-fill"></i> {{ t('books.title') }}</h2>
+              <p class="text-muted">{{ t('books.subtitle') }}</p>
             </div>
             <div>
               <button @click="showCreateModal" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add New Book
+                <i class="bi bi-plus-circle"></i> {{ t('books.createNew') }}
               </button>
               <button @click="goBack" class="btn btn-secondary ms-2">
-                <i class="bi bi-arrow-left"></i> Back to Profile
+                <i class="bi bi-arrow-left"></i> {{ t('books.backToProfile') }}
               </button>
             </div>
           </div>
@@ -27,28 +27,28 @@
             <div class="card-body">
               <div v-if="loading" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+                  <span class="visually-hidden">{{ t('common.loading') }}</span>
                 </div>
-                <p class="mt-3 text-muted">Loading books...</p>
+                <p class="mt-3 text-muted">{{ t('books.loadingBooks') }}</p>
               </div>
 
               <div v-else-if="books.length === 0" class="text-center py-5">
                 <i class="bi bi-book" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-3 text-muted">No books found</p>
+                <p class="mt-3 text-muted">{{ t('books.noBooksFound') }}</p>
               </div>
 
               <div v-else class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Title</th>
-                      <th>Author</th>
-                      <th>ISBN</th>
-                      <th>Price</th>
-                      <th>Stock</th>
-                      <th>Description</th>
-                      <th>Actions</th>
+                      <th>{{ t('books.table.id') }}</th>
+                      <th>{{ t('books.table.title') }}</th>
+                      <th>{{ t('books.table.author') }}</th>
+                      <th>{{ t('books.table.isbn') }}</th>
+                      <th>{{ t('books.table.price') }}</th>
+                      <th>{{ t('books.table.stock') }}</th>
+                      <th>{{ t('books.form.description') }}</th>
+                      <th>{{ t('books.table.actions') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -74,21 +74,21 @@
                         <button 
                           @click="viewBook(book)" 
                           class="btn btn-sm btn-info me-1"
-                          title="View Details"
+                          :title="t('books.actions.viewDetails')"
                         >
                           <i class="bi bi-eye"></i>
                         </button>
                         <button 
                           @click="editBook(book)" 
                           class="btn btn-sm btn-warning me-1"
-                          title="Edit"
+                          :title="t('books.actions.edit')"
                         >
                           <i class="bi bi-pencil"></i>
                         </button>
                         <button 
                           @click="confirmDelete(book)" 
                           class="btn btn-sm btn-danger"
-                          title="Delete"
+                          :title="t('books.actions.delete')"
                         >
                           <i class="bi bi-trash"></i>
                         </button>
@@ -109,7 +109,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-book"></i>
-            {{ isEditMode ? 'Edit Book' : 'Add New Book' }}
+            {{ isEditMode ? t('books.modal.editBook') : t('books.modal.createBook') }}
           </h5>
           <button @click="closeModal" class="btn-close"></button>
         </div>
@@ -120,9 +120,9 @@
                 <FormField
                   id="book-title"
                   v-model="bookForm.title"
-                  label="Book Title"
+                  :label="t('books.form.title')"
                   type="text"
-                  placeholder="Enter book title"
+                  :placeholder="t('books.form.enterTitle')"
                   required
                 />
               </div>
@@ -130,11 +130,11 @@
                 <FormField
                   id="book-price"
                   v-model="bookForm.price"
-                  label="Price ($)"
+                  :label="t('books.form.price')"
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="0.00"
+                  :placeholder="t('books.form.enterPrice')"
                   required
                 />
               </div>
@@ -142,9 +142,9 @@
                 <FormField
                   id="book-author"
                   v-model="bookForm.author"
-                  label="Author"
+                  :label="t('books.form.author')"
                   type="text"
-                  placeholder="Enter author name"
+                  :placeholder="t('books.form.enterAuthor')"
                   required
                 />
               </div>
@@ -152,9 +152,9 @@
                 <FormField
                   id="book-isbn"
                   v-model="bookForm.isbn"
-                  label="ISBN"
+                  :label="t('books.form.isbn')"
                   type="text"
-                  placeholder="Enter ISBN"
+                  :placeholder="t('books.form.enterIsbn')"
                   :disabled="isEditMode"
                   required
                 />
@@ -163,32 +163,32 @@
                 <FormField
                   id="book-stockQuantity"
                   v-model="bookForm.stockQuantity"
-                  label="Stock Quantity"
+                  :label="t('books.form.stock')"
                   type="number"
                   min="0"
-                  placeholder="0"
+                  :placeholder="t('books.form.enterStock')"
                   required
                 />
               </div>
               <div class="col-12 mb-3">
-                <label class="form-label">Description</label>
+                <label class="form-label">{{ t('books.form.description') }}</label>
                 <textarea
                   v-model="bookForm.description"
                   class="form-control"
                   rows="4"
-                  placeholder="Enter book description"
+                  :placeholder="t('books.form.enterDescription')"
                 ></textarea>
               </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" @click="closeModal" class="btn btn-secondary" :disabled="saving">
-              Cancel
+              {{ t('common.cancel') }}
             </button>
             <button type="submit" class="btn btn-primary" :disabled="saving">
               <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
               <i v-else class="bi bi-check-lg"></i>
-              {{ isEditMode ? 'Update Book' : 'Create Book' }}
+              {{ isEditMode ? t('books.modal.updateBook') : t('books.modal.createBook') }}
             </button>
           </div>
         </form>
@@ -201,7 +201,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-book-half"></i>
-            Book Details
+            {{ t('books.modal.bookDetails') }}
           </h5>
           <button @click="closeViewModal" class="btn-close"></button>
         </div>
@@ -209,33 +209,33 @@
           <div v-if="selectedBook">
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Book ID:</label>
+                <label class="fw-bold">{{ t('books.details.bookId') }}:</label>
                 <p>{{ selectedBook.id }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">ISBN:</label>
+                <label class="fw-bold">{{ t('books.details.isbn') }}:</label>
                 <p><code>{{ selectedBook.isbn }}</code></p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Title:</label>
+                <label class="fw-bold">{{ t('books.details.title') }}:</label>
                 <p class="fs-5">{{ selectedBook.title }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Author:</label>
+                <label class="fw-bold">{{ t('books.details.author') }}:</label>
                 <p>{{ selectedBook.author }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Price:</label>
+                <label class="fw-bold">{{ t('books.details.price') }}:</label>
                 <p class="fs-5 text-success fw-bold">${{ formatPrice(selectedBook.price) }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Stock Quantity:</label>
+                <label class="fw-bold">{{ t('books.details.stock') }}:</label>
                 <p>
                   <span :class="getStockBadgeClass(selectedBook.stockQuantity)">{{ selectedBook.stockQuantity || 0 }}</span>
                 </p>
@@ -243,16 +243,16 @@
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Description:</label>
-                <p class="text-muted">{{ selectedBook.description || 'No description available' }}</p>
+                <label class="fw-bold">{{ t('books.details.description') }}:</label>
+                <p class="text-muted">{{ selectedBook.description || t('common.notProvided') }}</p>
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="closeViewModal" class="btn btn-secondary">Close</button>
+          <button @click="closeViewModal" class="btn btn-secondary">{{ t('common.close') }}</button>
           <button @click="editFromView" class="btn btn-primary">
-            <i class="bi bi-pencil"></i> Edit Book
+            <i class="bi bi-pencil"></i> {{ t('books.actions.edit') }}
           </button>
         </div>
       </div>
@@ -264,23 +264,22 @@
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title">
             <i class="bi bi-exclamation-triangle"></i>
-            Confirm Delete
+            {{ t('books.delete.confirmTitle') }}
           </h5>
           <button @click="closeDeleteModal" class="btn-close btn-close-white"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete the book:</p>
-          <p class="fw-bold">{{ bookToDelete?.title }}</p>
-          <p class="text-danger">This action cannot be undone.</p>
+          <p>{{ t('books.delete.confirmMessage', { title: bookToDelete?.title }) }}</p>
+          <p class="text-danger">{{ t('books.delete.warning') }}</p>
         </div>
         <div class="modal-footer">
           <button @click="closeDeleteModal" class="btn btn-secondary" :disabled="deleting">
-            Cancel
+            {{ t('common.cancel') }}
           </button>
           <button @click="deleteBook" class="btn btn-danger" :disabled="deleting">
             <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="bi bi-trash"></i>
-            Delete Book
+            {{ t('books.delete.deleteButton') }}
           </button>
         </div>
       </div>
@@ -291,11 +290,13 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { bookService } from '../services/bookService'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const books = ref([])
 const loading = ref(false)

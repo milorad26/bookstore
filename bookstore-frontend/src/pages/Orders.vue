@@ -10,13 +10,13 @@
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
               <h2>
-                <i class="bi bi-cart-check-fill"></i> My Orders
+                <i class="bi bi-cart-check-fill"></i> {{ t('orders.myOrdersTitle') }}
               </h2>
-              <p class="text-muted">View your order history</p>
+              <p class="text-muted">{{ t('orders.myOrdersSubtitle') }}</p>
             </div>
             <div>
               <button @click="goBack" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Profile
+                <i class="bi bi-arrow-left"></i> {{ t('orders.backToProfile') }}
               </button>
             </div>
           </div>
@@ -26,27 +26,27 @@
             <div class="card-body">
               <div v-if="loading" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+                  <span class="visually-hidden">{{ t('common.loading') }}</span>
                 </div>
-                <p class="mt-3 text-muted">Loading orders...</p>
+                <p class="mt-3 text-muted">{{ t('orders.loadingOrders') }}</p>
               </div>
 
               <div v-else-if="orders.length === 0" class="text-center py-5">
                 <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-3 text-muted">No orders found</p>
+                <p class="mt-3 text-muted">{{ t('orders.noOrdersFound') }}</p>
               </div>
 
               <div v-else class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>Order ID</th>
-                      <th>User ID</th>
-                      <th>Order Date</th>
-                      <th>Total Amount</th>
-                      <th>Status</th>
-                      <th>Items</th>
-                      <th>Actions</th>
+                      <th>{{ t('orders.table.orderId') }}</th>
+                      <th>{{ t('users.table.id') }}</th>
+                      <th>{{ t('orders.table.date') }}</th>
+                      <th>{{ t('orders.table.total') }}</th>
+                      <th>{{ t('orders.table.status') }}</th>
+                      <th>{{ t('orders.table.items') }}</th>
+                      <th>{{ t('orders.table.actions') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -67,7 +67,7 @@
                         <button 
                           @click="viewOrder(order)" 
                           class="btn btn-sm btn-info me-1"
-                          title="View Details"
+                          :title="t('orders.actions.viewDetails')"
                         >
                           <i class="bi bi-eye"></i>
                         </button>
@@ -75,7 +75,7 @@
                           v-if="canConfirm(order)"
                           @click="confirmOrderAction(order)" 
                           class="btn btn-sm btn-success me-1"
-                          title="Confirm Order"
+                          :title="t('orders.actions.confirmOrder')"
                         >
                           <i class="bi bi-check-circle"></i>
                         </button>
@@ -83,7 +83,7 @@
                           v-if="canCancel(order)"
                           @click="cancelOrderAction(order)" 
                           class="btn btn-sm btn-warning me-1"
-                          title="Cancel Order"
+                          :title="t('orders.actions.cancelOrder')"
                         >
                           <i class="bi bi-x-circle"></i>
                         </button>
@@ -91,7 +91,7 @@
                           v-if="canConfirmDelivery(order)"
                           @click="deliverOrderAction(order)" 
                           class="btn btn-sm btn-primary me-1"
-                          title="Confirm Delivery"
+                          :title="t('orders.actions.confirmDelivery')"
                         >
                           <i class="bi bi-truck"></i>
                         </button>
@@ -99,7 +99,7 @@
                           v-if="canDelete(order)"
                           @click="confirmDelete(order)" 
                           class="btn btn-sm btn-danger"
-                          title="Delete Order"
+                          :title="t('common.delete')"
                         >
                           <i class="bi bi-trash"></i>
                         </button>
@@ -120,7 +120,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-receipt"></i>
-            Order Details #{{ selectedOrder?.id }}
+            {{ t('orders.details.title') }} #{{ selectedOrder?.id }}
           </h5>
           <button @click="closeViewModal" class="btn-close"></button>
         </div>
@@ -128,21 +128,21 @@
           <div v-if="selectedOrder">
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Order ID:</label>
+                <label class="fw-bold">{{ t('orders.table.orderId') }}:</label>
                 <p>#{{ selectedOrder.id }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">User ID:</label>
+                <label class="fw-bold">{{ t('users.table.id') }}:</label>
                 <p>{{ selectedOrder.userId }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Order Date:</label>
+                <label class="fw-bold">{{ t('orders.table.date') }}:</label>
                 <p>{{ formatDate(selectedOrder.orderDate) }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Status:</label>
+                <label class="fw-bold">{{ t('orders.details.status') }}:</label>
                 <p>
                   <span :class="getStatusBadgeClass(selectedOrder.status)">
                     {{ formatStatus(selectedOrder.status) }}
@@ -152,40 +152,40 @@
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Total Amount:</label>
+                <label class="fw-bold">{{ t('orders.details.totalAmount') }}:</label>
                 <p class="fs-5 text-success fw-bold">${{ formatPrice(selectedOrder.totalAmount) }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Shipping Address:</label>
-                <p>{{ selectedOrder.shippingAddress || 'Not provided' }}</p>
+                <label class="fw-bold">{{ t('orders.details.shippingAddress') }}:</label>
+                <p>{{ selectedOrder.shippingAddress || t('users.notProvided') }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Billing Address:</label>
-                <p>{{ selectedOrder.billingAddress || 'Not provided' }}</p>
+                <label class="fw-bold">{{ t('orders.details.billingAddress') }}:</label>
+                <p>{{ selectedOrder.billingAddress || t('users.notProvided') }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Order Notes:</label>
-                <p class="text-muted">{{ selectedOrder.orderNotes || 'No notes' }}</p>
+                <label class="fw-bold">{{ t('orders.details.orderNotes') }}:</label>
+                <p class="text-muted">{{ selectedOrder.orderNotes || t('orders.details.noNotes') }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Order Items:</label>
+                <label class="fw-bold">{{ t('orders.details.orderItems') }}:</label>
                 <div class="table-responsive">
                   <table class="table table-sm">
                     <thead>
                       <tr>
-                        <th>Title</th>
-                        <th>Author</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                        <th>Subtotal</th>
+                        <th>{{ t('books.table.title') }}</th>
+                        <th>{{ t('books.table.author') }}</th>
+                        <th>{{ t('orders.details.quantity') }}</th>
+                        <th>{{ t('orders.details.price') }}</th>
+                        <th>{{ t('orders.details.subtotal') }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -204,7 +204,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="closeViewModal" class="btn btn-secondary">Close</button>
+          <button @click="closeViewModal" class="btn btn-secondary">{{ t('common.close') }}</button>
         </div>
       </div>
     </div>
@@ -215,23 +215,23 @@
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title">
             <i class="bi bi-exclamation-triangle"></i>
-            Confirm Delete
+            {{ t('orders.delete.title') }}
           </h5>
           <button @click="closeDeleteModal" class="btn-close btn-close-white"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete order:</p>
+          <p>{{ t('orders.delete.message') }}:</p>
           <p class="fw-bold">#{{ orderToDelete?.id }}</p>
-          <p class="text-danger">This action cannot be undone.</p>
+          <p class="text-danger">{{ t('orders.delete.warning') }}</p>
         </div>
         <div class="modal-footer">
           <button @click="closeDeleteModal" class="btn btn-secondary" :disabled="deleting">
-            Cancel
+            {{ t('common.cancel') }}
           </button>
           <button @click="deleteOrder" class="btn btn-danger" :disabled="deleting">
             <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="bi bi-trash"></i>
-            Delete Order
+            {{ t('orders.delete.button') }}
           </button>
         </div>
       </div>
@@ -242,12 +242,14 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { orderService } from '../services/orderService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 
 const orders = ref([])
@@ -298,44 +300,44 @@ const viewOrder = (order) => {
 }
 
 const confirmOrderAction = async (order) => {
-  if (!confirm(`Are you sure you want to confirm order #${order.id}?`)) {
+  if (!confirm(t('orders.confirmations.confirmOrder', { id: order.id }))) {
     return
   }
 
   try {
     await orderService.confirmOrder(order.id)
-    showAlert('success', 'Order confirmed successfully!')
+    showAlert('success', t('orders.messages.confirmSuccess'))
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to confirm order')
+    showAlert('danger', error.message || t('orders.messages.confirmFailed'))
   }
 }
 
 const cancelOrderAction = async (order) => {
-  if (!confirm(`Are you sure you want to cancel order #${order.id}?`)) {
+  if (!confirm(t('orders.confirmations.cancelOrder', { id: order.id }))) {
     return
   }
 
   try {
     await orderService.cancelOrder(order.id)
-    showAlert('success', 'Order cancelled successfully!')
+    showAlert('success', t('orders.messages.cancelSuccess'))
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to cancel order')
+    showAlert('danger', error.message || t('orders.messages.cancelFailed'))
   }
 }
 
 const deliverOrderAction = async (order) => {
-  if (!confirm(`Confirm that order #${order.id} has been delivered?`)) {
+  if (!confirm(t('orders.confirmations.deliverOrder', { id: order.id }))) {
     return
   }
 
   try {
     await orderService.deliverOrder(order.id)
-    showAlert('success', 'Order marked as delivered successfully!')
+    showAlert('success', t('orders.messages.deliverSuccess'))
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to mark order as delivered')
+    showAlert('danger', error.message || t('orders.messages.deliverFailed'))
   }
 }
 

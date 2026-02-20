@@ -27,28 +27,28 @@
           <!-- Profile Information -->
           <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
-              <h5 class="mb-0"><i class="bi bi-person-lines-fill"></i> Profile Information</h5>
+              <h5 class="mb-0"><i class="bi bi-person-lines-fill"></i> {{ t('profile.personalInformation') }}</h5>
             </div>
             <div class="card-body">
               <div v-if="!editMode">
                 <div class="row mb-3">
                   <div class="col-md-6">
-                    <label class="fw-bold">Email:</label>
-                    <p>{{ profile.email || 'Not provided' }}</p>
+                    <label class="fw-bold">{{ t('profile.email') }}:</label>
+                    <p>{{ profile.email || t('common.notProvided') }}</p>
                   </div>
                   <div class="col-md-6">
-                    <label class="fw-bold">Phone Number:</label>
-                    <p>{{ profile.phoneNumber || 'Not provided' }}</p>
+                    <label class="fw-bold">{{ t('register.phoneNumber') }}:</label>
+                    <p>{{ profile.phoneNumber || t('common.notProvided') }}</p>
                   </div>
                 </div>
                 <div class="row mb-3">
                   <div class="col-12">
-                    <label class="fw-bold">Address:</label>
-                    <p>{{ profile.address || 'Not provided' }}</p>
+                    <label class="fw-bold">{{ t('register.address') }}:</label>
+                    <p>{{ profile.address || t('common.notProvided') }}</p>
                   </div>
                 </div>
                 <button @click="editMode = true" class="btn btn-primary">
-                  <i class="bi bi-pencil"></i> Edit Profile
+                  <i class="bi bi-pencil"></i> {{ t('profile.updateProfile') }}
                 </button>
               </div>
 
@@ -59,9 +59,9 @@
                     <FormField
                       id="profile-firstName"
                       v-model="editForm.firstName"
-                      label="First Name"
+                      :label="t('profile.firstName')"
                       type="text"
-                      placeholder="Enter first name"
+                      :placeholder="t('register.enterFirstName')"
                       required
                     />
                   </div>
@@ -69,9 +69,9 @@
                     <FormField
                       id="profile-lastName"
                       v-model="editForm.lastName"
-                      label="Last Name"
+                      :label="t('profile.lastName')"
                       type="text"
-                      placeholder="Enter last name"
+                      :placeholder="t('register.enterLastName')"
                       required
                     />
                   </div>
@@ -81,18 +81,18 @@
                     <FormField
                       id="profile-email"
                       v-model="editForm.email"
-                      label="Email"
+                      :label="t('profile.email')"
                       type="email"
-                      placeholder="Enter email address"
+                      :placeholder="t('register.enterEmail')"
                     />
                   </div>
                   <div class="col-md-6">
                     <FormField
                       id="profile-phoneNumber"
                       v-model="editForm.phoneNumber"
-                      label="Phone Number"
+                      :label="t('register.phoneNumber')"
                       type="text"
-                      placeholder="Enter phone number"
+                      :placeholder="t('register.enterPhoneNumber')"
                     />
                   </div>
                 </div>
@@ -100,19 +100,19 @@
                   <FormField
                     id="profile-address"
                     v-model="editForm.address"
-                    label="Address"
+                    :label="t('register.address')"
                     type="text"
-                    placeholder="Enter address"
+                    :placeholder="t('register.enterAddress')"
                   />
                 </div>
                 <div class="d-flex gap-2">
                   <button type="submit" class="btn btn-success" :disabled="loading">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     <i v-else class="bi bi-check-lg"></i>
-                    Save Changes
+                    {{ t('common.save') }} {{ t('common.changes') }}
                   </button>
                   <button type="button" @click="cancelEdit" class="btn btn-secondary" :disabled="loading">
-                    <i class="bi bi-x-lg"></i> Cancel
+                    <i class="bi bi-x-lg"></i> {{ t('common.cancel') }}
                   </button>
                 </div>
               </form>
@@ -122,13 +122,13 @@
           <!-- Change Password -->
           <div class="card shadow-sm mb-4">
             <div class="card-header bg-warning text-dark">
-              <h5 class="mb-0"><i class="bi bi-key-fill"></i> Change Password</h5>
+              <h5 class="mb-0"><i class="bi bi-key-fill"></i> {{ t('profile.changePassword') }}</h5>
             </div>
             <div class="card-body">
               <div v-if="!changePasswordMode">
-                <p class="text-muted">Update your account password</p>
+                <p class="text-muted">{{ t('profile.updatePasswordMessage') }}</p>
                 <button @click="changePasswordMode = true" class="btn btn-warning">
-                  <i class="bi bi-key"></i> Change Password
+                  <i class="bi bi-key"></i> {{ t('profile.changePassword') }}
                 </button>
               </div>
 
@@ -138,9 +138,9 @@
                   <FormField
                     id="password-current"
                     v-model="passwordForm.currentPassword"
-                    label="Current Password"
+                    :label="t('profile.currentPassword')"
                     type="password"
-                    placeholder="Enter current password"
+                    :placeholder="t('profile.enterCurrentPassword')"
                     required
                   />
                 </div>
@@ -148,9 +148,9 @@
                   <FormField
                     id="password-new"
                     v-model="passwordForm.newPassword"
-                    label="New Password"
+                    :label="t('profile.newPassword')"
                     type="password"
-                    placeholder="e.g., MyP@ssw0rd"
+                    :placeholder="t('register.enterPassword')"
                     required
                   />
                 </div>
@@ -158,9 +158,9 @@
                   <FormField
                     id="password-confirm"
                     v-model="passwordForm.confirmPassword"
-                    label="Confirm New Password"
+                    :label="t('profile.confirmPassword')"
                     type="password"
-                    placeholder="Confirm new password"
+                    :placeholder="t('profile.confirmNewPassword')"
                     required
                   />
                 </div>
@@ -168,10 +168,10 @@
                   <button type="submit" class="btn btn-success" :disabled="loading">
                     <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
                     <i v-else class="bi bi-check-lg"></i>
-                    Change Password
+                    {{ t('profile.changePassword') }}
                   </button>
                   <button type="button" @click="cancelPasswordChange" class="btn btn-secondary" :disabled="loading">
-                    <i class="bi bi-x-lg"></i> Cancel
+                    <i class="bi bi-x-lg"></i> {{ t('common.cancel') }}
                   </button>
                 </div>
               </form>
@@ -181,10 +181,9 @@
           <!-- Quick Actions -->
           <div class="card shadow-sm">
             <div class="card-header bg-success text-white">
-              <h5 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Quick Actions</h5>
+              <h5 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> {{ t('profile.quickLinks') }}</h5>
             </div>
             <div class="card-body">
-              <p class="text-muted mb-4">Based on your role, here are the actions you can perform:</p>
               
               <div class="actions-grid">
                 <!-- User Management Actions (ADMIN & SUPER_USER) -->
@@ -192,10 +191,10 @@
                   <div class="action-icon bg-primary">
                     <i class="bi bi-people-fill"></i>
                   </div>
-                  <h6>User Management</h6>
-                  <p class="text-muted small">Create and manage user accounts</p>
+                  <h6>{{ t('admin.userManagement') }}</h6>
+                  <p class="text-muted small">{{ t('profile.userManagementDesc') }}</p>
                   <button @click="viewAllUsers" class="btn btn-primary btn-sm w-100">
-                    <i class="bi bi-eye"></i> View All Users
+                    <i class="bi bi-eye"></i> {{ t('admin.viewAllUsers') }}
                   </button>
                 </div>
 
@@ -204,10 +203,10 @@
                   <div class="action-icon bg-warning">
                     <i class="bi bi-book-fill"></i>
                   </div>
-                  <h6>Book Management</h6>
-                  <p class="text-muted small">Add, edit, and delete books</p>
+                  <h6>{{ t('admin.bookManagement') }}</h6>
+                  <p class="text-muted small">{{ t('profile.bookManagementDesc') }}</p>
                   <button @click="manageBooks" class="btn btn-warning btn-sm w-100">
-                    <i class="bi bi-pencil-square"></i> Manage Books
+                    <i class="bi bi-pencil-square"></i> {{ t('profile.manageBooks') }}
                   </button>
                 </div>
 
@@ -216,10 +215,10 @@
                   <div class="action-icon bg-info">
                     <i class="bi bi-cart-check-fill"></i>
                   </div>
-                  <h6>Order Management</h6>
-                  <p class="text-muted small">View and manage all orders</p>
+                  <h6>{{ t('admin.orderManagement') }}</h6>
+                  <p class="text-muted small">{{ t('profile.orderManagementDesc') }}</p>
                   <button @click="viewAllOrders" class="btn btn-info btn-sm w-100">
-                    <i class="bi bi-list-ul"></i> View All Orders
+                    <i class="bi bi-list-ul"></i> {{ t('admin.viewAllOrders') }}
                   </button>
                 </div>
 
@@ -228,10 +227,10 @@
                   <div class="action-icon bg-secondary">
                     <i class="bi bi-bag-check-fill"></i>
                   </div>
-                  <h6>My Orders</h6>
-                  <p class="text-muted small">View your order history</p>
+                  <h6>{{ t('orders.myOrders') }}</h6>
+                  <p class="text-muted small">{{ t('orders.viewHistory') }}</p>
                   <button @click="viewMyOrders" class="btn btn-secondary btn-sm w-100">
-                    <i class="bi bi-clock-history"></i> View My Orders
+                    <i class="bi bi-clock-history"></i> {{ t('profile.viewOrders') }}
                   </button>
                 </div>
 
@@ -240,10 +239,10 @@
                   <div class="action-icon bg-success">
                     <i class="bi bi-shop"></i>
                   </div>
-                  <h6>Browse Books</h6>
-                  <p class="text-muted small">Explore our book collection</p>
+                  <h6>{{ t('profile.browseBooks') }}</h6>
+                  <p class="text-muted small">{{ t('profile.browseBooksDesc') }}</p>
                   <button @click="browseBooks" class="btn btn-success btn-sm w-100">
-                    <i class="bi bi-search"></i> Browse Books
+                    <i class="bi bi-search"></i> {{ t('profile.browseBooks') }}
                   </button>
                 </div>
 
@@ -252,10 +251,10 @@
                   <div class="action-icon bg-primary">
                     <i class="bi bi-check-circle-fill"></i>
                   </div>
-                  <h6>Confirm Orders</h6>
-                  <p class="text-muted small">Approve pending orders</p>
+                  <h6>{{ t('profile.confirmOrders') }}</h6>
+                  <p class="text-muted small">{{ t('profile.confirmOrdersDesc') }}</p>
                   <button @click="confirmOrders" class="btn btn-primary btn-sm w-100">
-                    <i class="bi bi-check2-all"></i> Review Orders
+                    <i class="bi bi-check2-all"></i> {{ t('profile.reviewOrders') }}
                   </button>
                 </div>
               </div>
@@ -271,10 +270,12 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '../services/userService'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const profile = ref({
   id: null,
@@ -358,7 +359,7 @@ const loadProfile = async () => {
     const data = await userService.getCurrentUser()
     profile.value = data
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to load profile')
+    showAlert('danger', error.message || t('profile.loadProfileFailed'))
   } finally {
     loading.value = false
   }
@@ -378,9 +379,9 @@ const updateProfile = async () => {
     })
     profile.value = updatedData
     editMode.value = false
-    showAlert('success', 'Profile updated successfully!')
+    showAlert('success', t('profile.profileUpdateSuccess'))
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to update profile')
+    showAlert('danger', error.message || t('profile.profileUpdateFailed'))
   } finally {
     loading.value = false
   }
@@ -399,53 +400,53 @@ const cancelEdit = () => {
 const changePassword = async () => {
   // Client-side validation
   if (!passwordForm.currentPassword) {
-    showAlert('danger', 'Please enter your current password')
+    showAlert('danger', t('profile.enterCurrentPassword'))
     return
   }
 
   if (!passwordForm.newPassword) {
-    showAlert('danger', 'Please enter a new password')
+    showAlert('danger', t('profile.enterNewPassword'))
     return
   }
 
   if (!passwordForm.confirmPassword) {
-    showAlert('danger', 'Please confirm your new password')
+    showAlert('danger', t('profile.confirmNewPasswordMessage'))
     return
   }
 
   // Validate passwords match
   if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-    showAlert('danger', 'New passwords do not match. Please try again.')
+    showAlert('danger', t('profile.passwordsDoNotMatch'))
     return
   }
 
   // Validate password length
   if (passwordForm.newPassword.length < 8) {
-    showAlert('danger', 'New password must be at least 8 characters long')
+    showAlert('danger', t('profile.passwordTooShort'))
     return
   }
 
   // Validate uppercase letter
   if (!/[A-Z]/.test(passwordForm.newPassword)) {
-    showAlert('danger', 'Password must contain at least one uppercase letter')
+    showAlert('danger', t('profile.passwordNeedsUppercase'))
     return
   }
 
   // Validate lowercase letter
   if (!/[a-z]/.test(passwordForm.newPassword)) {
-    showAlert('danger', 'Password must contain at least one lowercase letter')
+    showAlert('danger', t('profile.passwordNeedsLowercase'))
     return
   }
 
   // Validate special character
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(passwordForm.newPassword)) {
-    showAlert('danger', 'Password must contain at least one special character (!@#$%^&*...)')
+    showAlert('danger', t('profile.passwordNeedsSpecialChar'))
     return
   }
 
   // Check if new password is same as current
   if (passwordForm.currentPassword === passwordForm.newPassword) {
-    showAlert('warning', 'New password must be different from current password')
+    showAlert('warning', t('profile.passwordMustBeDifferent'))
     return
   }
 
@@ -455,18 +456,18 @@ const changePassword = async () => {
       currentPassword: passwordForm.currentPassword,
       newPassword: passwordForm.newPassword
     })
-    showAlert('success', '✓ Password changed successfully! Please use your new password for future logins.')
+    showAlert('success', t('profile.passwordChangeSuccess'))
     cancelPasswordChange()
   } catch (error) {
     // Provide specific error messages
-    let errorMessage = 'Failed to change password. '
+    let errorMessage = t('profile.passwordChangeFailed') + ' '
     
     if (error.message && error.message.includes('incorrect')) {
-      errorMessage = 'Current password is incorrect. Please try again.'
+      errorMessage = t('profile.currentPasswordIncorrect')
     } else if (error.message) {
       errorMessage = error.message
     } else {
-      errorMessage += 'Please try again or contact support if the problem persists.'
+      errorMessage += t('profile.tryAgainOrContact')
     }
     
     showAlert('danger', errorMessage)
@@ -524,7 +525,7 @@ const browseBooks = () => {
 }
 
 const confirmOrders = () => {
-  showAlert('info', 'Order confirmation interface coming soon!')
+  showAlert('info', t('profile.orderConfirmationSoon'))
   // TODO: Navigate to order confirmation page
   // router.push('/orders/confirm')
 }

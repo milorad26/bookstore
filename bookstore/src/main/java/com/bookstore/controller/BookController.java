@@ -8,11 +8,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/books")
@@ -22,6 +25,7 @@ import java.util.List;
 public class BookController {
 
     private final BookService bookService;
+    private final MessageSource messageSource;
 
     @Operation(summary = "Get all books", description = "Retrieve a list of all books in the bookstore")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of books")
@@ -54,9 +58,12 @@ public class BookController {
     @ApiResponse(responseCode = "200", description = "Books found")
     @GetMapping("/search/author")
     public ResponseEntity<List<BookDTO>> searchByAuthor(@RequestParam String author) {
+        Locale locale = LocaleContextHolder.getLocale();
         List<BookDTO> books = bookService.searchByAuthor(author);
         if (books.isEmpty()) {
-            throw new com.bookstore.exception.ResourceNotFoundException("No books found for author: " + author);
+            String message = messageSource.getMessage("book.notfound.author", 
+                new Object[]{author}, locale);
+            throw new com.bookstore.exception.ResourceNotFoundException(message);
         }
         return ResponseEntity.ok(books);
     }
@@ -65,9 +72,12 @@ public class BookController {
     @ApiResponse(responseCode = "200", description = "Books found")
     @GetMapping("/search/title")
     public ResponseEntity<List<BookDTO>> searchByTitle(@RequestParam String title) {
+        Locale locale = LocaleContextHolder.getLocale();
         List<BookDTO> books = bookService.searchByTitle(title);
         if (books.isEmpty()) {
-            throw new com.bookstore.exception.ResourceNotFoundException("No books found with title containing: " + title);
+            String message = messageSource.getMessage("book.notfound.title", 
+                new Object[]{title}, locale);
+            throw new com.bookstore.exception.ResourceNotFoundException(message);
         }
         return ResponseEntity.ok(books);
     }

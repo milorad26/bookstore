@@ -3,6 +3,8 @@ package com.bookstore.security;
 import com.bookstore.model.User;
 import com.bookstore.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -10,21 +12,25 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final MessageSource messageSource;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        Locale locale = LocaleContextHolder.getLocale();
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found with username: " + username));
+                        messageSource.getMessage("user.notfound.id", new Object[]{username}, locale)));
 
         if (Boolean.FALSE.equals(user.getEnabled())) {
-            throw new UsernameNotFoundException("User account is disabled");
+            throw new UsernameNotFoundException(
+                messageSource.getMessage("user.account.disabled", null, locale));
         }
 
         return org.springframework.security.core.userdetails.User.builder()
@@ -40,12 +46,14 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
+        Locale locale = LocaleContextHolder.getLocale();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found with id: " + userId));
+                        messageSource.getMessage("user.notfound.id", new Object[]{userId}, locale)));
 
         if (Boolean.FALSE.equals(user.getEnabled())) {
-            throw new UsernameNotFoundException("User account is disabled");
+            throw new UsernameNotFoundException(
+                messageSource.getMessage("user.account.disabled", null, locale));
         }
 
         return org.springframework.security.core.userdetails.User.builder()

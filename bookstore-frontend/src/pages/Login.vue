@@ -5,7 +5,7 @@
         <div class="card shadow">
           <div class="card-body p-5">
             <h2 class="card-title text-center mb-4">
-              <i class="bi bi-box-arrow-in-right"></i> Login
+              <i class="bi bi-box-arrow-in-right"></i> {{ t('login.login') }}
             </h2>
 
             <Alert
@@ -19,8 +19,8 @@
               <FormField
                 id="username"
                 v-model="form.username"
-                label="Username"
-                placeholder="Enter your username"
+                :label="t('login.username')"
+                :placeholder="t('login.enterUsername')"
                 :error="errors.username"
                 required
                 @blur="validateField('username')"
@@ -29,9 +29,9 @@
               <FormField
                 id="password"
                 v-model="form.password"
-                label="Password"
+                :label="t('login.password')"
                 type="password"
-                placeholder="Enter your password"
+                :placeholder="t('login.enterPassword')"
                 :error="errors.password"
                 required
                 @blur="validateField('password')"
@@ -43,14 +43,14 @@
                 :disabled="isLoading"
               >
                 <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
-                {{ isLoading ? 'Logging in...' : 'Login' }}
+                {{ isLoading ? t('login.loggingIn') : t('login.login') }}
               </button>
             </form>
 
             <div class="text-center">
-              <p class="text-muted">Don't have an account?</p>
+              <p class="text-muted">{{ t('login.noAccount') }}</p>
               <router-link to="/auth/register" class="btn btn-outline-primary">
-                Register here
+                {{ t('login.registerHere') }}
               </router-link>
             </div>
           </div>
@@ -64,6 +64,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { authService } from '../services/authService'
 import { userService } from '../services/userService'
 import { validateField } from '../utils/validators'
@@ -72,6 +73,7 @@ import FormField from '../components/FormField.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const form = ref({
   username: '',
@@ -134,10 +136,10 @@ const handleLogin = async () => {
     // Update store with user data
     authStore.setAuth(response.token, userData)
 
-    showSuccess('Login successful!')
+    showSuccess(t('messages.loginSuccess'))
     setTimeout(() => router.push('/'), 1000)
   } catch (error) {
-    showError(error.message || 'Login failed')
+    showError(error.message || t('messages.loginFailed'))
     if (error.message.includes(':')) {
       // Parse field-specific validation errors
       const fieldErrors = error.message.split(',').map(err => err.trim())

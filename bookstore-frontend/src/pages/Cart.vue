@@ -1,7 +1,7 @@
 <template>
   <div class="container py-5">
     <h2 class="mb-4">
-      <i class="bi bi-cart"></i> Shopping Cart
+      <i class="bi bi-cart"></i> {{ t('cart.title') }}
     </h2>
 
     <!-- Alert Messages -->
@@ -15,10 +15,10 @@
     <!-- Empty Cart State -->
     <div v-if="cartStore.cartItems.length === 0" class="text-center py-5">
       <i class="bi bi-cart-x" style="font-size: 5rem; color: #ccc;"></i>
-      <h3 class="mt-4">Your cart is empty</h3>
-      <p class="text-muted mb-4">Add some books to get started!</p>
+      <h3 class="mt-4">{{ t('cart.empty') }}</h3>
+      <p class="text-muted mb-4">{{ t('cart.emptyMessage') }}</p>
       <router-link to="/" class="btn btn-primary">
-        <i class="bi bi-shop"></i> Continue Shopping
+        <i class="bi bi-shop"></i> {{ t('cart.continueShopping') }}
       </router-link>
     </div>
 
@@ -71,7 +71,7 @@
                       class="btn btn-danger btn-sm" 
                       @click="removeItem(item)"
                     >
-                      <i class="bi bi-trash"></i> Remove
+                      <i class="bi bi-trash"></i> {{ t('cart.remove') }}
                     </button>
                   </div>
                 </div>
@@ -81,10 +81,10 @@
 
           <div class="d-flex justify-content-between">
             <router-link to="/" class="btn btn-outline-secondary">
-              <i class="bi bi-arrow-left"></i> Continue Shopping
+              <i class="bi bi-arrow-left"></i> {{ t('cart.continueShopping') }}
             </router-link>
             <button class="btn btn-warning" @click="clearCartConfirm">
-              <i class="bi bi-trash"></i> Clear Cart
+              <i class="bi bi-trash"></i> {{ t('cart.clearCart') }}
             </button>
           </div>
         </div>
@@ -93,20 +93,20 @@
         <div class="col-lg-4">
           <div class="card shadow-sm sticky-top" style="top: 20px;">
             <div class="card-body">
-              <h5 class="card-title mb-4">Order Summary</h5>
+              <h5 class="card-title mb-4">{{ t('cart.summary.title') }}</h5>
               
               <div class="d-flex justify-content-between mb-2">
-                <span>Items ({{ cartStore.totalItems }}):</span>
+                <span>{{ t('cart.summary.items', { count: cartStore.totalItems }) }}:</span>
                 <span>${{ formatPrice(cartStore.totalAmount) }}</span>
               </div>
               
               <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                <span>Shipping:</span>
-                <span class="text-success">FREE</span>
+                <span>{{ t('cart.summary.shipping') }}:</span>
+                <span class="text-success">{{ t('cart.summary.free') }}</span>
               </div>
               
               <div class="d-flex justify-content-between mb-4">
-                <strong>Total:</strong>
+                <strong>{{ t('cart.summary.total') }}:</strong>
                 <strong class="text-primary h5 mb-0">${{ formatPrice(cartStore.totalAmount) }}</strong>
               </div>
 
@@ -114,12 +114,12 @@
                 class="btn btn-primary w-100 btn-lg"
                 @click="proceedToCheckout"
               >
-                Proceed to Checkout
+                {{ t('cart.checkout') }}
                 <i class="bi bi-arrow-right"></i>
               </button>
               
               <p class="text-muted text-center small mt-3 mb-0">
-                <i class="bi bi-shield-check"></i> Secure checkout
+                <i class="bi bi-shield-check"></i> {{ t('cart.secureCheckout') }}
               </p>
             </div>
           </div>
@@ -132,11 +132,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const { t } = useI18n()
 
 const showAlert = ref(false)
 const alertMessage = ref('')
@@ -164,16 +166,16 @@ const decreaseQuantity = (item) => {
 }
 
 const removeItem = (item) => {
-  if (confirm(`Remove "${item.title}" from cart?`)) {
+  if (confirm(t('cart.confirmRemove', { title: item.title }))) {
     cartStore.removeFromCart(item.id)
-    showSuccess('Item removed from cart')
+    showSuccess(t('cart.itemRemoved'))
   }
 }
 
 const clearCartConfirm = () => {
-  if (confirm('Are you sure you want to clear your entire cart?')) {
+  if (confirm(t('cart.confirmClear'))) {
     cartStore.clearCart()
-    showSuccess('Cart cleared')
+    showSuccess(t('cart.cartCleared'))
   }
 }
 

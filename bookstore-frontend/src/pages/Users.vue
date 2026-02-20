@@ -9,15 +9,15 @@
           <!-- Header -->
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-              <h2><i class="bi bi-people-fill"></i> User Management</h2>
-              <p class="text-muted">Manage user accounts and permissions</p>
+              <h2><i class="bi bi-people-fill"></i> {{ t('users.title') }}</h2>
+              <p class="text-muted">{{ t('users.subtitle') }}</p>
             </div>
             <div>
               <button @click="showCreateModal" class="btn btn-primary">
-                <i class="bi bi-person-plus"></i> Create New User
+                <i class="bi bi-person-plus"></i> {{ t('users.createNew') }}
               </button>
               <button @click="goBack" class="btn btn-secondary ms-2">
-                <i class="bi bi-arrow-left"></i> Back to Profile
+                <i class="bi bi-arrow-left"></i> {{ t('users.backToProfile') }}
               </button>
             </div>
           </div>
@@ -27,28 +27,28 @@
             <div class="card-body">
               <div v-if="loading" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
-                  <span class="visually-hidden">Loading...</span>
+                  <span class="visually-hidden">{{ t('common.loading') }}</span>
                 </div>
-                <p class="mt-3 text-muted">Loading users...</p>
+                <p class="mt-3 text-muted">{{ t('users.loadingUsers') }}</p>
               </div>
 
               <div v-else-if="users.length === 0" class="text-center py-5">
                 <i class="bi bi-people" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="mt-3 text-muted">No users found</p>
+                <p class="mt-3 text-muted">{{ t('users.noUsersFound') }}</p>
               </div>
 
               <div v-else class="table-responsive">
                 <table class="table table-hover">
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Username</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Phone</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th>{{ t('users.table.id') }}</th>
+                      <th>{{ t('users.table.username') }}</th>
+                      <th>{{ t('users.table.name') }}</th>
+                      <th>{{ t('users.table.email') }}</th>
+                      <th>{{ t('users.table.phone') }}</th>
+                      <th>{{ t('users.table.role') }}</th>
+                      <th>{{ t('users.table.status') }}</th>
+                      <th>{{ t('users.table.actions') }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -67,21 +67,21 @@
                       </td>
                       <td>
                         <span :class="user.enabled ? 'badge bg-success' : 'badge bg-danger'">
-                          {{ user.enabled ? 'Active' : 'Disabled' }}
+                          {{ user.enabled ? t('users.status.active') : t('users.status.disabled') }}
                         </span>
                       </td>
                       <td>
                         <button 
                           @click="viewUser(user)" 
                           class="btn btn-sm btn-info me-1"
-                          title="View Details"
+                          :title="t('users.actions.viewDetails')"
                         >
                           <i class="bi bi-eye"></i>
                         </button>
                         <button 
                           @click="editUser(user)" 
                           class="btn btn-sm btn-warning me-1"
-                          title="Edit"
+                          :title="t('users.actions.edit')"
                         >
                           <i class="bi bi-pencil"></i>
                         </button>
@@ -89,7 +89,7 @@
                           v-if="canDelete(user)"
                           @click="confirmDelete(user)" 
                           class="btn btn-sm btn-danger"
-                          title="Delete"
+                          :title="t('users.actions.delete')"
                         >
                           <i class="bi bi-trash"></i>
                         </button>
@@ -110,7 +110,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-person-plus"></i>
-            {{ isEditMode ? 'Edit User' : 'Create New User' }}
+            {{ isEditMode ? t('users.edit.title') : t('users.create.title') }}
           </h5>
           <button @click="closeModal" class="btn-close"></button>
         </div>
@@ -121,9 +121,9 @@
                 <FormField
                   id="user-username"
                   v-model="userForm.username"
-                  label="Username"
+                  :label="t('users.form.username')"
                   type="text"
-                  placeholder="Enter username"
+                  :placeholder="t('users.form.usernamePlaceholder')"
                   :disabled="isEditMode"
                   required
                 />
@@ -132,9 +132,9 @@
                 <FormField
                   id="user-password"
                   v-model="userForm.password"
-                  label="Password"
+                  :label="t('users.form.password')"
                   type="password"
-                  placeholder="Enter password"
+                  :placeholder="t('users.form.passwordPlaceholder')"
                   required
                 />
               </div>
@@ -142,9 +142,9 @@
                 <FormField
                   id="user-firstName"
                   v-model="userForm.firstName"
-                  label="First Name"
+                  :label="t('users.form.firstName')"
                   type="text"
-                  placeholder="Enter first name"
+                  :placeholder="t('users.form.firstNamePlaceholder')"
                   required
                 />
               </div>
@@ -152,9 +152,9 @@
                 <FormField
                   id="user-lastName"
                   v-model="userForm.lastName"
-                  label="Last Name"
+                  :label="t('users.form.lastName')"
                   type="text"
-                  placeholder="Enter last name"
+                  :placeholder="t('users.form.lastNamePlaceholder')"
                   required
                 />
               </div>
@@ -162,54 +162,54 @@
                 <FormField
                   id="user-email"
                   v-model="userForm.email"
-                  label="Email"
+                  :label="t('users.form.email')"
                   type="email"
-                  placeholder="Enter email"
+                  :placeholder="t('users.form.emailPlaceholder')"
                 />
               </div>
               <div class="col-md-6 mb-3">
                 <FormField
                   id="user-phoneNumber"
                   v-model="userForm.phoneNumber"
-                  label="Phone Number"
+                  :label="t('users.form.phone')"
                   type="text"
-                  placeholder="Enter phone number"
+                  :placeholder="t('users.form.phonePlaceholder')"
                 />
               </div>
               <div class="col-12 mb-3">
                 <FormField
                   id="user-address"
                   v-model="userForm.address"
-                  label="Address"
+                  :label="t('users.form.address')"
                   type="text"
-                  placeholder="Enter address"
+                  :placeholder="t('users.form.addressPlaceholder')"
                 />
               </div>
               <div class="col-md-6 mb-3">
-                <label class="form-label">User Role</label>
+                <label class="form-label">{{ t('users.form.role') }}</label>
                 <select v-model="userForm.userType" class="form-select" required>
-                  <option value="USER">User</option>
-                  <option value="SUPER_USER" v-if="currentUserRole === 'ADMIN'">Super User</option>
-                  <option value="ADMIN" v-if="currentUserRole === 'ADMIN'">Admin</option>
+                  <option value="USER">{{ t('users.roles.user') }}</option>
+                  <option value="SUPER_USER" v-if="currentUserRole === 'ADMIN'">{{ t('users.roles.superUser') }}</option>
+                  <option value="ADMIN" v-if="currentUserRole === 'ADMIN'">{{ t('users.roles.admin') }}</option>
                 </select>
               </div>
               <div class="col-md-6 mb-3">
-                <label class="form-label">Status</label>
+                <label class="form-label">{{ t('users.form.status') }}</label>
                 <select v-model="userForm.enabled" class="form-select">
-                  <option :value="true">Active</option>
-                  <option :value="false">Disabled</option>
+                  <option :value="true">{{ t('users.status.active') }}</option>
+                  <option :value="false">{{ t('users.status.disabled') }}</option>
                 </select>
               </div>
             </div>
           </div>
           <div class="modal-footer">
             <button type="button" @click="closeModal" class="btn btn-secondary" :disabled="saving">
-              Cancel
+              {{ t('common.cancel') }}
             </button>
             <button type="submit" class="btn btn-primary" :disabled="saving">
               <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
               <i v-else class="bi bi-check-lg"></i>
-              {{ isEditMode ? 'Update User' : 'Create User' }}
+              {{ isEditMode ? t('users.edit.button') : t('users.create.button') }}
             </button>
           </div>
         </form>
@@ -222,7 +222,7 @@
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="bi bi-person-circle"></i>
-            User Details
+            {{ t('users.details.title') }}
           </h5>
           <button @click="closeViewModal" class="btn-close"></button>
         </div>
@@ -230,43 +230,43 @@
           <div v-if="selectedUser">
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">User ID:</label>
+                <label class="fw-bold">{{ t('users.table.id') }}:</label>
                 <p>{{ selectedUser.id }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Username:</label>
+                <label class="fw-bold">{{ t('users.table.username') }}:</label>
                 <p>{{ selectedUser.username }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">First Name:</label>
+                <label class="fw-bold">{{ t('users.form.firstName') }}:</label>
                 <p>{{ selectedUser.firstName }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Last Name:</label>
+                <label class="fw-bold">{{ t('users.form.lastName') }}:</label>
                 <p>{{ selectedUser.lastName }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Email:</label>
-                <p>{{ selectedUser.email || 'Not provided' }}</p>
+                <label class="fw-bold">{{ t('users.form.email') }}:</label>
+                <p>{{ selectedUser.email || t('users.notProvided') }}</p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Phone:</label>
-                <p>{{ selectedUser.phoneNumber || 'Not provided' }}</p>
+                <label class="fw-bold">{{ t('users.form.phone') }}:</label>
+                <p>{{ selectedUser.phoneNumber || t('users.notProvided') }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-12">
-                <label class="fw-bold">Address:</label>
-                <p>{{ selectedUser.address || 'Not provided' }}</p>
+                <label class="fw-bold">{{ t('users.form.address') }}:</label>
+                <p>{{ selectedUser.address || t('users.notProvided') }}</p>
               </div>
             </div>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="fw-bold">Role:</label>
+                <label class="fw-bold">{{ t('users.table.role') }}:</label>
                 <p>
                   <span :class="getRoleBadgeClass(selectedUser.userType)">
                     {{ formatRole(selectedUser.userType) }}
@@ -274,10 +274,10 @@
                 </p>
               </div>
               <div class="col-md-6">
-                <label class="fw-bold">Status:</label>
+                <label class="fw-bold">{{ t('users.table.status') }}:</label>
                 <p>
                   <span :class="selectedUser.enabled ? 'badge bg-success' : 'badge bg-danger'">
-                    {{ selectedUser.enabled ? 'Active' : 'Disabled' }}
+                    {{ selectedUser.enabled ? t('users.status.active') : t('users.status.disabled') }}
                   </span>
                 </p>
               </div>
@@ -285,7 +285,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="closeViewModal" class="btn btn-secondary">Close</button>
+          <button @click="closeViewModal" class="btn btn-secondary">{{ t('common.close') }}</button>
         </div>
       </div>
     </div>
@@ -296,22 +296,22 @@
         <div class="modal-header bg-danger text-white">
           <h5 class="modal-title">
             <i class="bi bi-exclamation-triangle"></i>
-            Confirm Delete
+            {{ t('users.delete.title') }}
           </h5>
           <button @click="closeDeleteModal" class="btn-close btn-close-white"></button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong>?</p>
-          <p class="text-danger">This action cannot be undone.</p>
+          <p>{{ t('users.delete.message') }} <strong>{{ userToDelete?.username }}</strong>?</p>
+          <p class="text-danger">{{ t('users.delete.warning') }}</p>
         </div>
         <div class="modal-footer">
           <button @click="closeDeleteModal" class="btn btn-secondary" :disabled="deleting">
-            Cancel
+            {{ t('common.cancel') }}
           </button>
           <button @click="deleteUser" class="btn btn-danger" :disabled="deleting">
             <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="bi bi-trash"></i>
-            Delete User
+            {{ t('users.delete.button') }}
           </button>
         </div>
       </div>
@@ -322,6 +322,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { userService } from '../services/userService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
@@ -329,6 +330,7 @@ import FormField from '../components/FormField.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const users = ref([])
 const loading = ref(false)

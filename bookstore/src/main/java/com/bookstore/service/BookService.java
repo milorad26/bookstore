@@ -4,10 +4,13 @@ import com.bookstore.dto.BookDTO;
 import com.bookstore.model.Book;
 import com.bookstore.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import com.bookstore.exception.ResourceNotFoundException;
 
 @Service
@@ -15,6 +18,7 @@ import com.bookstore.exception.ResourceNotFoundException;
 public class BookService {
 
     private final BookRepository bookRepository;
+    private final MessageSource messageSource;
 
     public List<BookDTO> getAllBooks() {
         return bookRepository.findAll().stream()
@@ -23,14 +27,18 @@ public class BookService {
     }
 
     public BookDTO getBookById(Long id) {
+        Locale locale = LocaleContextHolder.getLocale();
         Book book = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("book.notfound.id", new Object[]{id}, locale)));
         return convertToDTO(book);
     }
 
     public BookDTO getBookByIsbn(String isbn) {
+        Locale locale = LocaleContextHolder.getLocale();
         Book book = bookRepository.findByIsbn(isbn)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with ISBN: " + isbn));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("book.notfound.isbn", new Object[]{isbn}, locale)));
         return convertToDTO(book);
     }
 
@@ -48,8 +56,11 @@ public class BookService {
 
     @Transactional
     public BookDTO createBook(BookDTO bookDTO) {
+        Locale locale = LocaleContextHolder.getLocale();
         if (bookRepository.existsByIsbn(bookDTO.getIsbn())) {
-            throw new IllegalArgumentException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
+            String message = messageSource.getMessage("book.isbn.exists", 
+                new Object[]{bookDTO.getIsbn()}, locale);
+            throw new IllegalArgumentException(message);
         }
         Book book = convertToEntity(bookDTO);
         Book savedBook = bookRepository.save(book);
@@ -58,13 +69,17 @@ public class BookService {
 
     @Transactional
     public BookDTO updateBook(Long id, BookDTO bookDTO) {
+        Locale locale = LocaleContextHolder.getLocale();
         Book existingBook = bookRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Book not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("book.notfound.id", new Object[]{id}, locale)));
 
         // Check if ISBN is being changed and if new ISBN already exists
         if (!existingBook.getIsbn().equals(bookDTO.getIsbn()) 
             && bookRepository.existsByIsbn(bookDTO.getIsbn())) {
-            throw new IllegalArgumentException("Book with ISBN " + bookDTO.getIsbn() + " already exists");
+            String message = messageSource.getMessage("book.isbn.exists", 
+                new Object[]{bookDTO.getIsbn()}, locale);
+            throw new IllegalArgumentException(message);
         }
 
         existingBook.setTitle(bookDTO.getTitle());
@@ -82,8 +97,10 @@ public class BookService {
 
     @Transactional
     public void deleteBook(Long id) {
+        Locale locale = LocaleContextHolder.getLocale();
         if (!bookRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Book not found with id: " + id);
+            throw new ResourceNotFoundException(
+                messageSource.getMessage("book.notfound.id", new Object[]{id}, locale));
         }
         bookRepository.deleteById(id);
     }

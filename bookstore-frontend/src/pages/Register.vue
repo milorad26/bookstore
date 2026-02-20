@@ -5,7 +5,7 @@
         <div class="card shadow">
           <div class="card-body p-5">
             <h2 class="card-title text-center mb-4">
-              <i class="bi bi-person-plus"></i> Create Account
+              <i class="bi bi-person-plus"></i> {{ t('register.createAccount') }}
             </h2>
 
             <Alert
@@ -21,8 +21,8 @@
                   <FormField
                     id="firstName"
                     v-model="form.firstName"
-                    label="First Name"
-                    placeholder="John"
+                    :label="t('register.firstName')"
+                    :placeholder="t('register.enterFirstName')"
                     :error="errors.firstName"
                     required
                     @blur="validateFieldFn('firstName')"
@@ -32,8 +32,8 @@
                   <FormField
                     id="lastName"
                     v-model="form.lastName"
-                    label="Last Name"
-                    placeholder="Doe"
+                    :label="t('register.lastName')"
+                    :placeholder="t('register.enterLastName')"
                     :error="errors.lastName"
                     required
                     @blur="validateFieldFn('lastName')"
@@ -44,8 +44,8 @@
               <FormField
                 id="username"
                 v-model="form.username"
-                label="Username"
-                placeholder="johndoe"
+                :label="t('register.username')"
+                :placeholder="t('register.enterUsername')"
                 :error="errors.username"
                 required
                 @blur="validateFieldFn('username')"
@@ -54,9 +54,9 @@
               <FormField
                 id="email"
                 v-model="form.email"
-                label="Email"
+                :label="t('register.email')"
                 type="email"
-                placeholder="john@example.com"
+                :placeholder="t('register.enterEmail')"
                 :error="errors.email"
                 required
                 @blur="validateFieldFn('email')"
@@ -65,36 +65,35 @@
               <!-- Password Requirements Info -->
               <div class="alert alert-info mb-3 py-2">
                 <small>
-                  <strong><i class="bi bi-info-circle"></i> Password must have:</strong>
-                  8+ chars, uppercase, lowercase & special character (!@#$%...)
+                  <strong><i class="bi bi-info-circle"></i> {{ t('register.passwordRequirements') }}</strong>
                 </small>
               </div>
 
               <FormField
                 id="password"
                 v-model="form.password"
-                label="Password"
+                :label="t('register.password')"
                 type="password"
-                placeholder="e.g., MyP@ssw0rd"
+                :placeholder="t('register.enterPassword')"
                 :error="errors.password"
                 required
                 @blur="validateFieldFn('password')"
               />
-              <small class="text-muted d-block mb-3">Min. 8 characters with uppercase, lowercase & special character</small>
+              <small class="text-muted d-block mb-3">{{ t('register.passwordHint') }}</small>
 
               <FormField
                 id="phoneNumber"
                 v-model="form.phoneNumber"
-                label="Phone Number"
-                placeholder="+1 (555) 000-0000"
+                :label="t('register.phoneNumber')"
+                :placeholder="t('register.enterPhoneNumber')"
                 :error="errors.phoneNumber"
               />
 
               <FormField
                 id="address"
                 v-model="form.address"
-                label="Address"
-                placeholder="123 Main St, City, State 12345"
+                :label="t('register.address')"
+                :placeholder="t('register.enterAddress')"
                 :error="errors.address"
               />
 
@@ -104,14 +103,14 @@
                 :disabled="isLoading"
               >
                 <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
-                {{ isLoading ? 'Creating Account...' : 'Register' }}
+                {{ isLoading ? t('register.registering') : t('register.register') }}
               </button>
             </form>
 
             <div class="text-center">
-              <p class="text-muted">Already have an account?</p>
+              <p class="text-muted">{{ t('register.haveAccount') }}</p>
               <router-link to="/auth/login" class="btn btn-outline-primary">
-                Login here
+                {{ t('register.loginHere') }}
               </router-link>
             </div>
           </div>
@@ -125,6 +124,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { authService } from '../services/authService'
 import { userService } from '../services/userService'
 import { validateField } from '../utils/validators'
@@ -133,6 +133,7 @@ import FormField from '../components/FormField.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { t } = useI18n()
 
 const form = ref({
   firstName: '',
@@ -214,10 +215,10 @@ const handleRegister = async () => {
     // Update store with user data
     authStore.setAuth(response.token, userData)
 
-    showSuccess('Registration successful!')
+    showSuccess(t('messages.registerSuccess'))
     setTimeout(() => router.push('/'), 1000)
   } catch (error) {
-    showError(error.message || 'Registration failed')
+    showError(error.message || t('messages.registerFailed'))
     
     // Parse field-specific validation errors
     if (error.message.includes(':')) {

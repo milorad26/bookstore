@@ -6,11 +6,14 @@ import com.bookstore.repository.UserRepository;
 import com.bookstore.util.PasswordValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -20,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MessageSource messageSource;
 
     /**
      * Create a new user with encrypted password
@@ -27,17 +31,20 @@ public class UserService {
     @Transactional
     public User createUser(User user) {
         log.info("Creating new user: {}", user.getUsername());
+        Locale locale = LocaleContextHolder.getLocale();
         
         // Check if username already exists
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new IllegalArgumentException(
-                "Username '" + user.getUsername() + "' is already taken. Please choose a different username.");
+            String message = messageSource.getMessage("user.username.taken", 
+                new Object[]{user.getUsername()}, locale);
+            throw new IllegalArgumentException(message);
         }
         
         // Check if email already exists
         if (user.getEmail() != null && userRepository.existsByEmail(user.getEmail())) {
-            throw new IllegalArgumentException(
-                "Email address '" + user.getEmail() + "' is already registered. Please use a different email.");
+            String message = messageSource.getMessage("user.email.taken", 
+                new Object[]{user.getEmail()}, locale);
+            throw new IllegalArgumentException(message);
         }
         
         // Validate password strength
@@ -58,17 +65,19 @@ public class UserService {
     @Transactional
     public User updateUser(Long userId, User updatedUser) {
         log.info("Updating user ID: {}", userId);
+        Locale locale = LocaleContextHolder.getLocale();
         
         User existingUser = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Cannot update user. User not found with ID: " + userId));
+                messageSource.getMessage("user.notfound.update", new Object[]{userId}, locale)));
         
         // Check if email is being changed and if new email already exists
         if (updatedUser.getEmail() != null && 
             !updatedUser.getEmail().equals(existingUser.getEmail()) &&
             userRepository.existsByEmail(updatedUser.getEmail())) {
-            throw new IllegalArgumentException(
-                "Email address '" + updatedUser.getEmail() + "' is already registered. Please use a different email.");
+            String message = messageSource.getMessage("user.email.taken", 
+                new Object[]{updatedUser.getEmail()}, locale);
+            throw new IllegalArgumentException(message);
         }
         
         // Update fields (username and password are not updated here)
@@ -93,10 +102,11 @@ public class UserService {
     @Transactional
     public User updatePassword(Long userId, String newPassword) {
         log.info("Updating password for user ID: {}", userId);
+        Locale locale = LocaleContextHolder.getLocale();
         
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Cannot update password. User not found with ID: " + userId));
+                messageSource.getMessage("user.notfound.password", new Object[]{userId}, locale)));
         
         user.setPassword(passwordEncoder.encode(newPassword));
         
@@ -109,15 +119,17 @@ public class UserService {
     @Transactional
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         log.info("Changing password for user ID: {}", userId);
+        Locale locale = LocaleContextHolder.getLocale();
         
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException(
-                "Cannot change password. User not found with ID: " + userId));
+                messageSource.getMessage("user.notfound.password", new Object[]{userId}, locale)));
         
         // Verify current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             log.warn("Failed password change attempt for user ID: {} - incorrect current password", userId);
-            throw new IllegalArgumentException("Current password is incorrect. Please try again.");
+            String message = messageSource.getMessage("user.password.incorrect", null, locale);
+            throw new IllegalArgumentException(message);
         }
         
         // Validate new password strength
