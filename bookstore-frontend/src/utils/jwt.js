@@ -14,7 +14,6 @@ export function decodeToken(token) {
     const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
     return decoded
   } catch (error) {
-    console.error('Failed to decode token:', error)
     return null
   }
 }

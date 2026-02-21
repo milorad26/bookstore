@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +35,7 @@ public class UserController {
 
     private final UserService userService;
     private final AuthenticationHelper authenticationHelper;
+    private final MessageSource messageSource;
 
     @PostMapping
     @Operation(summary = "Create a new user", description = "Creates a new user with encrypted password")
@@ -168,7 +171,8 @@ public class UserController {
         
         User targetUser = userService.findByUsername(username)
             .orElseThrow(() -> new ResourceNotFoundException(
-                "User not found with username: '" + username + "'. Please verify the username and try again."));
+                messageSource.getMessage("user.notfound.username", 
+                    new Object[]{username}, LocaleContextHolder.getLocale())));
         
         return ResponseEntity.ok(toDTO(targetUser));
     }

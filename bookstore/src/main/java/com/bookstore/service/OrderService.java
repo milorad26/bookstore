@@ -66,11 +66,15 @@ public class OrderService {
             throw new IllegalArgumentException(messageSource.getMessage("order.items.required", null, locale));
         }
 
-        // Check if user has any pending orders (business rule: one user can make one
-        // order at a time)
-        long pendingOrders = orderRepository.countPendingOrdersByUserId(request.getUserId());
-        if (pendingOrders > 0) {
-            throw new IllegalStateException(messageSource.getMessage("order.pending.exists", null, locale));
+        // Auto-cancel any existing pending orders before creating a new one
+        // This handles cases where user abandoned checkout and returned with a new cart
+        List<Order> existingPendingOrders = orderRepository.findByUserIdAndStatus(request.getUserId(), OrderStatus.PENDING);
+        if (!existingPendingOrders.isEmpty()) {
+            for (Order pendingOrder : existingPendingOrders) {
+                pendingOrder.setStatus(OrderStatus.CANCELLED);
+                restoreStock(pendingOrder);
+                orderRepository.save(pendingOrder);
+            }
         }
 
         // Create the order
@@ -114,8 +118,9 @@ public class OrderService {
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount);
 
-        // Set status to CONFIRMED since stock is already deducted
-        order.setStatus(OrderStatus.CONFIRMED);
+        // Keep status as PENDING - will be updated to PAID after payment
+        // Stock is deducted but order awaits payment confirmation
+        // order.setStatus(OrderStatus.PENDING); // Already set above, no need to set again
 
         // Save the order
         Order savedOrder = orderRepository.save(order);
@@ -135,24 +140,28 @@ public class OrderService {
             return convertToDTO(order);
         }
 
-        if (order.getStatus() != OrderStatus.PENDING) {
+        // Allow confirmation for both PENDING and PAID orders
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
             throw new InvalidOrderStatusException(
                 messageSource.getMessage("order.status.invalid.confirm", null, locale));
         }
 
-        // Deduct stock quantities (for legacy pending orders)
-        for (OrderItem orderItem : order.getOrderItems()) {
-            Book book = orderItem.getBook();
-            int newStockQuantity = book.getStockQuantity() - orderItem.getQuantity();
+        // Deduct stock quantities only if order is still PENDING (not yet deducted)
+        // For PAID orders, stock was already deducted during order creation
+        if (order.getStatus() == OrderStatus.PENDING) {
+            for (OrderItem orderItem : order.getOrderItems()) {
+                Book book = orderItem.getBook();
+                int newStockQuantity = book.getStockQuantity() - orderItem.getQuantity();
 
-            if (newStockQuantity < 0) {
-                String message = messageSource.getMessage("order.stock.insufficient", 
-                    new Object[]{book.getTitle(), book.getStockQuantity(), orderItem.getQuantity()}, locale);
-                throw new InsufficientStockException(message);
+                if (newStockQuantity < 0) {
+                    String message = messageSource.getMessage("order.stock.insufficient", 
+                        new Object[]{book.getTitle(), book.getStockQuantity(), orderItem.getQuantity()}, locale);
+                    throw new InsufficientStockException(message);
+                }
+
+                book.setStockQuantity(newStockQuantity);
+                bookRepository.save(book);
             }
-
-            book.setStockQuantity(newStockQuantity);
-            bookRepository.save(book);
         }
 
         // Update order status
@@ -177,8 +186,11 @@ public class OrderService {
             throw new InvalidOrderStatusException(message);
         }
 
-        // If canceling a confirmed order, restore stock
-        if (newStatus == OrderStatus.CANCELLED && currentStatus == OrderStatus.CONFIRMED) {
+        // If canceling an order where stock was deducted, restore it
+        // Stock is deducted during order creation for PENDING orders
+        if (newStatus == OrderStatus.CANCELLED && 
+            (currentStatus == OrderStatus.PENDING || currentStatus == OrderStatus.PAID || 
+             currentStatus == OrderStatus.CONFIRMED)) {
             restoreStock(order);
         }
 
@@ -216,8 +228,9 @@ public class OrderService {
 
     private boolean isValidStatusTransition(OrderStatus current, OrderStatus target) {
         return switch (current) {
-            case PENDING -> target == OrderStatus.CONFIRMED || target == OrderStatus.CANCELLED;
-            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.CANCELLED || target == OrderStatus.DELIVERED;
+            case PENDING -> target == OrderStatus.PAID || target == OrderStatus.CONFIRMED || target == OrderStatus.CANCELLED;
+            case PAID -> target == OrderStatus.DELIVERED || target == OrderStatus.CANCELLED;
+            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.CANCELLED;
             case PROCESSING -> target == OrderStatus.SHIPPED || target == OrderStatus.CANCELLED;
             case SHIPPED -> target == OrderStatus.DELIVERED;
             case DELIVERED -> target == OrderStatus.REFUNDED;

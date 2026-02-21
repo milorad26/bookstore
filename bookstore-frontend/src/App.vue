@@ -10,8 +10,8 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
-            <!-- Cart Icon (visible to everyone) -->
-            <li class="nav-item">
+            <!-- Cart Icon (only visible when authenticated) -->
+            <li class="nav-item" v-if="authStore.isAuthenticated">
               <router-link to="/cart" class="nav-link position-relative">
                 <i class="bi bi-cart3" style="font-size: 1.2rem;"></i>
                 <span 
@@ -67,6 +67,7 @@ const { t } = useI18n()
 
 const logout = () => {
   authStore.logout()
+  cartStore.clearCart()
   router.push('/auth/login')
 }
 </script>

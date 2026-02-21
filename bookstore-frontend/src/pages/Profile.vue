@@ -246,17 +246,6 @@
                   </button>
                 </div>
 
-                <!-- Confirm Orders (ADMIN & SUPER_USER) -->
-                <div v-if="canConfirmOrders" class="action-card">
-                  <div class="action-icon bg-primary">
-                    <i class="bi bi-check-circle-fill"></i>
-                  </div>
-                  <h6>{{ t('profile.confirmOrders') }}</h6>
-                  <p class="text-muted small">{{ t('profile.confirmOrdersDesc') }}</p>
-                  <button @click="confirmOrders" class="btn btn-primary btn-sm w-100">
-                    <i class="bi bi-check2-all"></i> {{ t('profile.reviewOrders') }}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -333,10 +322,6 @@ const canManageBooks = computed(() =>
 )
 
 const canManageOrders = computed(() => 
-  profile.value.userType === 'ADMIN' || profile.value.userType === 'SUPER_USER'
-)
-
-const canConfirmOrders = computed(() => 
   profile.value.userType === 'ADMIN' || profile.value.userType === 'SUPER_USER'
 )
 
@@ -522,12 +507,6 @@ const viewMyOrders = () => {
 
 const browseBooks = () => {
   router.push('/')
-}
-
-const confirmOrders = () => {
-  showAlert('info', t('profile.orderConfirmationSoon'))
-  // TODO: Navigate to order confirmation page
-  // router.push('/orders/confirm')
 }
 
 onMounted(async () => {

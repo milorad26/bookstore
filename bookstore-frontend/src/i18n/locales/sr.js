@@ -63,10 +63,12 @@ export default {
     },
     payment: {
       note: 'Napomena:',
-      demoMessage: 'Ovo je demo sistem. Naplata se neće stvarno izvršiti.'
+      demoMessage: 'Ovo je demo sistem. Naplata se neće stvarno izvršiti.',
+      stripeMessage: 'Plaćanje će biti bezbedno obrađeno preko Stripe-a.'
     },
     backToCart: 'Nazad na Korpu',
     placeOrder: 'Naruči',
+    proceedToPayment: 'Nastavi na Plaćanje',
     processing: 'Obrada...',
     loginRequired: 'Morate biti prijavljeni da biste naručili',
     cartEmpty: 'Vaša korpa je prazna',
@@ -90,6 +92,12 @@ export default {
     backToProfile: 'Nazad na Profil',
     loadingOrders: 'Učitavanje porudžbina...',
     noOrdersFound: 'Nema pronađenih porudžbina',
+    foundOrder: 'Pronađena porudžbina',    notFound: 'Poruđbina nije pronađena',    search: {
+      placeholder: 'Pretraži po ID-u porudžbine...',
+      button: 'Pretraži',
+      reset: 'Resetuj',
+      showing: 'Prikaz rezultata za porudžbinu'
+    },
     table: {
       orderId: 'ID Porudžbine',
       date: 'Datum Porudžbine',
@@ -102,7 +110,8 @@ export default {
       viewDetails: 'Prikaži Detalje',
       confirmOrder: 'Potvrdi Porudžbinu',
       cancelOrder: 'Otkaži Porudžbinu',
-      confirmDelivery: 'Potvrdi Dostavu'
+      confirmDelivery: 'Potvrdi Dostavu',
+      markAsDelivered: 'Označi kao Dostavljeno'
     },
     details: {
       title: 'Detalji Porudžbine',
@@ -134,7 +143,9 @@ export default {
       cancelSuccess: 'Porudžbina uspešno otkazana!',
       cancelFailed: 'Otkazivanje porudžbine nije uspelo',
       deliverSuccess: 'Porudžbina uspešno označena kao dostavljena!',
-      deliverFailed: 'Označavanje porudžbine kao dostavljene nije uspelo'
+      deliverFailed: 'Označavanje porudžbine kao dostavljene nije uspelo',
+      paymentSuccess: 'Plaćanje uspešno! Vaša porudžbina je plaćena.',
+      paymentProcessing: 'Plaćanje primljeno, obrada statusa porudžbine...'
     }
   },
   books: {
@@ -206,6 +217,13 @@ export default {
     loadingUsers: 'Učitavanje korisnika...',
     noUsersFound: 'Nema pronađenih korisnika',
     notProvided: 'Nije navedeno',
+    search: {
+      placeholder: 'Pretraži po korisničkom imenu...',
+      button: 'Pretraži',
+      reset: 'Resetuj',
+      clear: 'Obriši pretragu',
+      showing: 'Prikaz rezultata za'
+    },
     table: {
       id: 'ID',
       username: 'Korisničko Ime',
@@ -357,8 +375,7 @@ export default {
     viewAllOrders: 'Pogledaj Sve Porudžbine',
     viewAllUsers: 'Pogledaj Sve Korisnike'
   },
-  messages: {
-    loginRequired: 'Molimo prijavite se da biste dodali stavke u korpu',
+  messages: {    fixErrors: 'Molimo ispravite greške iznad',    loginRequired: 'Molimo prijavite se da biste dodali stavke u korpu',
     addedToCart: 'dodato u korpu!',
     removedFromCart: 'uklonjeno iz korpe',
     searchFailed: 'Pretraga nije uspela',
@@ -374,6 +391,7 @@ export default {
     loginFailed: 'Prijava nije uspela',
     registerSuccess: 'Uspešna registracija',
     registerFailed: 'Registracija nije uspela',
+    pleaseLogin: 'Molimo prijavite se sa vašim podacima.',
     orderSuccess: 'Porudžbina uspešno kreirana',
     orderFailed: 'Porudžbina nije uspela',
     confirmAction: 'Da li ste sigurni?'

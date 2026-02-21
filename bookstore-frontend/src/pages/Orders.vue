@@ -240,17 +240,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, onActivated, watch, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { orderService } from '../services/orderService'
+import { paymentService } from '../services/paymentService'
 import { useAuthStore } from '../stores/authStore'
+import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const orders = ref([])
 const loading = ref(false)
@@ -364,11 +368,11 @@ const deleteOrder = async () => {
 
 const canConfirm = (order) => {
   return isAdmin.value && 
-         order.status === 'PENDING'
+         (order.status === 'PENDING' || order.status === 'PAID')
 }
 
 const canCancel = (order) => {
-  return order.status === 'PENDING' || order.status === 'CONFIRMED'
+  return order.status === 'PENDING' || order.status === 'PAID' || order.status === 'CONFIRMED'
 }
 
 const canConfirmDelivery = (order) => {
@@ -408,7 +412,7 @@ const formatDate = (date) => {
 
 const formatStatus = (status) => {
   if (!status) return ''
-  return status.charAt(0) + status.slice(1).toLowerCase()
+  return status
 }
 
 const getStatusBadgeClass = (status) => {
@@ -416,6 +420,8 @@ const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'PENDING':
       return baseClass + 'bg-warning text-dark'
+    case 'PAID':
+      return baseClass + 'bg-success'
     case 'CONFIRMED':
       return baseClass + 'bg-info'
     case 'PROCESSING':
@@ -437,8 +443,60 @@ const goBack = () => {
   router.push('/profile')
 }
 
-onMounted(() => {
+const handlePaymentSuccess = async () => {
+  const sessionId = route.query.session_id
+  const orderId = route.query.order_id
+
+  if (sessionId && orderId) {
+    try {
+      const response = await paymentService.handlePaymentSuccess(sessionId, orderId)
+      
+      if (response.status === 'success') {
+        // Clear cart after successful payment
+        cartStore.clearCart()
+        
+        showAlert('success', t('orders.messages.paymentSuccess') || `Payment successful! Order #${orderId} has been marked as PAID.`)
+        
+        // Clean up URL by removing query parameters
+        router.replace({ path: '/orders' })
+        
+        // Reload orders to show updated status
+        await loadOrders()
+      } else {
+        throw new Error(response.message || 'Payment status update failed')
+      }
+      
+    } catch (error) {
+      // Still clear cart even if status update fails, because order was created
+      cartStore.clearCart()
+      
+      const errorMsg = error.response?.data?.message || error.message || 'Unknown error'
+      showAlert('danger', `Payment processing failed: ${errorMsg}. Please contact support.`)
+      
+      router.replace({ path: '/orders' })
+      await loadOrders()
+    }
+  }
+}
+
+// Watch route changes to reload orders when navigating to this page
+watch(() => route.path, (newPath) => {
+  if (newPath === '/orders') {
+    loadOrders()
+  }
+})
+
+// Reload orders when component is reactivated (from keep-alive cache)
+onActivated(() => {
   loadOrders()
+})
+
+onMounted(async () => {
+  // First check for payment success
+  await handlePaymentSuccess()
+  
+  // Then load orders
+  await loadOrders()
 })
 </script>
 

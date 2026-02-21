@@ -98,6 +98,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 
+                // Payment endpoints
+                .requestMatchers(HttpMethod.GET, "/api/payments/config").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/payments/success").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/payments/create-checkout-session/**").authenticated()
+                
                 // Books endpoints - Role-based access control
                 // Public GET endpoints - no authentication required for browsing
                 .requestMatchers(HttpMethod.GET, "/api/books/isbn/**").permitAll()

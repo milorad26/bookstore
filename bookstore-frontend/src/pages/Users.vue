@@ -22,6 +22,42 @@
             </div>
           </div>
 
+          <!-- Search Bar -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-8">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input 
+                      v-model="searchUsername" 
+                      type="text" 
+                      class="form-control" 
+                      :placeholder="t('users.search.placeholder')"
+                      @keyup.enter="searchUser"
+                    />
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <button @click="searchUser" class="btn btn-primary w-100" :disabled="searching || !searchUsername.trim()">
+                    <span v-if="searching" class="spinner-border spinner-border-sm me-2"></span>
+                    <i v-else class="bi bi-search"></i>
+                    {{ t('users.search.button') }}
+                  </button>
+                </div>
+                <div class="col-md-2">
+                  <button @click="clearSearch" class="btn btn-outline-secondary w-100" :disabled="searching">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    {{ t('users.search.reset') }}
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2" v-if="isSearchActive">
+                <span class="text-muted"><i class="bi bi-info-circle"></i> {{ t('users.search.showing') }}: "{{ lastSearchTerm }}"</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Users Table -->
           <div class="card shadow-sm">
             <div class="card-body">
@@ -336,6 +372,7 @@ const users = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
+const searching = ref(false)
 const showModal = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
@@ -343,6 +380,9 @@ const isEditMode = ref(false)
 const selectedUser = ref(null)
 const userToDelete = ref(null)
 const currentUserRole = ref(authStore.user?.userType || 'USER')
+const searchUsername = ref('')
+const isSearchActive = ref(false)
+const lastSearchTerm = ref('')
 
 const userForm = reactive({
   id: null,
@@ -377,11 +417,38 @@ const loadUsers = async () => {
   try {
     const data = await userService.getAllUsers()
     users.value = data
+    isSearchActive.value = false
+    lastSearchTerm.value = ''
   } catch (error) {
     showAlert('danger', error.message || 'Failed to load users')
   } finally {
     loading.value = false
   }
+}
+
+const searchUser = async () => {
+  if (!searchUsername.value.trim()) return
+  
+  searching.value = true
+  try {
+    const data = await userService.getUserByUsername(searchUsername.value.trim())
+    users.value = [data]
+    isSearchActive.value = true
+    lastSearchTerm.value = searchUsername.value.trim()
+    showAlert('success', `Found user: ${data.username}`)
+  } catch (error) {
+    showAlert('danger', error.message || 'User not found')
+    users.value = []
+  } finally {
+    searching.value = false
+  }
+}
+
+const clearSearch = async () => {
+  searchUsername.value = ''
+  isSearchActive.value = false
+  lastSearchTerm.value = ''
+  await loadUsers()
 }
 
 const showCreateModal = () => {

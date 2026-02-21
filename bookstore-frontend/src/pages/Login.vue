@@ -115,7 +115,7 @@ const handleLogin = async () => {
   errors.value = { username: '', password: '' }
 
   if (!validate()) {
-    showError('Please fix the errors above')
+    showError(t('messages.fixErrors'))
     return
   }
 

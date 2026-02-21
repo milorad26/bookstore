@@ -107,7 +107,8 @@
           <!-- Payment Notice -->
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
-            <strong>{{ t('checkout.payment.note') }}</strong> {{ t('checkout.payment.demoMessage') }}
+            <strong>{{ t('checkout.payment.note') }}</strong> 
+            {{ t('checkout.payment.stripeMessage') || 'Payment will be processed securely through Stripe.' }}
           </div>
 
           <div class="d-flex justify-content-between">
@@ -120,8 +121,8 @@
               :disabled="isSubmitting"
             >
               <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-              <i v-else class="bi bi-check-circle"></i>
-              {{ isSubmitting ? t('checkout.processing') : t('checkout.placeOrder') }}
+              <i v-else class="bi bi-credit-card"></i>
+              {{ isSubmitting ? t('checkout.processing') : t('checkout.proceedToPayment') || 'Proceed to Payment' }}
             </button>
           </div>
         </form>
@@ -173,6 +174,7 @@ import { useI18n } from 'vue-i18n'
 import { useCartStore } from '../stores/cartStore'
 import { useAuthStore } from '../stores/authStore'
 import { orderService } from '../services/orderService'
+import { paymentService } from '../services/paymentService'
 import Alert from '../components/Alert.vue'
 
 const router = useRouter()
@@ -209,7 +211,7 @@ const submitOrder = async () => {
   showAlert.value = false
 
   try {
-    // Prepare order data according to OrderDTO structure
+    // Step 1: Create order in backend
     const orderData = {
       userId: authStore.user.id,
       orderItems: cartStore.getOrderItems(),
@@ -218,27 +220,19 @@ const submitOrder = async () => {
         ? shippingAddress.value.trim() 
         : billingAddress.value.trim(),
       orderNotes: orderNotes.value.trim() || null
-      // Don't send: totalAmount, orderDate, status - backend sets these
     }
 
-    // Call backend API
     const createdOrder = await orderService.createOrder(orderData)
 
-    // Clear cart after successful order
-    cartStore.clearCart()
-
-    // Show success message
-    showSuccess(t('checkout.orderSuccess', { id: createdOrder.id }))
-
-    // Redirect to orders page after 2 seconds
-    setTimeout(() => {
-      router.push('/orders')
-    }, 2000)
+    // Step 2: Create Stripe checkout session
+    const paymentData = await paymentService.createCheckoutSession(createdOrder.id)
+    
+    // Step 3: Redirect to Stripe Checkout
+    // Note: Cart will be cleared after successful payment in Orders.vue
+    window.location.href = paymentData.sessionUrl
 
   } catch (error) {
-    console.error('Order creation failed:', error)
     showError(error.message || t('checkout.orderFailed'))
-  } finally {
     isSubmitting.value = false
   }
 }

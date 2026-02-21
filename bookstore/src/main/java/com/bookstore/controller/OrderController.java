@@ -211,15 +211,8 @@ public class OrderController {
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
             throw new AccessDeniedException("Authentication required");
-        }
-        
-        OrderDTO order = orderService.getOrderById(id);
-        
-        // Only the order owner can mark it as delivered
-        if (!order.getUserId().equals(currentUserId)) {
-            throw new AccessDeniedException(
-                "Permission denied: You can only confirm delivery of your own orders");
-        }
+        }    
+
         
         OrderDTO deliveredOrder = orderService.deliverOrder(id);
         return ResponseEntity.ok(deliveredOrder);

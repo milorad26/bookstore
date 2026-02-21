@@ -63,10 +63,12 @@ export default {
     },
     payment: {
       note: 'Note:',
-      demoMessage: 'This is a demo system. No actual payment will be processed.'
+      demoMessage: 'This is a demo system. No actual payment will be processed.',
+      stripeMessage: 'Payment will be processed securely through Stripe.'
     },
     backToCart: 'Back to Cart',
     placeOrder: 'Place Order',
+    proceedToPayment: 'Proceed to Payment',
     processing: 'Processing...',
     loginRequired: 'You must be logged in to place an order',
     cartEmpty: 'Your cart is empty',
@@ -90,6 +92,14 @@ export default {
     backToProfile: 'Back to Profile',
     loadingOrders: 'Loading orders...',
     noOrdersFound: 'No orders found',
+    foundOrder: 'Found order',
+    notFound: 'Order not found',
+    search: {
+      placeholder: 'Search by order ID...',
+      button: 'Search',
+      reset: 'Reset',
+      showing: 'Showing results for order'
+    },
     table: {
       orderId: 'Order ID',
       date: 'Order Date',
@@ -102,7 +112,8 @@ export default {
       viewDetails: 'View Details',
       confirmOrder: 'Confirm Order',
       cancelOrder: 'Cancel Order',
-      confirmDelivery: 'Confirm Delivery'
+      confirmDelivery: 'Confirm Delivery',
+      markAsDelivered: 'Mark as Delivered'
     },
     details: {
       title: 'Order Details',
@@ -134,7 +145,9 @@ export default {
       cancelSuccess: 'Order cancelled successfully!',
       cancelFailed: 'Failed to cancel order',
       deliverSuccess: 'Order marked as delivered successfully!',
-      deliverFailed: 'Failed to mark order as delivered'
+      deliverFailed: 'Failed to mark order as delivered',
+      paymentSuccess: 'Payment successful! Your order has been paid.',
+      paymentProcessing: 'Payment received, processing order status...'
     }
   },
   books: {
@@ -206,6 +219,13 @@ export default {
     loadingUsers: 'Loading users...',
     noUsersFound: 'No users found',
     notProvided: 'Not provided',
+    search: {
+      placeholder: 'Search by username...',
+      button: 'Search',
+      reset: 'Reset',
+      clear: 'Clear Search',
+      showing: 'Showing results for'
+    },
     table: {
       id: 'ID',
       username: 'Username',
@@ -358,6 +378,7 @@ export default {
     viewAllUsers: 'View All Users'
   },
   messages: {
+    fixErrors: 'Please fix the errors above',
     loginRequired: 'Please log in to add items to your cart',
     addedToCart: 'added to cart!',
     removedFromCart: 'removed from cart',
@@ -374,6 +395,7 @@ export default {
     loginFailed: 'Login failed',
     registerSuccess: 'Registration successful',
     registerFailed: 'Registration failed',
+    pleaseLogin: 'Please log in with your credentials.',
     orderSuccess: 'Order placed successfully',
     orderFailed: 'Order failed',
     confirmAction: 'Are you sure?'

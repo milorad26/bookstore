@@ -21,6 +21,42 @@
             </div>
           </div>
 
+          <!-- Search Bar -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-8">
+                  <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input 
+                      v-model="searchOrderId" 
+                      type="number" 
+                      class="form-control" 
+                      :placeholder="t('orders.search.placeholder')"
+                      @keyup.enter="searchOrder"
+                    />
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <button @click="searchOrder" class="btn btn-primary w-100" :disabled="searching || !searchOrderId">
+                    <span v-if="searching" class="spinner-border spinner-border-sm me-2"></span>
+                    <i v-else class="bi bi-search"></i>
+                    {{ t('orders.search.button') }}
+                  </button>
+                </div>
+                <div class="col-md-2">
+                  <button @click="clearSearch" class="btn btn-outline-secondary w-100" :disabled="searching">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    {{ t('orders.search.reset') }}
+                  </button>
+                </div>
+              </div>
+              <div class="mt-2" v-if="isSearchActive">
+                <span class="text-muted"><i class="bi bi-info-circle"></i> {{ t('orders.search.showing') }}: #{{ lastSearchTerm }}</span>
+              </div>
+            </div>
+          </div>
+
           <!-- Orders Table -->
           <div class="card shadow-sm">
             <div class="card-body">
@@ -82,6 +118,14 @@
                           :title="t('orders.actions.confirmOrder')"
                         >
                           <i class="bi bi-check-circle"></i>
+                        </button>
+                        <button 
+                          v-if="canDeliver(order)"
+                          @click="deliverOrderAction(order)" 
+                          class="btn btn-sm btn-primary me-1"
+                          :title="t('orders.actions.markAsDelivered')"
+                        >
+                          <i class="bi bi-truck"></i>
                         </button>
                         <button 
                           v-if="canCancel(order)"
@@ -217,10 +261,14 @@ const { t } = useI18n()
 const orders = ref([])
 const loading = ref(false)
 const deleting = ref(false)
+const searching = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
 const selectedOrder = ref(null)
 const orderToDelete = ref(null)
+const searchOrderId = ref('')
+const isSearchActive = ref(false)
+const lastSearchTerm = ref('')
 
 // Check if user is admin or super user
 const isAdmin = computed(() => {
@@ -249,11 +297,38 @@ const loadOrders = async () => {
     // Always load ALL orders for admin view
     const data = await orderService.getAllOrders()
     orders.value = data
+    isSearchActive.value = false
+    lastSearchTerm.value = ''
   } catch (error) {
     showAlert('danger', error.message || 'Failed to load orders')
   } finally {
     loading.value = false
   }
+}
+
+const searchOrder = async () => {
+  if (!searchOrderId.value) return
+  
+  searching.value = true
+  try {
+    const data = await orderService.getOrderById(searchOrderId.value)
+    orders.value = [data]
+    isSearchActive.value = true
+    lastSearchTerm.value = searchOrderId.value
+    showAlert('success', `${t('orders.foundOrder')} #${data.id}`)
+  } catch (error) {
+    showAlert('danger', error.message || t('orders.notFound'))
+    orders.value = []
+  } finally {
+    searching.value = false
+  }
+}
+
+const clearSearch = async () => {
+  searchOrderId.value = ''
+  isSearchActive.value = false
+  lastSearchTerm.value = ''
+  await loadOrders()
 }
 
 const viewOrder = (order) => {
@@ -285,6 +360,18 @@ const cancelOrderAction = async (order) => {
   }
 }
 
+const deliverOrderAction = async (order) => {
+  if (!confirm(`Mark order #${order.id} as delivered?`)) return
+  
+  try {
+    await orderService.deliverOrder(order.id)
+    showAlert('success', `Order #${order.id} marked as delivered successfully`)
+    await loadOrders()
+  } catch (error) {
+    showAlert('danger', error.message || 'Failed to mark order as delivered')
+  }
+}
+
 const confirmDelete = (order) => {
   orderToDelete.value = order
   showDeleteModal.value = true
@@ -309,6 +396,11 @@ const deleteOrder = async () => {
 const canConfirm = (order) => {
   return isAdmin.value && 
          order.status === 'PENDING'
+}
+
+const canDeliver = (order) => {
+  return isAdmin.value && 
+         order.status === 'PAID'
 }
 
 const canCancel = (order) => {
@@ -345,8 +437,8 @@ const formatPrice = (price) => {
 }
 
 const formatStatus = (status) => {
-  if (!status) return 'UNKNOWN'
-  return status.replace(/_/g, ' ')
+  if (!status) return ''
+  return status
 }
 
 const truncateAddress = (address) => {

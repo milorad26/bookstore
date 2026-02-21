@@ -58,7 +58,6 @@ export const useAuthStore = defineStore('auth', () => {
     // Only set timer if token hasn't expired yet
     if (timeUntilExpiration > 0) {
       expirationTimer = setTimeout(() => {
-        console.log('Token expired, logging out...')
         logout()
         // Redirect to login page
         window.location.href = '/auth/login'

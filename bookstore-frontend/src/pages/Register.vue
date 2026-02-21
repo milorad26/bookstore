@@ -197,26 +197,18 @@ const handleRegister = async () => {
   }
 
   if (!validate()) {
-    showError('Please fix the errors above')
+    showError(t('messages.fixErrors'))
     return
   }
 
   isLoading.value = true
 
   try {
-    const response = await authService.register(form.value)
+    await authService.register(form.value)
 
-    // Set token first so subsequent API calls are authenticated
-    authStore.setAuth(response.token, null)
-    
-    // Fetch user data after successful registration
-    const userData = await userService.getCurrentUser()
-    
-    // Update store with user data
-    authStore.setAuth(response.token, userData)
-
-    showSuccess(t('messages.registerSuccess'))
-    setTimeout(() => router.push('/'), 1000)
+    // Do NOT auto-login - redirect to login page
+    showSuccess(t('messages.registerSuccess') + ' ' + t('messages.pleaseLogin'))
+    setTimeout(() => router.push('/auth/login'), 1500)
   } catch (error) {
     showError(error.message || t('messages.registerFailed'))
     

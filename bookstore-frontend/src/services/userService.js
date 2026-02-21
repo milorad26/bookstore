@@ -71,6 +71,15 @@ export const userService = {
     } catch (error) {
       throw parseError(error)
     }
+  },
+
+  getUserByUsername: async (username) => {
+    try {
+      const response = await apiClient.get(`/users/username/${username}`)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
   }
 }
 
