@@ -47,6 +47,9 @@ public class Order {
     @Column(name = "order_notes", length = 1000)
     private String orderNotes;
 
+    @Column(name = "payment_intent_id", length = 255)
+    private String paymentIntentId;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

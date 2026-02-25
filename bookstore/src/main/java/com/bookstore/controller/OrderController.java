@@ -218,6 +218,34 @@ public class OrderController {
         return ResponseEntity.ok(deliveredOrder);
     }
 
+    @Operation(summary = "Refund an order", description = "Refund a delivered order and restore stock")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Order refunded successfully"),
+        @ApiResponse(responseCode = "404", description = "Order not found"),
+        @ApiResponse(responseCode = "400", description = "Order cannot be refunded"),
+        @ApiResponse(responseCode = "403", description = "Access denied")
+    })
+    @PutMapping("/refund/{id}")
+    public ResponseEntity<OrderDTO> refundOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
+        if (currentUserId == null) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        
+        User currentUser = userService.findById(currentUserId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Current user not found with ID: " + currentUserId));
+        
+        // Only admins and super users can refund orders
+        if (currentUser.getUserType() == UserType.USER) {
+            throw new AccessDeniedException(
+                "Permission denied: Only SUPER_USER and ADMIN can refund orders");
+        }
+        
+        OrderDTO refundedOrder = orderService.refundOrder(id);
+        return ResponseEntity.ok(refundedOrder);
+    }
+
     @Operation(summary = "Delete an order", description = "Delete a cancelled or pending order")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Order deleted successfully"),

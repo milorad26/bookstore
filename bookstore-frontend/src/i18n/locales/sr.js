@@ -111,7 +111,8 @@ export default {
       confirmOrder: 'Potvrdi Porudžbinu',
       cancelOrder: 'Otkaži Porudžbinu',
       confirmDelivery: 'Potvrdi Dostavu',
-      markAsDelivered: 'Označi kao Dostavljeno'
+      markAsDelivered: 'Označi kao Dostavljeno',
+      refundOrder: 'Refundiraj Porudžbinu'
     },
     details: {
       title: 'Detalji Porudžbine',
@@ -135,7 +136,8 @@ export default {
     confirmations: {
       confirmOrder: 'Da li ste sigurni da želite da potvrdite porudžbinu #{id}?',
       cancelOrder: 'Da li ste sigurni da želite da otkažete porudžbinu #{id}?',
-      deliverOrder: 'Potvrdite da je porudžbina #{id} dostavljena?'
+      deliverOrder: 'Potvrdite da je porudžbina #{id} dostavljena?',
+      refundOrder: 'Da li ste sigurni da želite da refundirate porudžbinu #{id}? Zalihe će biti vraćene.'
     },
     messages: {
       confirmSuccess: 'Porudžbina uspešno potvrđena!',
@@ -144,6 +146,8 @@ export default {
       cancelFailed: 'Otkazivanje porudžbine nije uspelo',
       deliverSuccess: 'Porudžbina uspešno označena kao dostavljena!',
       deliverFailed: 'Označavanje porudžbine kao dostavljene nije uspelo',
+      refundSuccess: 'Porudžbina uspešno refundirana!',
+      refundFailed: 'Refundiranje porudžbine nije uspelo',
       paymentSuccess: 'Plaćanje uspešno! Vaša porudžbina je plaćena.',
       paymentProcessing: 'Plaćanje primljeno, obrada statusa porudžbine...'
     }

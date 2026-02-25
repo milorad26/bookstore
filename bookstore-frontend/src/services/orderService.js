@@ -81,6 +81,16 @@ export const orderService = {
     }
   },
 
+  // Refund an order (admin/super_user only)
+  refundOrder: async (id) => {
+    try {
+      const response = await apiClient.put(`/orders/refund/${id}`)
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   // Delete an order (admin only)
   deleteOrder: async (id) => {
     try {

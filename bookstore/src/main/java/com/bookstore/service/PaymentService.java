@@ -6,6 +6,7 @@ import com.bookstore.model.OrderItem;
 import com.bookstore.repository.OrderRepository;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
@@ -121,21 +122,21 @@ public class PaymentService {
         if ("complete".equals(session.getStatus()) || "paid".equals(session.getPaymentStatus())) {
             log.info("✓ Payment successful! Updating order status to PAID...");
             
-            // Use direct update query to avoid constraint violations
-            int updatedRows = orderRepository.updateOrderStatus(
-                orderId, 
-                com.bookstore.model.OrderStatus.PAID,
-                java.time.LocalDateTime.now()
-            );
+            // Get payment intent ID from session
+            String paymentIntentId = session.getPaymentIntent();
+            log.info("Payment Intent ID: {}", paymentIntentId);
             
-            if (updatedRows > 0) {
-                log.info("✓ SUCCESS! Order ID: {} status updated to PAID", orderId);
-                log.info("========================================");
-            } else {
-                log.error("✗ FAILED! No rows updated for Order ID: {}", orderId);
-                log.info("========================================");
-                throw new RuntimeException("Failed to update order status - order not found or already updated");
-            }
+            // Update order with payment intent ID and status
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+            
+            order.setPaymentIntentId(paymentIntentId);
+            order.setStatus(com.bookstore.model.OrderStatus.PAID);
+            order.setUpdatedAt(java.time.LocalDateTime.now());
+            orderRepository.save(order);
+            
+            log.info("✓ SUCCESS! Order ID: {} status updated to PAID with Payment Intent: {}", orderId, paymentIntentId);
+            log.info("========================================");
             
         } else {
             // Payment not complete
@@ -149,5 +150,42 @@ public class PaymentService {
 
     public String getPublishableKey() {
         return stripePublishableKey;
+    }
+
+    /**
+     * Refund a payment through Stripe
+     * @param paymentIntentId The Stripe payment intent ID to refund
+     * @return The refund object from Stripe
+     * @throws StripeException if the refund fails
+     */
+    @Transactional
+    public Refund refundPayment(String paymentIntentId) throws StripeException {
+        if (paymentIntentId == null || paymentIntentId.isEmpty()) {
+            throw new IllegalArgumentException("Payment Intent ID is required for refund");
+        }
+        
+        log.info("========================================");
+        log.info("REFUND PROCESS START");
+        log.info("Refunding Payment Intent: {}", paymentIntentId);
+        
+        try {
+            // Create refund for the payment intent
+            java.util.Map<String, Object> refundParams = new java.util.HashMap<>();
+            refundParams.put("payment_intent", paymentIntentId);
+            
+            Refund refund = Refund.create(refundParams);
+            
+            log.info("✓ SUCCESS! Refund created");
+            log.info("Refund ID: {}", refund.getId());
+            log.info("Refund Status: {}", refund.getStatus());
+            log.info("Refund Amount: {} {}", refund.getAmount(), refund.getCurrency().toUpperCase());
+            log.info("========================================");
+            
+            return refund;
+        } catch (StripeException e) {
+            log.error("✗ FAILED! Error processing refund: {}", e.getMessage(), e);
+            log.info("========================================");
+            throw e;
+        }
     }
 }

@@ -6,6 +6,7 @@ import com.bookstore.exception.InvalidOrderStatusException;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.*;
 import com.bookstore.repository.*;
+import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -25,6 +26,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final BookRepository bookRepository;
     private final MessageSource messageSource;
+    private final PaymentService paymentService;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -211,6 +213,40 @@ public class OrderService {
     }
 
     @Transactional
+    public OrderDTO refundOrder(Long orderId) {
+        Locale locale = LocaleContextHolder.getLocale();
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                    messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
+
+        // Only delivered orders can be refunded
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new InvalidOrderStatusException(
+                messageSource.getMessage("order.status.invalid.refund", null, locale));
+        }
+
+        // Check if order has payment intent ID
+        if (order.getPaymentIntentId() == null || order.getPaymentIntentId().isEmpty()) {
+            throw new IllegalStateException(
+                messageSource.getMessage("order.refund.nopayment", null, locale));
+        }
+
+        // Process refund through Stripe
+        try {
+            paymentService.refundPayment(order.getPaymentIntentId());
+        } catch (StripeException e) {
+            throw new RuntimeException(
+                messageSource.getMessage("order.refund.failed", new Object[]{e.getMessage()}, locale), e);
+        }
+
+        // Restore stock when refunding
+        restoreStock(order);
+
+        // Update status to REFUNDED
+        return updateOrderStatus(orderId, OrderStatus.REFUNDED);
+    }
+
+    @Transactional
     public void deleteOrder(Long id) {
         Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(id)
@@ -230,7 +266,7 @@ public class OrderService {
         return switch (current) {
             case PENDING -> target == OrderStatus.PAID || target == OrderStatus.CONFIRMED || target == OrderStatus.CANCELLED;
             case PAID -> target == OrderStatus.DELIVERED || target == OrderStatus.CANCELLED;
-            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.CANCELLED;
+            case CONFIRMED -> target == OrderStatus.PROCESSING || target == OrderStatus.DELIVERED || target == OrderStatus.CANCELLED;
             case PROCESSING -> target == OrderStatus.SHIPPED || target == OrderStatus.CANCELLED;
             case SHIPPED -> target == OrderStatus.DELIVERED;
             case DELIVERED -> target == OrderStatus.REFUNDED;

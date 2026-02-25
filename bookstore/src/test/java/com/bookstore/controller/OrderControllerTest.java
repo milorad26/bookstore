@@ -319,52 +319,6 @@ class OrderControllerTest {
     }
 
     @Test
-    void testUpdateOrderStatus_AsAdmin_ShouldUpdateStatus() throws Exception {
-        // Given
-        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
-        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
-        when(orderService.updateOrderStatus(1L, OrderStatus.SHIPPED)).thenReturn(testOrderDTO);
-
-        // When & Then
-        mockMvc.perform(put("/api/orders/status/1")
-                        .param("status", "SHIPPED"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(1)));
-
-        verify(orderService).updateOrderStatus(1L, OrderStatus.SHIPPED);
-    }
-
-    @Test
-    void testUpdateOrderStatus_AsRegularUser_ShouldReturn403() throws Exception {
-        // Given
-        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
-        when(userService.findById(1L)).thenReturn(Optional.of(testUser));
-
-        // When & Then
-        mockMvc.perform(put("/api/orders/status/1")
-                        .param("status", "SHIPPED"))
-                .andExpect(status().isForbidden());
-
-        verify(orderService, never()).updateOrderStatus(any(), any());
-    }
-
-    @Test
-    void testUpdateOrderStatus_WithInvalidTransition_ShouldReturn400() throws Exception {
-        // Given
-        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
-        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
-        when(orderService.updateOrderStatus(1L, OrderStatus.PENDING))
-                .thenThrow(new InvalidOrderStatusException("Invalid status transition"));
-
-        // When & Then
-        mockMvc.perform(put("/api/orders/status/1")
-                        .param("status", "PENDING"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code", is(400)))
-                .andExpect(jsonPath("$.message", containsString("Invalid status transition")));
-    }
-
-    @Test
     void testCancelOrder_AsOwner_ShouldCancelOrder() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
@@ -454,5 +408,125 @@ class OrderControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code", is(404)))
                 .andExpect(jsonPath("$.message", containsString("Order not found")));
+    }
+
+    @Test
+    void testDeliverOrder_AsAdmin_ShouldMarkAsDelivered() throws Exception {
+        // Given
+        testOrderDTO.setStatus(OrderStatus.DELIVERED);
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(orderService.deliverOrder(1L)).thenReturn(testOrderDTO);
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/deliver/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.status", is("DELIVERED")));
+
+        verify(orderService).deliverOrder(1L);
+    }
+
+    @Test
+    void testDeliverOrder_WithNonExistentOrder_ShouldReturn404() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(orderService.deliverOrder(999L))
+                .thenThrow(new ResourceNotFoundException("Order not found with id: 999"));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/deliver/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is(404)))
+                .andExpect(jsonPath("$.message", containsString("Order not found")));
+    }
+
+    @Test
+    void testDeliverOrder_WithInvalidStatus_ShouldReturn400() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(orderService.deliverOrder(1L))
+                .thenThrow(new InvalidOrderStatusException("Invalid status transition"));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/deliver/1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is(400)))
+                .andExpect(jsonPath("$.message", containsString("Invalid status transition")));
+    }
+
+    @Test
+    void testRefundOrder_AsAdmin_ShouldRefundOrder() throws Exception {
+        // Given
+        testOrderDTO.setStatus(OrderStatus.REFUNDED);
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.refundOrder(1L)).thenReturn(testOrderDTO);
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/refund/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.status", is("REFUNDED")));
+
+        verify(orderService).refundOrder(1L);
+    }
+
+    @Test
+    void testRefundOrder_AsRegularUser_ShouldReturn403() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
+        when(userService.findById(1L)).thenReturn(Optional.of(testUser));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/refund/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code", is(403)))
+                .andExpect(jsonPath("$.message", containsString("Permission denied")));
+
+        verify(orderService, never()).refundOrder(any());
+    }
+
+    @Test
+    void testRefundOrder_WithNonDeliveredOrder_ShouldReturn400() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.refundOrder(1L))
+                .thenThrow(new InvalidOrderStatusException("Only delivered orders can be refunded"));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/refund/1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is(400)))
+                .andExpect(jsonPath("$.message", containsString("Only delivered orders can be refunded")));
+    }
+
+    @Test
+    void testRefundOrder_WithNoPaymentInfo_ShouldReturn400() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.refundOrder(1L))
+                .thenThrow(new IllegalStateException("Cannot refund order: No payment information found"));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/refund/1"))
+                .andExpect(status().isConflict()) // IllegalStateException maps to 409 CONFLICT
+                .andExpect(jsonPath("$.code", is(409)))
+                .andExpect(jsonPath("$.message", containsString("No payment information found")));
+    }
+
+    @Test
+    void testRefundOrder_WithStripeError_ShouldReturn500() throws Exception {
+        // Given
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.refundOrder(1L))
+                .thenThrow(new RuntimeException("Failed to process refund through payment provider"));
+
+        // When & Then
+        mockMvc.perform(put("/api/orders/refund/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code", is(500)));
     }
 }

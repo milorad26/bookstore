@@ -113,7 +113,8 @@ export default {
       confirmOrder: 'Confirm Order',
       cancelOrder: 'Cancel Order',
       confirmDelivery: 'Confirm Delivery',
-      markAsDelivered: 'Mark as Delivered'
+      markAsDelivered: 'Mark as Delivered',
+      refundOrder: 'Refund Order'
     },
     details: {
       title: 'Order Details',
@@ -137,7 +138,8 @@ export default {
     confirmations: {
       confirmOrder: 'Are you sure you want to confirm order #{id}?',
       cancelOrder: 'Are you sure you want to cancel order #{id}?',
-      deliverOrder: 'Confirm that order #{id} has been delivered?'
+      deliverOrder: 'Confirm that order #{id} has been delivered?',
+      refundOrder: 'Are you sure you want to refund order #{id}? Stock will be restored.'
     },
     messages: {
       confirmSuccess: 'Order confirmed successfully!',
@@ -146,6 +148,8 @@ export default {
       cancelFailed: 'Failed to cancel order',
       deliverSuccess: 'Order marked as delivered successfully!',
       deliverFailed: 'Failed to mark order as delivered',
+      refundSuccess: 'Order refunded successfully!',
+      refundFailed: 'Failed to refund order',
       paymentSuccess: 'Payment successful! Your order has been paid.',
       paymentProcessing: 'Payment received, processing order status...'
     }

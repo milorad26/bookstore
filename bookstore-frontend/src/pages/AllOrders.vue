@@ -128,6 +128,14 @@
                           <i class="bi bi-truck"></i>
                         </button>
                         <button 
+                          v-if="canRefund(order)"
+                          @click="refundOrderAction(order)" 
+                          class="btn btn-sm btn-secondary me-1"
+                          :title="t('orders.actions.refundOrder')"
+                        >
+                          <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button 
                           v-if="canCancel(order)"
                           @click="cancelOrderAction(order)" 
                           class="btn btn-sm btn-warning me-1"
@@ -372,6 +380,18 @@ const deliverOrderAction = async (order) => {
   }
 }
 
+const refundOrderAction = async (order) => {
+  if (!confirm(`Refund order #${order.id}? Stock will be restored.`)) return
+  
+  try {
+    await orderService.refundOrder(order.id)
+    showAlert('success', `Order #${order.id} refunded successfully`)
+    await loadOrders()
+  } catch (error) {
+    showAlert('danger', error.message || 'Failed to refund order')
+  }
+}
+
 const confirmDelete = (order) => {
   orderToDelete.value = order
   showDeleteModal.value = true
@@ -400,7 +420,12 @@ const canConfirm = (order) => {
 
 const canDeliver = (order) => {
   return isAdmin.value && 
-         order.status === 'PAID'
+         (order.status === 'PAID' || order.status === 'CONFIRMED')
+}
+
+const canRefund = (order) => {
+  return isAdmin.value && 
+         order.status === 'DELIVERED'
 }
 
 const canCancel = (order) => {
@@ -449,11 +474,13 @@ const truncateAddress = (address) => {
 const getStatusBadgeClass = (status) => {
   const statusClasses = {
     'PENDING': 'badge bg-warning text-dark',
+    'PAID': 'badge bg-info',
     'CONFIRMED': 'badge bg-info',
     'PROCESSING': 'badge bg-primary',
     'SHIPPED': 'badge bg-success',
     'DELIVERED': 'badge bg-success',
-    'CANCELLED': 'badge bg-danger'
+    'CANCELLED': 'badge bg-danger',
+    'REFUNDED': 'badge bg-secondary'
   }
   return statusClasses[status] || 'badge bg-secondary'
 }

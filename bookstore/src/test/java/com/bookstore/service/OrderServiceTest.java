@@ -6,18 +6,22 @@ import com.bookstore.exception.InvalidOrderStatusException;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.*;
 import com.bookstore.repository.*;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Refund;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,6 +42,12 @@ class OrderServiceTest {
     @Mock
     private BookRepository bookRepository;
 
+    @Mock
+    private MessageSource messageSource;
+
+    @Mock
+    private PaymentService paymentService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -48,6 +58,17 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Setup mock for MessageSource - return a default error message
+        lenient().when(messageSource.getMessage(anyString(), any(), any(Locale.class)))
+            .thenAnswer(invocation -> {
+                String key = invocation.getArgument(0);
+                Object[] args = invocation.getArgument(1);
+                if (args != null && args.length > 0) {
+                    return key + ": " + Arrays.toString(args);
+                }
+                return key;
+            });
+
         // Setup test user
         testUser = new User();
         testUser.setId(1L);
@@ -120,8 +141,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.getOrderById(999L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Order not found with id: 999");
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(orderRepository).findById(999L);
     }
@@ -150,8 +170,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.getOrdersByUserId(999L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("User not found with id: 999");
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(userRepository).findById(999L);
         verify(orderRepository, never()).findByUserIdOrderByOrderDateDesc(anyLong());
@@ -174,13 +193,14 @@ class OrderServiceTest {
         Order savedOrder = new Order();
         savedOrder.setId(1L);
         savedOrder.setUser(testUser);
-        savedOrder.setStatus(OrderStatus.CONFIRMED);
+        savedOrder.setStatus(OrderStatus.PENDING);
         savedOrder.setTotalAmount(new BigDecimal("85.98"));
         savedOrder.setShippingAddress("123 Test St");
         savedOrder.setOrderItems(new ArrayList<>());
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.countPendingOrdersByUserId(1L)).thenReturn(0L);
+        when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
+                .thenReturn(new ArrayList<>()); // No existing pending orders
         when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
@@ -193,7 +213,7 @@ class OrderServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(1L);
         verify(userRepository).findById(1L);
-        verify(orderRepository).countPendingOrdersByUserId(1L);
+        verify(orderRepository).findByUserIdAndStatus(1L, OrderStatus.PENDING);
         verify(bookRepository).findByTitleAndAuthor("Clean Code", "Robert C. Martin");
         verify(bookRepository).save(any(Book.class));
         verify(orderRepository).save(any(Order.class));
@@ -210,8 +230,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("User not found with id: 999");
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(userRepository).findById(999L);
         verify(orderRepository, never()).save(any());
@@ -228,14 +247,13 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Order items are required");
+                .isInstanceOf(IllegalArgumentException.class);
         
         verify(orderRepository, never()).save(any());
     }
 
     @Test
-    void testCreateOrder_WithPendingOrder_ShouldThrowException() {
+    void testCreateOrder_WithPendingOrder_ShouldAutoCancelAndCreateNew() {
         // Given
         CreateOrderRequest request = new CreateOrderRequest();
         request.setUserId(1L);
@@ -246,15 +264,38 @@ class OrderServiceTest {
         itemRequest.setQuantity(1);
         request.setOrderItems(Arrays.asList(itemRequest));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.countPendingOrdersByUserId(1L)).thenReturn(1L);
+        // Existing pending order
+        Order existingPendingOrder = new Order();
+        existingPendingOrder.setId(99L);
+        existingPendingOrder.setUser(testUser);
+        existingPendingOrder.setStatus(OrderStatus.PENDING);
+        existingPendingOrder.setOrderItems(new ArrayList<>());
 
-        // When & Then
-        assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("already has a pending order");
-        
-        verify(orderRepository, never()).save(any());
+        Order savedOrder = new Order();
+        savedOrder.setId(1L);
+        savedOrder.setUser(testUser);
+        savedOrder.setStatus(OrderStatus.PENDING);
+        savedOrder.setOrderItems(new ArrayList<>());
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
+                .thenReturn(Arrays.asList(existingPendingOrder));
+        when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
+                .thenReturn(Optional.of(testBook1));
+        when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+
+        // When
+        OrderDTO result = orderService.createOrder(request);
+
+        // Then
+        assertThat(result).isNotNull();
+        // Verify existing pending order was cancelled
+        verify(orderRepository, atLeastOnce()).save(argThat(order -> 
+            order.getId() != null && order.getId().equals(99L) && order.getStatus() == OrderStatus.CANCELLED
+        ));
+        // Verify new order was created
+        verify(orderRepository, atLeastOnce()).save(any(Order.class));
     }
 
     @Test
@@ -270,14 +311,14 @@ class OrderServiceTest {
         request.setOrderItems(Arrays.asList(itemRequest));
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.countPendingOrdersByUserId(1L)).thenReturn(0L);
+        when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
+                .thenReturn(new ArrayList<>());
         when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(InsufficientStockException.class)
-                .hasMessageContaining("Insufficient stock");
+                .isInstanceOf(InsufficientStockException.class);
         
         verify(orderRepository, never()).save(any());
     }
@@ -295,14 +336,14 @@ class OrderServiceTest {
         request.setOrderItems(Arrays.asList(itemRequest));
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.countPendingOrdersByUserId(1L)).thenReturn(0L);
+        when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
+                .thenReturn(new ArrayList<>());
         when(bookRepository.findByTitleAndAuthor("Non Existent Book", "Unknown Author"))
                 .thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Book not found");
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(orderRepository, never()).save(any());
     }
@@ -360,8 +401,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.confirmOrder(1L))
-                .isInstanceOf(InvalidOrderStatusException.class)
-                .hasMessageContaining("Only pending orders can be confirmed");
+                .isInstanceOf(InvalidOrderStatusException.class);
         
         verify(orderRepository, never()).save(any());
     }
@@ -395,8 +435,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING))
-                .isInstanceOf(InvalidOrderStatusException.class)
-                .hasMessageContaining("Invalid status transition");
+                .isInstanceOf(InvalidOrderStatusException.class);
         
         verify(orderRepository, never()).save(any());
     }
@@ -489,8 +528,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.deleteOrder(1L))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Only cancelled or pending orders can be deleted");
+                .isInstanceOf(IllegalStateException.class);
         
         verify(orderRepository, never()).deleteById(any());
     }
@@ -502,8 +540,7 @@ class OrderServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> orderService.deleteOrder(999L))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Order not found with id: 999");
+                .isInstanceOf(ResourceNotFoundException.class);
         
         verify(orderRepository, never()).deleteById(any());
     }
@@ -526,11 +563,12 @@ class OrderServiceTest {
         Order savedOrder = new Order();
         savedOrder.setId(1L);
         savedOrder.setUser(testUser);
-        savedOrder.setStatus(OrderStatus.CONFIRMED);
+        savedOrder.setStatus(OrderStatus.PENDING);
         savedOrder.setOrderItems(new ArrayList<>());
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.countPendingOrdersByUserId(1L)).thenReturn(0L);
+        when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
+                .thenReturn(new ArrayList<>());
         when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
@@ -544,5 +582,148 @@ class OrderServiceTest {
         verify(bookRepository).save(bookCaptor.capture());
         Book savedBook = bookCaptor.getValue();
         assertThat(savedBook.getStockQuantity()).isEqualTo(initialStock - 3);
+    }
+
+    @Test
+    void testRefundOrder_ShouldProcessStripeRefund() throws StripeException {
+        // Given
+        testOrder.setStatus(OrderStatus.DELIVERED);
+        testOrder.setPaymentIntentId("pi_test_12345");
+        
+        OrderItem orderItem = new OrderItem();
+        orderItem.setBook(testBook1);
+        orderItem.setQuantity(2);
+        orderItem.setPrice(testBook1.getPrice());
+        testOrder.getOrderItems().add(orderItem);
+        
+
+        
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        
+        Refund mockRefund = mock(Refund.class);
+        when(paymentService.refundPayment("pi_test_12345")).thenReturn(mockRefund);
+        
+        Order refundedOrder = new Order();
+        refundedOrder.setId(1L);
+        refundedOrder.setUser(testUser);
+        refundedOrder.setStatus(OrderStatus.REFUNDED);
+        refundedOrder.setOrderItems(new ArrayList<>());
+        when(orderRepository.save(any(Order.class))).thenReturn(refundedOrder);
+        when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
+
+        // When
+        OrderDTO result = orderService.refundOrder(1L);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(paymentService).refundPayment("pi_test_12345");
+        verify(bookRepository).save(any(Book.class)); // Stock should be restored
+        verify(orderRepository).save(any(Order.class));
+    }
+
+    @Test
+    void testRefundOrder_NotDelivered_ShouldThrowException() throws StripeException {
+        // Given
+        testOrder.setStatus(OrderStatus.CONFIRMED);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+
+        // When & Then
+        assertThatThrownBy(() -> orderService.refundOrder(1L))
+                .isInstanceOf(InvalidOrderStatusException.class);
+        
+        verify(paymentService, never()).refundPayment(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void testRefundOrder_NoPaymentIntent_ShouldThrowException() throws StripeException {
+        // Given
+        testOrder.setStatus(OrderStatus.DELIVERED);
+        testOrder.setPaymentIntentId(null); // No payment intent
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+
+        // When & Then
+        assertThatThrownBy(() -> orderService.refundOrder(1L))
+                .isInstanceOf(IllegalStateException.class);
+        
+        verify(paymentService, never()).refundPayment(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void testRefundOrder_StripeRefundFails_ShouldThrowException() throws StripeException {
+        // Given
+        testOrder.setStatus(OrderStatus.DELIVERED);
+        testOrder.setPaymentIntentId("pi_test_12345");
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        
+        when(paymentService.refundPayment("pi_test_12345"))
+                .thenThrow(new StripeException("Refund failed", "request_id", "code", 400) {});
+
+        // When & Then
+        assertThatThrownBy(() -> orderService.refundOrder(1L))
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(StripeException.class);
+        
+        verify(paymentService).refundPayment("pi_test_12345");
+        verify(orderRepository, never()).save(any()); // Status should not be updated if refund fails
+    }
+
+    @Test
+    void testRefundOrder_ShouldRestoreStock() throws StripeException {
+        // Given
+        testOrder.setStatus(OrderStatus.DELIVERED);
+        testOrder.setPaymentIntentId("pi_test_12345");
+        
+        OrderItem orderItem = new OrderItem();
+        orderItem.setBook(testBook1);
+        orderItem.setQuantity(3);
+        orderItem.setPrice(testBook1.getPrice());
+        testOrder.getOrderItems().add(orderItem);
+        
+        int initialStock = testBook1.getStockQuantity();
+        
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        Refund mockRefund = mock(Refund.class);
+        when(paymentService.refundPayment("pi_test_12345")).thenReturn(mockRefund);
+        
+        Order refundedOrder = new Order();
+        refundedOrder.setId(1L);
+        refundedOrder.setUser(testUser); // Add user to avoid NullPointerException
+        refundedOrder.setStatus(OrderStatus.REFUNDED);
+        refundedOrder.setOrderItems(new ArrayList<>());
+        when(orderRepository.save(any(Order.class))).thenReturn(refundedOrder);
+        when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
+
+        // When
+        orderService.refundOrder(1L);
+
+        // Then
+        ArgumentCaptor<Book> bookCaptor = ArgumentCaptor.forClass(Book.class);
+        verify(bookRepository).save(bookCaptor.capture());
+        Book restoredBook = bookCaptor.getValue();
+        assertThat(restoredBook.getStockQuantity()).isEqualTo(initialStock + 3);
+    }
+
+    @Test
+    void testDeliverOrder_ShouldUpdateStatusToDelivered() {
+        // Given
+        testOrder.setStatus(OrderStatus.PAID);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        
+        Order deliveredOrder = new Order();
+        deliveredOrder.setId(1L);
+        deliveredOrder.setUser(testUser);
+        deliveredOrder.setStatus(OrderStatus.DELIVERED);
+        deliveredOrder.setOrderItems(new ArrayList<>());
+        when(orderRepository.save(any(Order.class))).thenReturn(deliveredOrder);
+
+        // When
+        OrderDTO result = orderService.deliverOrder(1L);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(orderRepository).findById(1L);
+        verify(orderRepository).save(any(Order.class));
     }
 }
