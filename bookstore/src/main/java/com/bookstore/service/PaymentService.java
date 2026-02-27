@@ -38,17 +38,29 @@ public class PaymentService {
     private String cancelUrl;
 
     private final OrderRepository orderRepository;
+    private final EmailService emailService;
 
     @PostConstruct
     public void init() {
         Stripe.apiKey = stripeApiKey;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PaymentSessionResponse createCheckoutSession(Long orderId) throws StripeException {
         // Fetch order from database
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+        
+        // Confirm the order if it's still PENDING (this sends the confirmation email)
+        if (order.getStatus() == com.bookstore.model.OrderStatus.PENDING) {
+            log.info("Confirming order {} before creating payment session", orderId);
+            order.setStatus(com.bookstore.model.OrderStatus.CONFIRMED);
+            order = orderRepository.save(order);
+            
+            // Send order confirmation email
+            emailService.sendOrderConfirmationEmail(order);
+            log.info("Order {} confirmed and email sent", orderId);
+        }
 
         // Build line items from order
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();

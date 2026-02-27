@@ -8,6 +8,7 @@ import com.bookstore.model.*;
 import com.bookstore.repository.*;
 import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
     private final OrderRepository orderRepository;
@@ -27,6 +29,7 @@ public class OrderService {
     private final BookRepository bookRepository;
     private final MessageSource messageSource;
     private final PaymentService paymentService;
+    private final EmailService emailService;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -68,16 +71,26 @@ public class OrderService {
             throw new IllegalArgumentException(messageSource.getMessage("order.items.required", null, locale));
         }
 
-        // Auto-cancel any existing pending orders before creating a new one
-        // This handles cases where user abandoned checkout and returned with a new cart
+        // Check if user already has a PENDING or CONFIRMED (unpaid) order
         List<Order> existingPendingOrders = orderRepository.findByUserIdAndStatus(request.getUserId(), OrderStatus.PENDING);
+        List<Order> existingConfirmedOrders = orderRepository.findByUserIdAndStatus(request.getUserId(), OrderStatus.CONFIRMED);
+        
+        Order existingOrder = null;
         if (!existingPendingOrders.isEmpty()) {
-            for (Order pendingOrder : existingPendingOrders) {
-                pendingOrder.setStatus(OrderStatus.CANCELLED);
-                restoreStock(pendingOrder);
-                orderRepository.save(pendingOrder);
-            }
+            existingOrder = existingPendingOrders.get(0);
+            log.info("Found existing PENDING order {} for user {}, will update it", existingOrder.getId(), request.getUserId());
+        } else if (!existingConfirmedOrders.isEmpty()) {
+            existingOrder = existingConfirmedOrders.get(0);
+            log.info("Found existing CONFIRMED order {} for user {}, will update it", existingOrder.getId(), request.getUserId());
         }
+        
+        // If an existing order was found, update it instead of creating a new one
+        if (existingOrder != null) {
+            return updateExistingOrder(existingOrder, request, itemRequests);
+        }
+
+        // No existing order found - create a new one
+        log.info("No existing order found for user {}, creating new order", request.getUserId());
 
         // Create the order
         Order order = new Order();
@@ -131,44 +144,91 @@ public class OrderService {
     }
 
     @Transactional
+    private OrderDTO updateExistingOrder(Order existingOrder, CreateOrderRequest request, List<CreateOrderItemRequest> itemRequests) {
+        Locale locale = LocaleContextHolder.getLocale();
+        
+        // Restore stock from existing order items before updating
+        restoreStock(existingOrder);
+        
+        // Update order addresses and notes
+        existingOrder.setShippingAddress(request.getShippingAddress());
+        existingOrder.setBillingAddress(request.getBillingAddress());
+        existingOrder.setOrderNotes(request.getOrderNotes());
+        
+        // Reset order to PENDING if it was CONFIRMED (user went back to edit)
+        if (existingOrder.getStatus() == OrderStatus.CONFIRMED) {
+            existingOrder.setStatus(OrderStatus.PENDING);
+            log.info("Reset order {} status from CONFIRMED to PENDING for update", existingOrder.getId());
+        }
+        
+        // Clear existing order items
+        existingOrder.getOrderItems().clear();
+        
+        // Process new order items and validate stock
+        List<OrderItem> newOrderItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        
+        for (CreateOrderItemRequest itemRequest : itemRequests) {
+            // Find the book by title and author
+            Book book = findBookByTitleAndAuthor(itemRequest.getTitle(), itemRequest.getAuthor());
+            
+            // Check stock availability
+            if (book.getStockQuantity() < itemRequest.getQuantity()) {
+                String message = messageSource.getMessage("order.stock.insufficient", 
+                    new Object[]{book.getTitle(), book.getStockQuantity(), itemRequest.getQuantity()}, locale);
+                throw new InsufficientStockException(message);
+            }
+            
+            // Deduct stock for new order items
+            book.setStockQuantity(book.getStockQuantity() - itemRequest.getQuantity());
+            bookRepository.save(book);
+            
+            // Create order item
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(existingOrder);
+            orderItem.setBook(book);
+            orderItem.setQuantity(itemRequest.getQuantity());
+            orderItem.setPrice(book.getPrice());
+            
+            newOrderItems.add(orderItem);
+            totalAmount = totalAmount.add(book.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity())));
+        }
+        
+        existingOrder.getOrderItems().addAll(newOrderItems);
+        existingOrder.setTotalAmount(totalAmount);
+        
+        // Save the updated order
+        Order updatedOrder = orderRepository.save(existingOrder);
+        log.info("Successfully updated existing order {} for user {}", updatedOrder.getId(), request.getUserId());
+        
+        return convertToDTO(updatedOrder);
+    }
+
+    @Transactional
     public OrderDTO confirmOrder(Long orderId) {
         Locale locale = LocaleContextHolder.getLocale();
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
-        // If order is already confirmed, just return it
-        if (order.getStatus() == OrderStatus.CONFIRMED) {
+        // If order is already confirmed or paid, just return it (don't send email again)
+        if (order.getStatus() == OrderStatus.CONFIRMED || order.getStatus() == OrderStatus.PAID) {
             return convertToDTO(order);
         }
 
-        // Allow confirmation for both PENDING and PAID orders
-        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
+        // Only PENDING orders can be confirmed
+        if (order.getStatus() != OrderStatus.PENDING) {
             throw new InvalidOrderStatusException(
                 messageSource.getMessage("order.status.invalid.confirm", null, locale));
         }
 
-        // Deduct stock quantities only if order is still PENDING (not yet deducted)
-        // For PAID orders, stock was already deducted during order creation
-        if (order.getStatus() == OrderStatus.PENDING) {
-            for (OrderItem orderItem : order.getOrderItems()) {
-                Book book = orderItem.getBook();
-                int newStockQuantity = book.getStockQuantity() - orderItem.getQuantity();
-
-                if (newStockQuantity < 0) {
-                    String message = messageSource.getMessage("order.stock.insufficient", 
-                        new Object[]{book.getTitle(), book.getStockQuantity(), orderItem.getQuantity()}, locale);
-                    throw new InsufficientStockException(message);
-                }
-
-                book.setStockQuantity(newStockQuantity);
-                bookRepository.save(book);
-            }
-        }
 
         // Update order status
         order.setStatus(OrderStatus.CONFIRMED);
         Order updatedOrder = orderRepository.save(order);
+
+        // Send order confirmation email
+        emailService.sendOrderConfirmationEmail(updatedOrder);
 
         return convertToDTO(updatedOrder);
     }

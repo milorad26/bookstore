@@ -27,6 +27,23 @@ spring:
     init:
       mode: never
 
+  # Mail Configuration
+  mail:
+    host: localhost
+    port: 25
+    username: 
+    password: 
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    from: orders@bookstore.com
+
 server:
   port: 8080
 
