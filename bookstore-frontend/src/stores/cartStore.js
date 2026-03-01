@@ -2,6 +2,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 export const useCartStore = defineStore('cart', () => {
+  // Constants
+  const DELIVERY_FEE = 4.00
+
   // Load cart from localStorage on initialization
   const cartItems = ref(JSON.parse(localStorage.getItem('cart') || '[]'))
 
@@ -10,11 +13,21 @@ export const useCartStore = defineStore('cart', () => {
     return cartItems.value.reduce((total, item) => total + item.quantity, 0)
   })
 
-  // Computed: total amount
-  const totalAmount = computed(() => {
+  // Computed: subtotal amount (items only, without delivery)
+  const subtotalAmount = computed(() => {
     return cartItems.value.reduce((total, item) => {
       return total + (item.price * item.quantity)
     }, 0)
+  })
+
+  // Computed: delivery fee (only if cart has items)
+  const deliveryFee = computed(() => {
+    return cartItems.value.length > 0 ? DELIVERY_FEE : 0
+  })
+
+  // Computed: total amount (subtotal + delivery)
+  const totalAmount = computed(() => {
+    return subtotalAmount.value + deliveryFee.value
   })
 
   // Add item to cart
@@ -81,6 +94,8 @@ export const useCartStore = defineStore('cart', () => {
   return {
     cartItems,
     totalItems,
+    subtotalAmount,
+    deliveryFee,
     totalAmount,
     addToCart,
     removeFromCart,

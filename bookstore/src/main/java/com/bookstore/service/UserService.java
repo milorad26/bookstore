@@ -146,6 +146,26 @@ public class UserService {
     }
 
     /**
+     * Reset user password (for forgot password functionality)
+     * Does not require current password verification
+     */
+    @Transactional
+    public void resetPassword(Long userId, String newPassword) {
+        log.info("Resetting password for user ID: {}", userId);
+        Locale locale = LocaleContextHolder.getLocale();
+        
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                messageSource.getMessage("user.notfound.password", new Object[]{userId}, locale)));
+        
+        // Encode and set new password (no validation needed for system-generated passwords)
+        user.setPassword(passwordEncoder.encode(newPassword));
+        
+        userRepository.save(user);
+        log.info("Password reset successfully for user ID: {}", userId);
+    }
+
+    /**
      * Verify if a raw password matches the encrypted password
      */
     public boolean verifyPassword(String rawPassword, String encodedPassword) {

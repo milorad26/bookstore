@@ -148,12 +148,12 @@
             
             <div class="d-flex justify-content-between mb-2">
               <span>{{ t('checkout.summary.subtotal', { count: cartStore.totalItems }) }}:</span>
-              <span>${{ formatPrice(cartStore.totalAmount) }}</span>
+              <span>${{ formatPrice(cartStore.subtotalAmount) }}</span>
             </div>
             
             <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-              <span>{{ t('checkout.summary.shipping') }}:</span>
-              <span class="text-success">{{ t('checkout.summary.free') }}</span>
+              <span>{{ t('checkout.summary.delivery') }}:</span>
+              <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
             </div>
             
             <div class="d-flex justify-content-between mb-0">
@@ -219,7 +219,8 @@ const submitOrder = async () => {
       billingAddress: sameAsShipping.value 
         ? shippingAddress.value.trim() 
         : billingAddress.value.trim(),
-      orderNotes: orderNotes.value.trim() || null
+      orderNotes: orderNotes.value.trim() || null,
+      deliveryFee: cartStore.deliveryFee
     }
 
     const createdOrder = await orderService.createOrder(orderData)

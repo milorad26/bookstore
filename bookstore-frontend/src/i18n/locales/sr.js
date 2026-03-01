@@ -43,6 +43,7 @@ export default {
       title: 'Pregled Porudžbine',
       items: 'Stavke ({count})',
       shipping: 'Dostava',
+      delivery: 'Cena Dostave',
       free: 'BESPLATNO',
       total: 'Ukupno'
     }
@@ -78,6 +79,7 @@ export default {
       title: 'Pregled Porudžbine',
       subtotal: 'Međuzbir ({count} stavki)',
       shipping: 'Dostava',
+      delivery: 'Cena Dostave',
       free: 'BESPLATNO',
       total: 'Ukupno'
     }
@@ -342,7 +344,14 @@ export default {
     enterPassword: 'Unesite lozinku',
     loggingIn: 'Prijavljivanje...',
     noAccount: 'Nemate nalog?',
-    registerHere: 'Registrujte se ovde'
+    registerHere: 'Registrujte se ovde',
+    forgotPassword: 'Zaboravili ste lozinku?',
+    forgotPasswordInstruction: 'Unesite vaše korisničko ime i poslaćemo vam novu lozinku na vašu registrovanu email adresu.',
+    usernameRequired: 'Molimo unesite korisničko ime',
+    passwordResetSuccess: 'Nova lozinka će biti poslata na vašu registrovanu email adresu.',
+    passwordResetFailed: 'Resetovanje lozinke nije uspelo. Molimo pokušajte ponovo.',
+    usernameNotFound: 'Ovo korisničko ime ne postoji',
+    usernameEmpty: 'Molimo unesite korisničko ime'
   },
   register: {
     register: 'Registracija',
@@ -409,6 +418,7 @@ export default {
     add: 'Dodaj',
     update: 'Ažuriraj',
     submit: 'Pošalji',
+    sending: 'Slanje...',
     close: 'Zatvori',
     back: 'Nazad',
     next: 'Sledeće',

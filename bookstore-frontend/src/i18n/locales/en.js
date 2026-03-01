@@ -43,6 +43,7 @@ export default {
       title: 'Order Summary',
       items: 'Items ({count})',
       shipping: 'Shipping',
+      delivery: 'Delivery Fee',
       free: 'FREE',
       total: 'Total'
     }
@@ -78,6 +79,7 @@ export default {
       title: 'Order Summary',
       subtotal: 'Subtotal ({count} items)',
       shipping: 'Shipping',
+      delivery: 'Delivery Fee',
       free: 'FREE',
       total: 'Total'
     }
@@ -344,7 +346,14 @@ export default {
     enterPassword: 'Enter your password',
     loggingIn: 'Logging in...',
     noAccount: "Don't have an account?",
-    registerHere: 'Register here'
+    registerHere: 'Register here',
+    forgotPassword: 'Forgot Password?',
+    forgotPasswordInstruction: 'Enter your username and we will send a new password to your registered email address.',
+    usernameRequired: 'Please insert username',
+    passwordResetSuccess: 'A new password will be sent to your registered email address.',
+    passwordResetFailed: 'Failed to reset password. Please try again.',
+    usernameNotFound: 'This username does not exist',
+    usernameEmpty: 'Please insert username'
   },
   register: {
     register: 'Register',
@@ -411,6 +420,7 @@ export default {
     edit: 'Edit',
     view: 'View',
     add: 'Add',
+    sending: 'Sending...',
     update: 'Update',
     submit: 'Submit',
     close: 'Close',

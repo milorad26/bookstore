@@ -1,4 +1,5 @@
 import apiClient from './api'
+import { sanitizeErrorMessage } from '../utils/errorHandler'
 
 export const orderService = {
   // Get all orders (admin/super_user only)
@@ -103,20 +104,27 @@ export const orderService = {
 }
 
 function parseError(error) {
+  let rawMessage = null
+  
   if (error.response?.data) {
     // Handle validation errors and other backend errors
-    if (error.response.data.message) {
-      return {
-        message: error.response.data.message,
-        status: error.response.status,
-        type: error.response.data.type || error.response.data.title
-      }
+    if (typeof error.response.data === 'string') {
+      rawMessage = error.response.data
+    } else if (error.response.data.message) {
+      rawMessage = error.response.data.message
     }
   }
   
-  // Network or other errors
+  if (!rawMessage) {
+    rawMessage = error.message || 'An unexpected error occurred. Please check your connection and try again.'
+  }
+  
+  // Sanitize the message to prevent stack traces
+  const safeMessage = sanitizeErrorMessage(rawMessage, 'An unexpected error occurred')
+  
   return {
-    message: error.message || 'An unexpected error occurred. Please check your connection and try again.',
-    status: error.response?.status || 500
+    message: safeMessage,
+    status: error.response?.status || 500,
+    type: error.response?.data?.type || error.response?.data?.title
   }
 }

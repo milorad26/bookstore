@@ -1,4 +1,5 @@
 import apiClient from './api'
+import { sanitizeErrorMessage } from '../utils/errorHandler'
 
 export const authService = {
   login: async (username, password) => {
@@ -20,24 +21,49 @@ export const authService = {
     } catch (error) {
       throw parseError(error)
     }
+  },
+
+  forgotPassword: async (username) => {
+    try {
+      const response = await apiClient.post('/auth/forgot-password', {
+        username
+      })
+      return {
+        message: response.data,
+        status: response.status
+      }
+    } catch (error) {
+      throw parseError(error)
+    }
   }
 }
 
 function parseError(error) {
+  // Backend may return plain string or object with message
+  let rawMessage = null
+  
   if (error.response?.data) {
-    // Backend error response with validation details
-    if (error.response.data.message) {
-      return {
-        message: error.response.data.message,
-        status: error.response.status,
-        type: error.response.data.title || error.response.data.type
-      }
+    // Handle string responses (direct error messages from backend)
+    if (typeof error.response.data === 'string') {
+      rawMessage = error.response.data
+    }
+    // Backend error response with validation details (object)
+    else if (error.response.data.message) {
+      rawMessage = error.response.data.message
     }
   }
   
-  // Network or other errors
+  // Fallback to error message
+  if (!rawMessage) {
+    rawMessage = error.message || 'An unexpected error occurred'
+  }
+  
+  // Sanitize the message to prevent stack traces
+  const safeMessage = sanitizeErrorMessage(rawMessage, 'An unexpected error occurred')
+  
   return {
-    message: error.message || 'An unexpected error occurred',
-    status: error.response?.status || 500
+    message: safeMessage,
+    status: error.response?.status || 500,
+    type: error.response?.data?.title || error.response?.data?.type
   }
 }

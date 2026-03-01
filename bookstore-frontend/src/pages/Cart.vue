@@ -97,12 +97,12 @@
               
               <div class="d-flex justify-content-between mb-2">
                 <span>{{ t('cart.summary.items', { count: cartStore.totalItems }) }}:</span>
-                <span>${{ formatPrice(cartStore.totalAmount) }}</span>
+                <span>${{ formatPrice(cartStore.subtotalAmount) }}</span>
               </div>
               
               <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                <span>{{ t('cart.summary.shipping') }}:</span>
-                <span class="text-success">{{ t('cart.summary.free') }}</span>
+                <span>{{ t('cart.summary.delivery') }}:</span>
+                <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
               </div>
               
               <div class="d-flex justify-content-between mb-4">

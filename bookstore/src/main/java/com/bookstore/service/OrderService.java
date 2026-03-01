@@ -131,7 +131,7 @@ public class OrderService {
         }
 
         order.setOrderItems(orderItems);
-        order.setTotalAmount(totalAmount);
+        order.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
 
         // Keep status as PENDING - will be updated to PAID after payment
         // Stock is deducted but order awaits payment confirmation
@@ -195,7 +195,7 @@ public class OrderService {
         }
         
         existingOrder.getOrderItems().addAll(newOrderItems);
-        existingOrder.setTotalAmount(totalAmount);
+        existingOrder.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
         
         // Save the updated order
         Order updatedOrder = orderRepository.save(existingOrder);

@@ -65,7 +65,13 @@ public class PaymentService {
         // Build line items from order
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
         
+        // Calculate book items total to determine delivery fee
+        BigDecimal booksTotal = BigDecimal.ZERO;
+        
         for (OrderItem item : order.getOrderItems()) {
+            BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            booksTotal = booksTotal.add(itemTotal);
+            
             SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
                     .setPriceData(
                             SessionCreateParams.LineItem.PriceData.builder()
@@ -84,6 +90,30 @@ public class PaymentService {
                     .build();
             
             lineItems.add(lineItem);
+        }
+        
+        // Add delivery fee as a separate line item
+        BigDecimal deliveryFee = order.getTotalAmount().subtract(booksTotal);
+        if (deliveryFee.compareTo(BigDecimal.ZERO) > 0) {
+            SessionCreateParams.LineItem deliveryLineItem = SessionCreateParams.LineItem.builder()
+                    .setPriceData(
+                            SessionCreateParams.LineItem.PriceData.builder()
+                                    .setCurrency("usd")
+                                    .setProductData(
+                                            SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                    .setName("Delivery Fee")
+                                                    .setDescription("Standard shipping and handling")
+                                                    .build()
+                                    )
+                                    // Convert delivery fee to cents
+                                    .setUnitAmount(deliveryFee.multiply(new BigDecimal("100")).longValue())
+                                    .build()
+                    )
+                    .setQuantity(1L)
+                    .build();
+            
+            lineItems.add(deliveryLineItem);
+            log.info("Added delivery fee to checkout session: ${}", deliveryFee);
         }
 
         // Create Stripe Checkout Session
