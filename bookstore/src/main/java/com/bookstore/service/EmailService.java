@@ -167,10 +167,11 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Calculate delivery fee
-        BigDecimal deliveryFee = order.getTotalAmount().subtract(itemsSubtotal);
+        // Calculate delivery fee correctly (accounting for discount already applied to totalAmount)
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal deliveryFee = order.getTotalAmount().subtract(itemsSubtotal).add(discountAmount);
         
-        // Show subtotal, delivery fee, and total
+        // Show subtotal, delivery fee, discount, and total
         html.append("<div style='margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px;'>");
         html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>");
         html.append("<span>").append(messageSource.getMessage("email.order.subtotal", null, localeEn)).append(":</span>");
@@ -181,6 +182,18 @@ public class EmailService {
             html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>");
             html.append("<span>").append(messageSource.getMessage("email.order.deliveryfee", null, localeEn)).append(":</span>");
             html.append("<span>$").append(deliveryFee).append("</span>");
+            html.append("</div>");
+        }
+        
+        // Show discount if coupon was applied
+        if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
+            html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #4CAF50;'>");
+            html.append("<span>").append(messageSource.getMessage("email.order.discount", null, localeEn));
+            if (order.getAppliedCoupon() != null) {
+                html.append(" (").append(order.getAppliedCoupon().getCode()).append(")");
+            }
+            html.append(":</span>");
+            html.append("<span>-$").append(discountAmount).append("</span>");
             html.append("</div>");
         }
         
@@ -262,10 +275,11 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Calculate delivery fee
-        BigDecimal deliveryFeeSr = order.getTotalAmount().subtract(itemsSubtotalSr);
+        // Calculate delivery fee correctly (accounting for discount already applied to totalAmount)
+        BigDecimal discountAmountSr = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal deliveryFeeSr = order.getTotalAmount().subtract(itemsSubtotalSr).add(discountAmountSr);
         
-        // Show subtotal, delivery fee, and total
+        // Show subtotal, delivery fee, discount, and total
         html.append("<div style='margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px;'>");
         html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>");
         html.append("<span>").append(messageSource.getMessage("email.order.subtotal", null, localeSr)).append(":</span>");
@@ -276,6 +290,18 @@ public class EmailService {
             html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px;'>");
             html.append("<span>").append(messageSource.getMessage("email.order.deliveryfee", null, localeSr)).append(":</span>");
             html.append("<span>$").append(deliveryFeeSr).append("</span>");
+            html.append("</div>");
+        }
+        
+        // Show discount if coupon was applied
+        if (discountAmountSr.compareTo(BigDecimal.ZERO) > 0) {
+            html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #4CAF50;'>");
+            html.append("<span>").append(messageSource.getMessage("email.order.discount", null, localeSr));
+            if (order.getAppliedCoupon() != null) {
+                html.append(" (").append(order.getAppliedCoupon().getCode()).append(")");
+            }
+            html.append(":</span>");
+            html.append("<span>-$").append(discountAmountSr).append("</span>");
             html.append("</div>");
         }
         

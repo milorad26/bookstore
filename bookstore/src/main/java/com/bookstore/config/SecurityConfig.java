@@ -107,13 +107,21 @@ public class SecurityConfig {
                 // Public GET endpoints - no authentication required for browsing
                 .requestMatchers(HttpMethod.GET, "/api/books/isbn/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books/search/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books").permitAll()
-                // SUPER_USER and ADMIN can get book by ID
-                .requestMatchers(HttpMethod.GET, "/api/books/*").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 // Only ADMIN can create, update, delete books
                 .requestMatchers(HttpMethod.POST, BOOKS_API_PATTERN).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.PUT, BOOKS_API_PATTERN).hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, BOOKS_API_PATTERN).hasRole(ROLE_ADMIN)
+                
+                // Reviews endpoints - Mixed access
+                // Public GET endpoints - anyone can view reviews
+                .requestMatchers(HttpMethod.GET, "/api/reviews/books/**").permitAll()
+                // Authenticated users can create, update, delete their own reviews
+                .requestMatchers(HttpMethod.POST, "/api/reviews/**").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/my-reviews").authenticated()
                 
                 // Users endpoints - Role-based access control
                 // /me endpoint for regular users to access own profile

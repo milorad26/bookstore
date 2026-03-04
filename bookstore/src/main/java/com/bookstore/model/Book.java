@@ -45,6 +45,12 @@ public class Book {
     @Column(name = "stock_quantity")
     private Integer stockQuantity = 0;
 
+    @Column(name = "average_rating")
+    private Double averageRating = 0.0;
+
+    @Column(name = "review_count")
+    private Long reviewCount = 0L;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

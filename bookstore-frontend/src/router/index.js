@@ -51,6 +51,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/books/:id/reviews',
+    name: 'BookReviews',
+    component: () => import('../pages/BookReviews.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/orders',
     name: 'Orders',
     component: () => import('../pages/Orders.vue'),

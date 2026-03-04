@@ -178,6 +178,98 @@
             </div>
           </div>
 
+          <!-- My Coupons -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-ticket-perforated-fill"></i> {{ t('profile.myCoupons.title') }}
+              </h5>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-3">{{ t('profile.myCoupons.subtitle') }}</p>
+              
+              <div v-if="loadingCoupons" class="text-center py-4">
+                <div class="spinner-border text-success" role="status">
+                  <span class="visually-hidden">{{ t('common.loading') }}</span>
+                </div>
+              </div>
+
+              <div v-else-if="availableCoupons.length === 0 && usedCoupons.length === 0" class="text-center py-4">
+                <i class="bi bi-ticket-perforated" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">{{ t('profile.myCoupons.noCoupons') }}</p>
+                <p class="small text-muted">{{ t('profile.myCoupons.earnInfo') }}</p>
+              </div>
+
+              <div v-else>
+                <!-- Available Coupons -->
+                <div v-if="availableCoupons.length > 0" class="mb-4">
+                  <h6 class="text-success mb-3">
+                    <i class="bi bi-check-circle-fill"></i> {{ t('profile.myCoupons.available') }} ({{ availableCoupons.length }})
+                  </h6>
+                  <div class="coupons-grid">
+                    <div 
+                      v-for="coupon in availableCoupons" 
+                      :key="coupon.id"
+                      class="coupon-card available"
+                    >
+                      <div class="coupon-header">
+                        <div class="coupon-code">{{ coupon.code }}</div>
+                        <div class="coupon-badge">{{ t('profile.myCoupons.active') }}</div>
+                      </div>
+                      <div class="coupon-value">${{ coupon.value }}</div>
+                      <div class="coupon-details">
+                        <div class="coupon-detail">
+                          <i class="bi bi-calendar-check"></i>
+                          {{ t('profile.myCoupons.expires') }}: {{ formatDate(coupon.expiryDate) }}
+                        </div>
+                        <div v-if="coupon.earnedFromOrderId" class="coupon-detail">
+                          <i class="bi bi-bag-check"></i>
+                          {{ t('profile.myCoupons.earnedFrom') }} #{{ coupon.earnedFromOrderId }}
+                        </div>
+                      </div>
+                      <button 
+                        @click="copyCouponCode(coupon.code)" 
+                        class="btn btn-sm btn-outline-success w-100 mt-2"
+                      >
+                        <i class="bi bi-clipboard"></i> {{ t('profile.myCoupons.copyCode') }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Used Coupons -->
+                <div v-if="usedCoupons.length > 0">
+                  <h6 class="text-muted mb-3">
+                    <i class="bi bi-check2-circle"></i> {{ t('profile.myCoupons.used') }} ({{ usedCoupons.length }})
+                  </h6>
+                  <div class="coupons-grid">
+                    <div 
+                      v-for="coupon in usedCoupons" 
+                      :key="coupon.id"
+                      class="coupon-card used"
+                    >
+                      <div class="coupon-header">
+                        <div class="coupon-code text-muted">{{ coupon.code }}</div>
+                        <div class="coupon-badge used-badge">{{ t('profile.myCoupons.usedBadge') }}</div>
+                      </div>
+                      <div class="coupon-value text-muted">${{ coupon.value }}</div>
+                      <div class="coupon-details">
+                        <div v-if="coupon.usedInOrderId" class="coupon-detail">
+                          <i class="bi bi-cart-check"></i>
+                          {{ t('profile.myCoupons.usedIn') }} #{{ coupon.usedInOrderId }}
+                        </div>
+                        <div class="coupon-detail">
+                          <i class="bi bi-clock-history"></i>
+                          {{ t('profile.myCoupons.usedOn') }}: {{ formatDate(coupon.usedAt) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Quick Actions -->
           <div class="card shadow-sm">
             <div class="card-header bg-success text-white">
@@ -258,13 +350,14 @@
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '../services/userService'
+import { getUserCoupons } from '../services/couponService'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const profile = ref({
   id: null,
@@ -302,6 +395,18 @@ const alert = reactive({
   type: 'success',
   message: ''
 })
+
+// Coupons state
+const coupons = ref([])
+const loadingCoupons = ref(false)
+
+const availableCoupons = computed(() => 
+  coupons.value.filter(c => c.canBeUsed)
+)
+
+const usedCoupons = computed(() => 
+  coupons.value.filter(c => c.used)
+)
 
 // Ensure alert is hidden on component mount
 watch(() => alert.show, (newVal) => {
@@ -509,8 +614,39 @@ const browseBooks = () => {
   router.push('/')
 }
 
+const loadCoupons = async () => {
+  loadingCoupons.value = true
+  try {
+    coupons.value = await getUserCoupons()
+  } catch (error) {
+    showAlert('danger', t('profile.myCoupons.loadFailed'))
+  } finally {
+    loadingCoupons.value = false
+  }
+}
+
+const copyCouponCode = async (code) => {
+  try {
+    await navigator.clipboard.writeText(code)
+    showAlert('success', t('profile.myCoupons.codeCopied'))
+  } catch (error) {
+    showAlert('info', `${t('profile.myCoupons.code')}: ${code}`)
+  }
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString(locale.value === 'sr' ? 'sr-RS' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
 onMounted(async () => {
   await loadProfile()
+  await loadCoupons()
   // Initialize edit form with current profile data
   editForm.firstName = profile.value.firstName
   editForm.lastName = profile.value.lastName
@@ -599,5 +735,102 @@ onMounted(async () => {
 
 .action-card .btn:hover {
   transform: scale(1.05);
+}
+
+/* Coupons Styles */
+.coupons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.coupon-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.coupon-card.available {
+  border: 2px solid #28a745;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f8f0 100%);
+}
+
+.coupon-card.available:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(40, 167, 69, 0.2);
+}
+
+.coupon-card.used {
+  border: 2px solid #dee2e6;
+  background: #f8f9fa;
+  opacity: 0.8;
+}
+
+.coupon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.coupon-code {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #28a745;
+  letter-spacing: 1px;
+}
+
+.coupon-card.used .coupon-code {
+  color: #6c757d;
+}
+
+.coupon-badge {
+  background: #28a745;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.coupon-badge.used-badge {
+  background: #6c757d;
+}
+
+.coupon-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #28a745;
+  margin: 0.5rem 0;
+}
+
+.coupon-card.used .coupon-value {
+  color: #6c757d;
+}
+
+.coupon-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #dee2e6;
+}
+
+.coupon-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0.25rem;
+}
+
+.coupon-detail i {
+  color: #28a745;
+}
+
+.coupon-card.used .coupon-detail i {
+  color: #6c757d;
 }
 </style>

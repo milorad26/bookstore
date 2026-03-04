@@ -114,6 +114,8 @@ public class BookService {
         dto.setPrice(book.getPrice());
         dto.setDescription(book.getDescription());
         dto.setStockQuantity(book.getStockQuantity());
+        dto.setAverageRating(book.getAverageRating());
+        dto.setReviewCount(book.getReviewCount());
         return dto;
     }
 

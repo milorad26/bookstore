@@ -104,6 +104,13 @@
             </div>
           </div>
 
+          <!-- Coupon Code -->
+          <CouponSelector 
+            v-model="selectedCoupon"
+            @coupon-applied="onCouponApplied"
+            @coupon-removed="onCouponRemoved"
+          />
+
           <!-- Payment Notice -->
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
@@ -151,14 +158,21 @@
               <span>${{ formatPrice(cartStore.subtotalAmount) }}</span>
             </div>
             
-            <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between mb-2">
               <span>{{ t('checkout.summary.delivery') }}:</span>
               <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
             </div>
+
+            <div v-if="selectedCoupon" class="d-flex justify-content-between mb-3 text-success">
+              <span>{{ t('checkout.summary.discount') }}:</span>
+              <span>-${{ formatPrice(selectedCoupon.value) }}</span>
+            </div>
+            
+            <hr class="mb-3">
             
             <div class="d-flex justify-content-between mb-0">
               <strong class="h5">{{ t('checkout.summary.total') }}:</strong>
-              <strong class="text-primary h4 mb-0">${{ formatPrice(cartStore.totalAmount) }}</strong>
+              <strong class="text-primary h4 mb-0">${{ formatPrice(finalTotal) }}</strong>
             </div>
           </div>
         </div>
@@ -176,6 +190,7 @@ import { useAuthStore } from '../stores/authStore'
 import { orderService } from '../services/orderService'
 import { paymentService } from '../services/paymentService'
 import Alert from '../components/Alert.vue'
+import CouponSelector from '../components/CouponSelector.vue'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -186,13 +201,32 @@ const shippingAddress = ref('')
 const billingAddress = ref('')
 const sameAsShipping = ref(true)
 const orderNotes = ref('')
+const selectedCoupon = ref(null)
 const isSubmitting = ref(false)
 const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
 
+const finalTotal = computed(() => {
+  let total = cartStore.totalAmount
+  if (selectedCoupon.value) {
+    total -= parseFloat(selectedCoupon.value.value)
+    // Ensure total doesn't go below 0
+    if (total < 0) total = 0
+  }
+  return total
+})
+
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
+}
+
+const onCouponApplied = (coupon) => {
+  showSuccess(t('checkout.coupon.success'))
+}
+
+const onCouponRemoved = () => {
+  selectedCoupon.value = null
 }
 
 const submitOrder = async () => {
@@ -220,7 +254,8 @@ const submitOrder = async () => {
         ? shippingAddress.value.trim() 
         : billingAddress.value.trim(),
       orderNotes: orderNotes.value.trim() || null,
-      deliveryFee: cartStore.deliveryFee
+      deliveryFee: cartStore.deliveryFee,
+      couponCode: selectedCoupon.value ? selectedCoupon.value.code : null
     }
 
     const createdOrder = await orderService.createOrder(orderData)

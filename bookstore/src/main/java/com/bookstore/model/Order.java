@@ -50,6 +50,13 @@ public class Order {
     @Column(name = "payment_intent_id", length = 255)
     private String paymentIntentId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "applied_coupon_id")
+    private Coupon appliedCoupon;
+
+    @Column(name = "discount_amount", precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

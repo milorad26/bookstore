@@ -24,6 +24,7 @@ public class CreateOrderRequest {
     private String shippingAddress;
     private String billingAddress;
     private String orderNotes;
+    private String couponCode; // Optional coupon code to apply
     
     @NotNull(message = "Delivery fee is required")
     private BigDecimal deliveryFee = BigDecimal.ZERO;

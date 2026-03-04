@@ -30,6 +30,7 @@ public class OrderService {
     private final MessageSource messageSource;
     private final PaymentService paymentService;
     private final EmailService emailService;
+    private final CouponService couponService;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -133,11 +134,21 @@ public class OrderService {
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
 
-        // Keep status as PENDING - will be updated to PAID after payment
-        // Stock is deducted but order awaits payment confirmation
-        // order.setStatus(OrderStatus.PENDING); // Already set above, no need to set again
+        // Apply coupon if provided
+        if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
+            // Validate and apply coupon before saving
+            couponService.validateCoupon(request.getCouponCode(), user.getId());
+            
+            // Save order first to get an ID
+            Order savedOrder = orderRepository.save(order);
+            
+            // Apply the coupon
+            couponService.applyCoupon(savedOrder, request.getCouponCode());
+            
+            return convertToDTO(savedOrder);
+        }
 
-        // Save the order
+        // Save the order without coupon
         Order savedOrder = orderRepository.save(order);
 
         return convertToDTO(savedOrder);
@@ -149,6 +160,23 @@ public class OrderService {
         
         // Restore stock from existing order items before updating
         restoreStock(existingOrder);
+        
+        // Revert previously applied coupon if any (only if it was used in THIS order)
+        if (existingOrder.getAppliedCoupon() != null) {
+            Coupon previousCoupon = existingOrder.getAppliedCoupon();
+            // Only revert if this coupon was used in this specific order
+            if (previousCoupon.getUsedInOrder() != null && 
+                previousCoupon.getUsedInOrder().getId().equals(existingOrder.getId())) {
+                previousCoupon.setUsed(false);
+                previousCoupon.setUsedAt(null);
+                previousCoupon.setUsedInOrder(null);
+                couponService.saveCoupon(previousCoupon);
+                log.info("Reverted previously applied coupon {} for order update", previousCoupon.getCode());
+            }
+            // Clear coupon from this order regardless
+            existingOrder.setAppliedCoupon(null);
+            existingOrder.setDiscountAmount(BigDecimal.ZERO);
+        }
         
         // Update order addresses and notes
         existingOrder.setShippingAddress(request.getShippingAddress());
@@ -196,6 +224,22 @@ public class OrderService {
         
         existingOrder.getOrderItems().addAll(newOrderItems);
         existingOrder.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
+        
+        // Apply coupon if provided
+        if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
+            // Validate and apply coupon
+            couponService.validateCoupon(request.getCouponCode(), existingOrder.getUser().getId());
+            
+            // Save order first to ensure it has the updated items
+            Order savedOrder = orderRepository.save(existingOrder);
+            
+            // Apply the coupon
+            couponService.applyCoupon(savedOrder, request.getCouponCode());
+            
+            log.info("Successfully updated and applied coupon to existing order {} for user {}", 
+                savedOrder.getId(), request.getUserId());
+            return convertToDTO(savedOrder);
+        }
         
         // Save the updated order
         Order updatedOrder = orderRepository.save(existingOrder);
@@ -352,6 +396,8 @@ public class OrderService {
         dto.setShippingAddress(order.getShippingAddress());
         dto.setBillingAddress(order.getBillingAddress());
         dto.setOrderNotes(order.getOrderNotes());
+        dto.setAppliedCouponCode(order.getAppliedCoupon() != null ? order.getAppliedCoupon().getCode() : null);
+        dto.setDiscountAmount(order.getDiscountAmount());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
 

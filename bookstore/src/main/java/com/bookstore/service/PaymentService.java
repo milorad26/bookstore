@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +39,7 @@ public class PaymentService {
     private String cancelUrl;
 
     private final OrderRepository orderRepository;
+    private final CouponService couponService;
     private final EmailService emailService;
 
     @PostConstruct
@@ -65,12 +67,29 @@ public class PaymentService {
         // Build line items from order
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
         
-        // Calculate book items total to determine delivery fee
+        // Calculate book items total and get discount info
         BigDecimal booksTotal = BigDecimal.ZERO;
+        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
         
+        // Calculate original total (before discount was applied)
+        BigDecimal originalTotal = order.getTotalAmount().add(discountAmount);
+        
+        // Calculate discount multiplier to apply proportionally
+        // discountMultiplier = (originalTotal - discount) / originalTotal
+        BigDecimal discountMultiplier = BigDecimal.ONE;
+        if (discountAmount.compareTo(BigDecimal.ZERO) > 0 && originalTotal.compareTo(BigDecimal.ZERO) > 0) {
+            discountMultiplier = originalTotal.subtract(discountAmount).divide(originalTotal, 10, RoundingMode.HALF_UP);
+            log.info("Applying discount multiplier {} for coupon discount of ${}",
+                discountMultiplier, discountAmount);
+        }
+        
+        // Add book items with proportional discount applied
         for (OrderItem item : order.getOrderItems()) {
             BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
             booksTotal = booksTotal.add(itemTotal);
+            
+            // Apply discount to this item's price
+            BigDecimal discountedPrice = item.getPrice().multiply(discountMultiplier);
             
             SessionCreateParams.LineItem lineItem = SessionCreateParams.LineItem.builder()
                     .setPriceData(
@@ -82,8 +101,9 @@ public class PaymentService {
                                                     .setDescription("by " + item.getBook().getAuthor())
                                                     .build()
                                     )
-                                    // Convert price to cents (Stripe requires amount in smallest currency unit)
-                                    .setUnitAmount(item.getPrice().multiply(new BigDecimal("100")).longValue())
+                                    // Convert discounted price to cents
+                                    .setUnitAmount(discountedPrice.setScale(2, RoundingMode.HALF_UP)
+                                            .multiply(new BigDecimal("100")).longValue())
                                     .build()
                     )
                     .setQuantity(item.getQuantity().longValue())
@@ -92,9 +112,18 @@ public class PaymentService {
             lineItems.add(lineItem);
         }
         
-        // Add delivery fee as a separate line item
-        BigDecimal deliveryFee = order.getTotalAmount().subtract(booksTotal);
+        // Calculate delivery fee from original amounts
+        BigDecimal deliveryFee = originalTotal.subtract(booksTotal);
+        
         if (deliveryFee.compareTo(BigDecimal.ZERO) > 0) {
+            // Apply discount to delivery fee as well
+            BigDecimal discountedDeliveryFee = deliveryFee.multiply(discountMultiplier);
+            
+            String deliveryDescription = "Standard shipping and handling";
+            if (discountAmount.compareTo(BigDecimal.ZERO) > 0 && order.getAppliedCoupon() != null) {
+                deliveryDescription += " (Coupon " + order.getAppliedCoupon().getCode() + " applied)";
+            }
+            
             SessionCreateParams.LineItem deliveryLineItem = SessionCreateParams.LineItem.builder()
                     .setPriceData(
                             SessionCreateParams.LineItem.PriceData.builder()
@@ -102,18 +131,20 @@ public class PaymentService {
                                     .setProductData(
                                             SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                                     .setName("Delivery Fee")
-                                                    .setDescription("Standard shipping and handling")
+                                                    .setDescription(deliveryDescription)
                                                     .build()
                                     )
-                                    // Convert delivery fee to cents
-                                    .setUnitAmount(deliveryFee.multiply(new BigDecimal("100")).longValue())
+                                    // Convert discounted delivery fee to cents
+                                    .setUnitAmount(discountedDeliveryFee.setScale(2, RoundingMode.HALF_UP)
+                                            .multiply(new BigDecimal("100")).longValue())
                                     .build()
                     )
                     .setQuantity(1L)
                     .build();
             
             lineItems.add(deliveryLineItem);
-            log.info("Added delivery fee to checkout session: ${}", deliveryFee);
+            log.info("Added delivery fee to checkout session: ${} (original: ${})", 
+                discountedDeliveryFee, deliveryFee);
         }
 
         // Create Stripe Checkout Session
@@ -175,9 +206,18 @@ public class PaymentService {
             order.setPaymentIntentId(paymentIntentId);
             order.setStatus(com.bookstore.model.OrderStatus.PAID);
             order.setUpdatedAt(java.time.LocalDateTime.now());
-            orderRepository.save(order);
+            Order savedOrder = orderRepository.save(order);
             
             log.info("✓ SUCCESS! Order ID: {} status updated to PAID with Payment Intent: {}", orderId, paymentIntentId);
+            
+            // Generate promo coupon if order qualifies (over $100)
+            try {
+                couponService.generateCouponForOrder(savedOrder);
+            } catch (Exception e) {
+                log.error("Failed to generate coupon for order {}: {}", orderId, e.getMessage(), e);
+                // Don't fail the payment if coupon generation fails
+            }
+            
             log.info("========================================");
             
         } else {

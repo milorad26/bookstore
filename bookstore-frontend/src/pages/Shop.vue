@@ -115,6 +115,12 @@
               <i class="bi bi-code"></i>
               <strong>{{ t('shop.isbn') }}:</strong> {{ book.isbn }}
             </p>
+            
+            <!-- Rating Display -->
+            <div v-if="book.reviewCount > 0" class="rating-display mb-2">
+              <StarRating :model-value="Math.round(book.averageRating || 0)" :readonly="true" :show-count="true" :review-count="book.reviewCount" />
+            </div>
+            
             <p v-if="book.description" class="card-text text-muted small" style="flex-grow: 1;">
               {{ truncateText(book.description, 100) }}
             </p>
@@ -130,6 +136,13 @@
               @click="addToCart(book)"
             >
               <i class="bi bi-cart-plus"></i> {{ t('shop.addToCart') }}
+            </button>
+            
+            <button
+              class="btn btn-outline-secondary w-100 mt-2"
+              @click="viewReviews(book.id)"
+            >
+              <i class="bi bi-star"></i> {{ t('reviews.title') }}
             </button>
           </div>
         </div>
@@ -153,6 +166,7 @@ import { bookService } from '../services/bookService'
 import { useAuthStore } from '../stores/authStore'
 import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
+import StarRating from '../components/StarRating.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -262,6 +276,10 @@ const showInfo = (message) => {
   alertMessage.value = message
   alertType.value = 'info'
   showAlert.value = true
+}
+
+const viewReviews = (bookId) => {
+  router.push(`/books/${bookId}/reviews`)
 }
 
 const showSuccess = (message) => {

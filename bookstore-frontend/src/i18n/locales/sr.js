@@ -81,7 +81,20 @@ export default {
       shipping: 'Dostava',
       delivery: 'Cena Dostave',
       free: 'BESPLATNO',
+      discount: 'Popust sa Kupona',
       total: 'Ukupno'
+    },
+    coupon: {
+      title: 'Imate Promo Kod?',
+      subtitle: 'Porudžbine preko $100 donose kupon od $20 za sledeću kupovinu!',
+      placeholder: 'Unesite kod kupona',
+      apply: 'Primeni',
+      remove: 'Ukloni',
+      available: 'Vaši Dostupni Kuponi',
+      expires: 'Ističe',
+      discount: 'popust primenjen',
+      error: 'Neispravan ili istekao kod kupona',
+      success: 'Kupon uspešno primenjen!'
     }
   },
   orders: {
@@ -334,7 +347,25 @@ export default {
     passwordChangeFailed: 'Promena lozinke nije uspela.',
     currentPasswordIncorrect: 'Trenutna lozinka je netačna. Molimo pokušajte ponovo.',
     tryAgainOrContact: 'Molimo pokušajte ponovo ili kontaktirajte podršku ako se problem nastavi.',
-    orderConfirmationSoon: 'Interfejs za potvrdu porudžbina uskoro!'
+    orderConfirmationSoon: 'Interfejs za potvrdu porudžbina uskoro!',
+    myCoupons: {
+      title: 'Moji Promo Kuponi',
+      subtitle: 'Zaradite kupone od $20 na kupovine preko $100!',
+      noCoupons: 'Još uvek nemate kupone',
+      earnInfo: 'Završite kupovinu preko $100 da zaradite promo kupon od $20!',
+      available: 'Dostupni Kuponi',
+      used: 'Iskorišćeni Kuponi',
+      active: 'AKTIVAN',
+      usedBadge: 'ISKORIŠĆEN',
+      expires: 'Ističe',
+      earnedFrom: 'Zarađen od porudžbine',
+      usedIn: 'Iskorišćen u porudžbini',
+      usedOn: 'Iskorišćen',
+      copyCode: 'Kopiraj Kod',
+      code: 'Kod Kupona',
+      codeCopied: 'Kod kupona kopiran u clipboard!',
+      loadFailed: 'Učitavanje kupona nije uspelo'
+    }
   },
   login: {
     login: 'Prijava',
@@ -434,7 +465,9 @@ export default {
     yes: 'Da',
     no: 'Ne',
     notProvided: 'Nije uneto',
-    changes: 'Promene'
+    changes: 'Promene',
+    remove: 'Ukloni',
+    off: 'POPUST'
   },
   status: {
     pending: 'Na Čekanju',
@@ -443,5 +476,39 @@ export default {
     shipped: 'Poslato',
     delivered: 'Dostavljeno',
     cancelled: 'Otkazano'
+  },
+  reviews: {
+    title: 'Recenzije i Ocene',
+    writeReview: 'Napišite Recenziju',
+    editReview: 'Izmenite Recenziju',
+    yourReview: 'Vaša Recenzija',
+    verifiedPurchase: 'Verifikovana Kupovina',
+    rating: 'Ocena',
+    selectRating: 'Izaberite ocenu',
+    stars: '{count} zvezde',
+    star: '{count} zvezda',
+    comment: 'Recenzija (Opciono)',
+    commentPlaceholder: 'Podelite vaše mišljenje o ovoj knjizi...',
+    submitReview: 'Pošalji Recenziju',
+    updateReview: 'Ažuriraj Recenziju',
+    deleteReview: 'Obriši Recenziju',
+    noReviews: 'Još nema recenzija',
+    beFirst: 'Budite prvi koji će recenzirati ovu knjigu!',
+    avgRating: 'Prosečna Ocena',
+    basedOn: 'Na osnovu {count} recenzija',
+    basedOnOne: 'Na osnovu 1 recenzije',
+    ratingDistribution: 'Distribucija Ocena',
+    reviewBy: 'Recenzija od {name}',
+    reviewedOn: 'Recenzirano {date}',
+    confirmDelete: 'Da li ste sigurni da želite da obrišete vašu recenziju?',
+    reviewDeleted: 'Recenzija uspešno obrisana',
+    reviewSubmitted: 'Recenzija uspešno poslata',
+    reviewUpdated: 'Recenzija uspešno ažurirana',
+    alreadyReviewed: 'Već ste recenzirali ovu knjigu',
+    mustPurchase: 'Morate kupiti ovu knjigu pre nego što je recenzirate',
+    loginToReview: 'Molimo prijavite se da biste napisali recenziju',
+    myReviews: 'Moje Recenzije',
+    noReviewsYet: 'Još uvek niste napisali nijednu recenziju',
+    loadingReviews: 'Učitavanje recenzija...'
   }
 }

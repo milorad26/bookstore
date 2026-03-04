@@ -81,7 +81,20 @@ export default {
       shipping: 'Shipping',
       delivery: 'Delivery Fee',
       free: 'FREE',
+      discount: 'Coupon Discount',
       total: 'Total'
+    },
+    coupon: {
+      title: 'Have a Promo Code?',
+      subtitle: 'Orders over $100 earn you a $20 coupon for next purchase!',
+      placeholder: 'Enter coupon code',
+      apply: 'Apply',
+      remove: 'Remove',
+      available: 'Your Available Coupons',
+      expires: 'Expires',
+      discount: 'discount applied',
+      error: 'Invalid or expired coupon code',
+      success: 'Coupon applied successfully!'
     }
   },
   orders: {
@@ -336,7 +349,25 @@ export default {
     passwordChangeFailed: 'Failed to change password.',
     currentPasswordIncorrect: 'Current password is incorrect. Please try again.',
     tryAgainOrContact: 'Please try again or contact support if the problem persists.',
-    orderConfirmationSoon: 'Order confirmation interface coming soon!'
+    orderConfirmationSoon: 'Order confirmation interface coming soon!',
+    myCoupons: {
+      title: 'My Promo Coupons',
+      subtitle: 'Earn $20 coupons on purchases over $100!',
+      noCoupons: 'You don\'t have any coupons yet',
+      earnInfo: 'Complete a purchase over $100 to earn a $20 promo coupon!',
+      available: 'Available Coupons',
+      used: 'Used Coupons',
+      active: 'ACTIVE',
+      usedBadge: 'USED',
+      expires: 'Expires',
+      earnedFrom: 'Earned from order',
+      usedIn: 'Used in order',
+      usedOn: 'Used on',
+      copyCode: 'Copy Code',
+      code: 'Coupon Code',
+      codeCopied: 'Coupon code copied to clipboard!',
+      loadFailed: 'Failed to load coupons'
+    }
   },
   login: {
     login: 'Login',
@@ -438,7 +469,9 @@ export default {
     yes: 'Yes',
     no: 'No',
     notProvided: 'Not provided',
-    changes: 'Changes'
+    changes: 'Changes',
+    remove: 'Remove',
+    off: 'OFF'
   },
   status: {
     pending: 'Pending',
@@ -447,5 +480,39 @@ export default {
     shipped: 'Shipped',
     delivered: 'Delivered',
     cancelled: 'Cancelled'
+  },
+  reviews: {
+    title: 'Reviews & Ratings',
+    writeReview: 'Write a Review',
+    editReview: 'Edit Review',
+    yourReview: 'Your Review',
+    verifiedPurchase: 'Verified Purchase',
+    rating: 'Rating',
+    selectRating: 'Select a rating',
+    stars: '{count} stars',
+    star: '{count} star',
+    comment: 'Review (Optional)',
+    commentPlaceholder: 'Share your thoughts about this book...',
+    submitReview: 'Submit Review',
+    updateReview: 'Update Review',
+    deleteReview: 'Delete Review',
+    noReviews: 'No reviews yet',
+    beFirst: 'Be the first to review this book!',
+    avgRating: 'Average Rating',
+    basedOn: 'Based on {count} reviews',
+    basedOnOne: 'Based on 1 review',
+    ratingDistribution: 'Rating Distribution',
+    reviewBy: 'Review by {name}',
+    reviewedOn: 'Reviewed on {date}',
+    confirmDelete: 'Are you sure you want to delete your review?',
+    reviewDeleted: 'Review deleted successfully',
+    reviewSubmitted: 'Review submitted successfully',
+    reviewUpdated: 'Review updated successfully',
+    alreadyReviewed: 'You have already reviewed this book',
+    mustPurchase: 'You must purchase this book before reviewing',
+    loginToReview: 'Please login to write a review',
+    myReviews: 'My Reviews',
+    noReviewsYet: 'You haven\'t written any reviews yet',
+    loadingReviews: 'Loading reviews...'
   }
 }
