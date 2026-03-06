@@ -44,9 +44,17 @@ export default {
       items: 'Items ({count})',
       shipping: 'Shipping',
       delivery: 'Delivery Fee',
+      bulkDiscount: 'Bulk Discount',
       free: 'FREE',
       total: 'Total'
     }
+  },
+  bulkDiscount: {
+    applied: '{percentage}% bulk discount applied!',
+    savings: 'You save ${amount}',
+    nextTier: 'Add {quantity} more book(s) for {percentage}% off!',
+    books: 'books',
+    availableTiers: 'Bulk Discount Tiers'
   },
   checkout: {
     title: 'Checkout',
@@ -80,6 +88,7 @@ export default {
       subtotal: 'Subtotal ({count} items)',
       shipping: 'Shipping',
       delivery: 'Delivery Fee',
+      bulkDiscount: 'Bulk Discount',
       free: 'FREE',
       discount: 'Coupon Discount',
       total: 'Total'
@@ -142,7 +151,13 @@ export default {
       orderItems: 'Order Items',
       quantity: 'Quantity',
       price: 'Price',
-      subtotal: 'Subtotal'
+      subtotal: 'Subtotal',
+      priceBreakdown: 'Price Breakdown',
+      itemsSubtotal: 'Items Subtotal',
+      shippingFee: 'Shipping Fee',
+      bulkDiscount: 'Bulk Discount',
+      couponDiscount: 'Coupon Discount',
+      total: 'Total'
     },
     delete: {
       title: 'Confirm Delete',
@@ -465,6 +480,7 @@ export default {
     error: 'Error',
     success: 'Success',
     warning: 'Warning',
+    off: 'off',
     info: 'Info',
     yes: 'Yes',
     no: 'No',

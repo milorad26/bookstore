@@ -59,9 +59,18 @@ public class PaymentService {
             order.setStatus(com.bookstore.model.OrderStatus.CONFIRMED);
             order = orderRepository.save(order);
             
-            // Send order confirmation email
-            emailService.sendOrderConfirmationEmail(order);
-            log.info("Order {} confirmed and email sent", orderId);
+            // Send order confirmation email (non-blocking - don't fail if email service is down)
+            try {
+                emailService.sendOrderConfirmationEmail(order);
+                order.setConfirmationEmailSent(true);
+                orderRepository.save(order);
+                log.info("Order {} confirmed and email sent", orderId);
+            } catch (Exception e) {
+                log.error("Failed to send order confirmation email for order {}: {}", orderId, e.getMessage());
+                log.warn("Order {} confirmed but email not sent - will retry automatically", orderId);
+                order.setConfirmationEmailSent(false);
+                orderRepository.save(order);
+            }
         }
 
         // Build line items from order
@@ -69,18 +78,20 @@ public class PaymentService {
         
         // Calculate book items total and get discount info
         BigDecimal booksTotal = BigDecimal.ZERO;
-        BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal couponDiscountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal bulkDiscountAmount = order.getBulkDiscountAmount() != null ? order.getBulkDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal totalDiscount = couponDiscountAmount.add(bulkDiscountAmount);
         
-        // Calculate original total (before discount was applied)
-        BigDecimal originalTotal = order.getTotalAmount().add(discountAmount);
+        // Calculate original total (before any discounts were applied)
+        BigDecimal originalTotal = order.getTotalAmount().add(totalDiscount);
         
-        // Calculate discount multiplier to apply proportionally
-        // discountMultiplier = (originalTotal - discount) / originalTotal
+        // Calculate discount multiplier to apply proportionally to all items
+        // discountMultiplier = (originalTotal - totalDiscount) / originalTotal
         BigDecimal discountMultiplier = BigDecimal.ONE;
-        if (discountAmount.compareTo(BigDecimal.ZERO) > 0 && originalTotal.compareTo(BigDecimal.ZERO) > 0) {
-            discountMultiplier = originalTotal.subtract(discountAmount).divide(originalTotal, 10, RoundingMode.HALF_UP);
-            log.info("Applying discount multiplier {} for coupon discount of ${}",
-                discountMultiplier, discountAmount);
+        if (totalDiscount.compareTo(BigDecimal.ZERO) > 0 && originalTotal.compareTo(BigDecimal.ZERO) > 0) {
+            discountMultiplier = originalTotal.subtract(totalDiscount).divide(originalTotal, 10, RoundingMode.HALF_UP);
+            log.info("Applying combined discount multiplier {} for total discount of ${} (Bulk: ${}, Coupon: ${})",
+                discountMultiplier, totalDiscount, bulkDiscountAmount, couponDiscountAmount);
         }
         
         // Add book items with proportional discount applied
@@ -119,9 +130,23 @@ public class PaymentService {
             // Apply discount to delivery fee as well
             BigDecimal discountedDeliveryFee = deliveryFee.multiply(discountMultiplier);
             
+            // Build delivery description with applied discounts
             String deliveryDescription = "Standard shipping and handling";
-            if (discountAmount.compareTo(BigDecimal.ZERO) > 0 && order.getAppliedCoupon() != null) {
-                deliveryDescription += " (Coupon " + order.getAppliedCoupon().getCode() + " applied)";
+            List<String> discountDescriptions = new ArrayList<>();
+            
+            if (bulkDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+                int totalQuantity = order.getOrderItems().stream()
+                    .mapToInt(OrderItem::getQuantity)
+                    .sum();
+                discountDescriptions.add("Bulk discount (" + totalQuantity + " books)");
+            }
+            
+            if (couponDiscountAmount.compareTo(BigDecimal.ZERO) > 0 && order.getAppliedCoupon() != null) {
+                discountDescriptions.add("Coupon " + order.getAppliedCoupon().getCode());
+            }
+            
+            if (!discountDescriptions.isEmpty()) {
+                deliveryDescription += " (" + String.join(" + ", discountDescriptions) + " applied)";
             }
             
             SessionCreateParams.LineItem deliveryLineItem = SessionCreateParams.LineItem.builder()

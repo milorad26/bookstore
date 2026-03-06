@@ -39,4 +39,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     int updateOrderStatus(@Param("orderId") Long orderId, 
                           @Param("status") OrderStatus status,
                           @Param("updatedAt") LocalDateTime updatedAt);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.confirmationEmailSent = false AND (o.status = 'CONFIRMED' OR o.status = 'PAID')")
+    long countOrdersNeedingConfirmationEmail();
+
+    @Query("SELECT o FROM Order o WHERE o.confirmationEmailSent = false AND (o.status = 'CONFIRMED' OR o.status = 'PAID') ORDER BY o.orderDate DESC")
+    List<Order> findOrdersNeedingConfirmationEmail();
 }

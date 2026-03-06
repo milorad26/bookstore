@@ -16,7 +16,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -68,5 +68,8 @@ stripe:
 
 logging:
   level:
-    com.bookstore: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.bookstore: INFO
+    com.bookstore.scheduler: ERROR
+    org.hibernate.SQL: ERROR
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    org.hibernate.orm.jdbc.bind: ERROR

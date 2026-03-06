@@ -167,9 +167,10 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Calculate delivery fee correctly (accounting for discount already applied to totalAmount)
+        // Calculate delivery fee correctly (accounting for discounts already applied to totalAmount)
         BigDecimal discountAmount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal deliveryFee = order.getTotalAmount().subtract(itemsSubtotal).add(discountAmount);
+        BigDecimal bulkDiscountAmount = order.getBulkDiscountAmount() != null ? order.getBulkDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal deliveryFee = order.getTotalAmount().subtract(itemsSubtotal).add(discountAmount).add(bulkDiscountAmount);
         
         // Show subtotal, delivery fee, discount, and total
         html.append("<div style='margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px;'>");
@@ -185,7 +186,22 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Show discount if coupon was applied
+        // Show bulk discount if applied
+        if (bulkDiscountAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // Calculate total quantity for display
+            int totalQuantity = order.getOrderItems().stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+            
+            html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #FF9800;'>");
+            html.append("<span>").append(messageSource.getMessage("email.order.bulkdiscount", null, localeEn));
+            html.append(" (").append(totalQuantity).append(" books):");
+            html.append("</span>");
+            html.append("<span>-$").append(bulkDiscountAmount).append("</span>");
+            html.append("</div>");
+        }
+        
+        // Show coupon discount if applied
         if (discountAmount.compareTo(BigDecimal.ZERO) > 0) {
             html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #4CAF50;'>");
             html.append("<span>").append(messageSource.getMessage("email.order.discount", null, localeEn));
@@ -275,9 +291,10 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Calculate delivery fee correctly (accounting for discount already applied to totalAmount)
+        // Calculate delivery fee correctly (accounting for discounts already applied to totalAmount)
         BigDecimal discountAmountSr = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
-        BigDecimal deliveryFeeSr = order.getTotalAmount().subtract(itemsSubtotalSr).add(discountAmountSr);
+        BigDecimal bulkDiscountAmountSr = order.getBulkDiscountAmount() != null ? order.getBulkDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal deliveryFeeSr = order.getTotalAmount().subtract(itemsSubtotalSr).add(discountAmountSr).add(bulkDiscountAmountSr);
         
         // Show subtotal, delivery fee, discount, and total
         html.append("<div style='margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px;'>");
@@ -293,7 +310,22 @@ public class EmailService {
             html.append("</div>");
         }
         
-        // Show discount if coupon was applied
+        // Show bulk discount if applied
+        if (bulkDiscountAmountSr.compareTo(BigDecimal.ZERO) > 0) {
+            // Calculate total quantity for display
+            int totalQuantity = order.getOrderItems().stream()
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
+            
+            html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #FF9800;'>");
+            html.append("<span>").append(messageSource.getMessage("email.order.bulkdiscount", null, localeSr));
+            html.append(" (").append(totalQuantity).append(" knjige):");
+            html.append("</span>");
+            html.append("<span>-$").append(bulkDiscountAmountSr).append("</span>");
+            html.append("</div>");
+        }
+        
+        // Show coupon discount if applied
         if (discountAmountSr.compareTo(BigDecimal.ZERO) > 0) {
             html.append("<div style='display: flex; justify-content: space-between; margin-bottom: 10px; color: #4CAF50;'>");
             html.append("<span>").append(messageSource.getMessage("email.order.discount", null, localeSr));

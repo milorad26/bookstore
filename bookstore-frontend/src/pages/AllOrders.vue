@@ -185,7 +185,6 @@
                 </p>
               </div>
               <div class="col-md-6">
-                <p><strong>{{ t('orders.details.totalAmount') }}:</strong> ${{ formatPrice(selectedOrder.totalAmount) }}</p>
                 <p><strong>{{ t('orders.details.shippingAddress') }}:</strong><br>{{ selectedOrder.shippingAddress || 'N/A' }}</p>
                 <p><strong>{{ t('orders.details.billingAddress') }}:</strong><br>{{ selectedOrder.billingAddress || 'N/A' }}</p>
               </div>
@@ -218,6 +217,50 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div class="mt-4">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title mb-3">{{ t('orders.details.priceBreakdown') || 'Price Breakdown' }}</h6>
+                  
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>{{ t('orders.details.itemsSubtotal') || 'Items Subtotal' }}:</span>
+                    <span>${{ formatPrice(calculateItemsSubtotal(selectedOrder)) }}</span>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>{{ t('orders.details.shippingFee') || 'Shipping Fee' }}:</span>
+                    <span>${{ formatPrice(calculateDeliveryFee(selectedOrder)) }}</span>
+                  </div>
+                  
+                  <div v-if="selectedOrder.bulkDiscountAmount && selectedOrder.bulkDiscountAmount > 0" 
+                       class="d-flex justify-content-between mb-2 text-success">
+                    <span>
+                      <i class="bi bi-tag-fill"></i> {{ t('orders.details.bulkDiscount') || 'Bulk Discount' }}:
+                    </span>
+                    <span>-${{ formatPrice(selectedOrder.bulkDiscountAmount) }}</span>
+                  </div>
+                  
+                  <div v-if="selectedOrder.discountAmount && selectedOrder.discountAmount > 0" 
+                       class="d-flex justify-content-between mb-2 text-success">
+                    <span>
+                      <i class="bi bi-ticket-perforated-fill"></i> 
+                      {{ t('orders.details.couponDiscount') || 'Coupon' }} 
+                      <span v-if="selectedOrder.appliedCouponCode" class="badge bg-success">{{ selectedOrder.appliedCouponCode }}</span>:
+                    </span>
+                    <span>-${{ formatPrice(selectedOrder.discountAmount) }}</span>
+                  </div>
+                  
+                  <hr>
+                  
+                  <div class="d-flex justify-content-between">
+                    <strong class="fs-5">{{ t('orders.details.total') || 'Total' }}:</strong>
+                    <strong class="fs-5 text-success">${{ formatPrice(selectedOrder.totalAmount) }}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -459,6 +502,22 @@ const formatDate = (dateString) => {
 
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
+}
+
+const calculateItemsSubtotal = (order) => {
+  if (!order || !order.orderItems) return 0
+  return order.orderItems.reduce((sum, item) => {
+    return sum + (item.price * item.quantity)
+  }, 0)
+}
+
+const calculateDeliveryFee = (order) => {
+  if (!order) return 0
+  const itemsSubtotal = calculateItemsSubtotal(order)
+  const discountAmount = order.discountAmount || 0
+  const bulkDiscountAmount = order.bulkDiscountAmount || 0
+  // deliveryFee = totalAmount - itemsSubtotal + discountAmount + bulkDiscountAmount
+  return order.totalAmount - itemsSubtotal + discountAmount + bulkDiscountAmount
 }
 
 const formatStatus = (status) => {

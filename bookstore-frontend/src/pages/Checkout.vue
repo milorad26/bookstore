@@ -111,6 +111,14 @@
             @coupon-removed="onCouponRemoved"
           />
 
+          <!-- Bulk Discount Progress -->
+          <BulkDiscountProgress
+            v-if="activeDiscountRules.length > 0"
+            :discount-info="bulkDiscountInfo"
+            :active-rules="activeDiscountRules"
+            class="mb-4"
+          />
+
           <!-- Payment Notice -->
           <div class="alert alert-info">
             <i class="bi bi-info-circle"></i>
@@ -163,6 +171,11 @@
               <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
             </div>
 
+            <div v-if="bulkDiscountInfo?.discountAmount > 0" class="d-flex justify-content-between mb-2 text-info">
+              <span>{{ t('checkout.summary.bulkDiscount') }}:</span>
+              <span>-${{ formatPrice(bulkDiscountInfo.discountAmount) }}</span>
+            </div>
+
             <div v-if="selectedCoupon" class="d-flex justify-content-between mb-3 text-success">
               <span>{{ t('checkout.summary.discount') }}:</span>
               <span>-${{ formatPrice(selectedCoupon.value) }}</span>
@@ -182,15 +195,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore } from '../stores/cartStore'
 import { useAuthStore } from '../stores/authStore'
 import { orderService } from '../services/orderService'
 import { paymentService } from '../services/paymentService'
+import bulkDiscountService from '../services/bulkDiscountService'
 import Alert from '../components/Alert.vue'
 import CouponSelector from '../components/CouponSelector.vue'
+import BulkDiscountProgress from '../components/BulkDiscountProgress.vue'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -206,19 +221,85 @@ const isSubmitting = ref(false)
 const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
+const activeDiscountRules = ref([])
+const bulkDiscountInfo = ref(null)
+
+// Load active bulk discount rules
+onMounted(async () => {
+  try {
+    activeDiscountRules.value = await bulkDiscountService.getActiveRules()
+    console.log('Active discount rules loaded:', activeDiscountRules.value)
+    // Calculate discount after rules are loaded
+    calculateBulkDiscount()
+  } catch (error) {
+    console.error('Failed to load bulk discount rules:', error)
+  }
+})
+
+// Calculate bulk discount
+const calculateBulkDiscount = () => {
+  if (cartStore.cartItems.length > 0 && activeDiscountRules.value.length > 0) {
+    bulkDiscountInfo.value = bulkDiscountService.calculateBulkDiscount(
+      cartStore.cartItems,
+      activeDiscountRules.value
+    )
+    console.log('Bulk discount calculated:', bulkDiscountInfo.value)
+  } else {
+    bulkDiscountInfo.value = null
+    console.log('No bulk discount - items:', cartStore.cartItems.length, 'rules:', activeDiscountRules.value.length)
+  }
+}
+
+// Calculate bulk discount whenever cart changes
+watch(
+  () => cartStore.cartItems,
+  () => {
+    calculateBulkDiscount()
+  },
+  { immediate: true, deep: true }
+)
 
 const finalTotal = computed(() => {
   let total = cartStore.totalAmount
-  if (selectedCoupon.value) {
-    total -= parseFloat(selectedCoupon.value.value)
-    // Ensure total doesn't go below 0
-    if (total < 0) total = 0
+  console.log('Calculating final total - base:', total)
+  
+  // Apply bulk discount
+  if (bulkDiscountInfo.value?.discountAmount > 0) {
+    const bulkDiscount = parseFloat(bulkDiscountInfo.value.discountAmount)
+    total -= bulkDiscount
+    console.log('Applied bulk discount:', bulkDiscount, 'new total:', total)
   }
+  
+  // Apply coupon discount
+  if (selectedCoupon.value) {
+    const couponDiscount = parseFloat(selectedCoupon.value.value)
+    total -= couponDiscount
+    console.log('Applied coupon discount:', couponDiscount, 'new total:', total)
+  }
+  
+  // Ensure total doesn't go below 0
+  if (total < 0) total = 0
+  
+  console.log('Final total:', total)
   return total
 })
 
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
+}
+
+const showError = (message) => {
+  alertMessage.value = message
+  alertType.value = 'danger'
+  showAlert.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const showSuccess = (message) => {
+  alertMessage.value = message
+  alertType.value = 'success'
+  showAlert.value = true
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 const onCouponApplied = (coupon) => {
@@ -271,20 +352,6 @@ const submitOrder = async () => {
     showError(error.message || t('checkout.orderFailed'))
     isSubmitting.value = false
   }
-}
-
-const showError = (message) => {
-  alertMessage.value = message
-  alertType.value = 'danger'
-  showAlert.value = true
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-const showSuccess = (message) => {
-  alertMessage.value = message
-  alertType.value = 'success'
-  showAlert.value = true
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 </script>
 

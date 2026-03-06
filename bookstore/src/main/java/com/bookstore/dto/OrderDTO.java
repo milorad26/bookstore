@@ -34,6 +34,7 @@ public class OrderDTO {
     private String orderNotes;
     private String appliedCouponCode;
     private BigDecimal discountAmount;
+    private BigDecimal bulkDiscountAmount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

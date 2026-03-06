@@ -31,6 +31,7 @@ public class OrderService {
     private final PaymentService paymentService;
     private final EmailService emailService;
     private final CouponService couponService;
+    private final BulkDiscountService bulkDiscountService;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -134,6 +135,10 @@ public class OrderService {
         order.setOrderItems(orderItems);
         order.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
 
+        // Apply bulk discount based on total quantity
+        bulkDiscountService.applyBulkDiscountToOrder(order);
+        log.info("Applied bulk discount to order. Bulk discount: ${}", order.getBulkDiscountAmount());
+
         // Apply coupon if provided
         if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
             // Validate and apply coupon before saving
@@ -225,6 +230,10 @@ public class OrderService {
         existingOrder.getOrderItems().addAll(newOrderItems);
         existingOrder.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
         
+        // Apply bulk discount based on total quantity
+        bulkDiscountService.applyBulkDiscountToOrder(existingOrder);
+        log.info("Applied bulk discount to updated order. Bulk discount: ${}", existingOrder.getBulkDiscountAmount());
+        
         // Apply coupon if provided
         if (request.getCouponCode() != null && !request.getCouponCode().isEmpty()) {
             // Validate and apply coupon
@@ -271,8 +280,18 @@ public class OrderService {
         order.setStatus(OrderStatus.CONFIRMED);
         Order updatedOrder = orderRepository.save(order);
 
-        // Send order confirmation email
-        emailService.sendOrderConfirmationEmail(updatedOrder);
+        // Send order confirmation email (non-blocking - don't fail if email service is down)
+        try {
+            emailService.sendOrderConfirmationEmail(updatedOrder);
+            updatedOrder.setConfirmationEmailSent(true);
+            orderRepository.save(updatedOrder);
+            log.info("Order confirmation email sent for order {}", updatedOrder.getId());
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation email for order {}: {}", updatedOrder.getId(), e.getMessage());
+            log.warn("Order {} confirmed but email not sent - will retry automatically", updatedOrder.getId());
+            updatedOrder.setConfirmationEmailSent(false);
+            orderRepository.save(updatedOrder);
+        }
 
         return convertToDTO(updatedOrder);
     }
@@ -398,6 +417,7 @@ public class OrderService {
         dto.setOrderNotes(order.getOrderNotes());
         dto.setAppliedCouponCode(order.getAppliedCoupon() != null ? order.getAppliedCoupon().getCode() : null);
         dto.setDiscountAmount(order.getDiscountAmount());
+        dto.setBulkDiscountAmount(order.getBulkDiscountAmount());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
 

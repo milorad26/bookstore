@@ -44,9 +44,17 @@ export default {
       items: 'Stavke ({count})',
       shipping: 'Dostava',
       delivery: 'Cena Dostave',
+      bulkDiscount: 'Količinski Popust',
       free: 'BESPLATNO',
       total: 'Ukupno'
     }
+  },
+  bulkDiscount: {
+    applied: '{percentage}% količinski popust primenjen!',
+    savings: 'Uštedeli ste ${amount}',
+    nextTier: 'Dodaj još {quantity} knjigu/a za {percentage}% popusta!',
+    books: 'knjige',
+    availableTiers: 'Nivoi Količinskog Popusta'
   },
   checkout: {
     title: 'Plaćanje',
@@ -80,6 +88,7 @@ export default {
       subtotal: 'Međuzbir ({count} stavki)',
       shipping: 'Dostava',
       delivery: 'Cena Dostave',
+      bulkDiscount: 'Količinski Popust',
       free: 'BESPLATNO',
       discount: 'Popust sa Kupona',
       total: 'Ukupno'
@@ -140,7 +149,13 @@ export default {
       orderItems: 'Stavke Porudžbine',
       quantity: 'Količina',
       price: 'Cena',
-      subtotal: 'Međuzbir'
+      subtotal: 'Međuzbir',
+      priceBreakdown: 'Specifikacija Cene',
+      itemsSubtotal: 'Međuzbir Artikala',
+      shippingFee: 'Troškovi Dostave',
+      bulkDiscount: 'Popust za Količinu',
+      couponDiscount: 'Kupon Popust',
+      total: 'Ukupno'
     },
     delete: {
       title: 'Potvrdi Brisanje',
@@ -462,6 +477,7 @@ export default {
     success: 'Uspeh',
     warning: 'Upozorenje',
     info: 'Informacija',
+    off: 'popusta',
     yes: 'Da',
     no: 'Ne',
     notProvided: 'Nije uneto',

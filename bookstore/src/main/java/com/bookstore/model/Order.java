@@ -57,6 +57,12 @@ public class Order {
     @Column(name = "discount_amount", precision = 10, scale = 2)
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    @Column(name = "bulk_discount_amount", precision = 10, scale = 2)
+    private BigDecimal bulkDiscountAmount = BigDecimal.ZERO;
+
+    @Column(name = "confirmation_email_sent")
+    private Boolean confirmationEmailSent = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

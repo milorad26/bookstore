@@ -21,6 +21,15 @@
             </div>
           </div>
 
+          <!-- Unpaid Orders Warning -->
+          <div v-if="unpaidOrders.length > 0" class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
+            <div class="flex-grow-1">
+              <strong>You have {{ unpaidOrders.length }} unpaid order(s)</strong>
+              <p class="mb-0">These orders are confirmed but payment was not completed. Click "Pay" to complete your payment.</p>
+            </div>
+          </div>
+
           <!-- Orders Table -->
           <div class="card shadow-sm">
             <div class="card-body">
@@ -61,6 +70,9 @@
                         <span :class="getStatusBadgeClass(order.status)">
                           {{ formatStatus(order.status) }}
                         </span>
+                        <span v-if="needsPayment(order)" class="badge bg-danger ms-1">
+                          <i class="bi bi-exclamation-circle"></i> Unpaid
+                        </span>
                       </td>
                       <td>{{ order.orderItems?.length || 0 }} item(s)</td>
                       <td>
@@ -70,6 +82,14 @@
                           :title="t('orders.actions.viewDetails')"
                         >
                           <i class="bi bi-eye"></i>
+                        </button>
+                        <button 
+                          v-if="needsPayment(order)"
+                          @click="retryPayment(order)" 
+                          class="btn btn-sm btn-success me-1"
+                          :title="'Pay Now'"
+                        >
+                          <i class="bi bi-credit-card"></i> Pay
                         </button>
                         <button 
                           v-if="canConfirm(order)"
@@ -147,13 +167,21 @@
                   <span :class="getStatusBadgeClass(selectedOrder.status)">
                     {{ formatStatus(selectedOrder.status) }}
                   </span>
+                  <span v-if="needsPayment(selectedOrder)" class="badge bg-danger ms-1">
+                    <i class="bi bi-exclamation-circle"></i> Unpaid
+                  </span>
                 </p>
-              </div>
-            </div>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="fw-bold">{{ t('orders.details.totalAmount') }}:</label>
-                <p class="fs-5 text-success fw-bold">${{ formatPrice(selectedOrder.totalAmount) }}</p>
+                <div v-if="needsPayment(selectedOrder)" class="alert alert-warning mt-2">
+                  <i class="bi bi-exclamation-triangle"></i>
+                  <strong>Payment Required</strong>
+                  <p class="mb-0 small">This order is confirmed but payment was not completed.</p>
+                  <button 
+                    @click="retryPayment(selectedOrder)" 
+                    class="btn btn-success btn-sm mt-2"
+                  >
+                    <i class="bi bi-credit-card"></i> Pay Now
+                  </button>
+                </div>
               </div>
             </div>
             <div class="row mb-3">
@@ -198,6 +226,52 @@
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title mb-3">{{ t('orders.details.priceBreakdown') || 'Price Breakdown' }}</h6>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>{{ t('orders.details.itemsSubtotal') || 'Items Subtotal' }}:</span>
+                      <span>${{ formatPrice(calculateItemsSubtotal(selectedOrder)) }}</span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>{{ t('orders.details.shippingFee') || 'Shipping Fee' }}:</span>
+                      <span>${{ formatPrice(calculateDeliveryFee(selectedOrder)) }}</span>
+                    </div>
+                    
+                    <div v-if="selectedOrder.bulkDiscountAmount && selectedOrder.bulkDiscountAmount > 0" 
+                         class="d-flex justify-content-between mb-2 text-success">
+                      <span>
+                        <i class="bi bi-tag-fill"></i> {{ t('orders.details.bulkDiscount') || 'Bulk Discount' }}:
+                      </span>
+                      <span>-${{ formatPrice(selectedOrder.bulkDiscountAmount) }}</span>
+                    </div>
+                    
+                    <div v-if="selectedOrder.discountAmount && selectedOrder.discountAmount > 0" 
+                         class="d-flex justify-content-between mb-2 text-success">
+                      <span>
+                        <i class="bi bi-ticket-perforated-fill"></i> 
+                        {{ t('orders.details.couponDiscount') || 'Coupon' }} 
+                        <span v-if="selectedOrder.appliedCouponCode" class="badge bg-success">{{ selectedOrder.appliedCouponCode }}</span>:
+                      </span>
+                      <span>-${{ formatPrice(selectedOrder.discountAmount) }}</span>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                      <strong class="fs-5">{{ t('orders.details.total') || 'Total' }}:</strong>
+                      <strong class="fs-5 text-success">${{ formatPrice(selectedOrder.totalAmount) }}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -268,6 +342,11 @@ const orderToDelete = ref(null)
 const isAdmin = computed(() => {
   const userType = authStore.user?.userType
   return userType === 'ADMIN' || userType === 'SUPER_USER'
+})
+
+// Get unpaid orders (CONFIRMED status)
+const unpaidOrders = computed(() => {
+  return orders.value.filter(order => order.status === 'CONFIRMED')
 })
 
 const alert = reactive({
@@ -371,13 +450,36 @@ const canConfirm = (order) => {
          (order.status === 'PENDING' || order.status === 'PAID')
 }
 
+const needsPayment = (order) => {
+  // CONFIRMED status means order was created but payment not completed
+  return order.status === 'CONFIRMED'
+}
+
+const retryPayment = async (order) => {
+  if (!confirm(`Retry payment for Order #${order.id}? You will be redirected to Stripe checkout page.`)) {
+    return
+  }
+
+  try {
+    // Create a new checkout session for the existing order
+    const paymentData = await paymentService.createCheckoutSession(order.id)
+    
+    // Redirect to Stripe checkout
+    window.location.href = paymentData.sessionUrl
+    
+  } catch (error) {
+    showAlert('danger', error.message || 'Failed to create payment session')
+  }
+}
+
 const canCancel = (order) => {
   return order.status === 'PENDING' || order.status === 'PAID' || order.status === 'CONFIRMED'
 }
 
 const canConfirmDelivery = (order) => {
-  // Users can confirm delivery for SHIPPED or CONFIRMED orders
-  return order.status === 'SHIPPED' || order.status === 'CONFIRMED'
+  // Users can only confirm delivery for SHIPPED orders
+  // CONFIRMED orders are unpaid and cannot be delivered
+  return order.status === 'SHIPPED'
 }
 
 const canDelete = (order) => {
@@ -397,6 +499,22 @@ const closeDeleteModal = () => {
 
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
+}
+
+const calculateItemsSubtotal = (order) => {
+  if (!order || !order.orderItems) return 0
+  return order.orderItems.reduce((sum, item) => {
+    return sum + (item.price * item.quantity)
+  }, 0)
+}
+
+const calculateDeliveryFee = (order) => {
+  if (!order) return 0
+  const itemsSubtotal = calculateItemsSubtotal(order)
+  const discountAmount = order.discountAmount || 0
+  const bulkDiscountAmount = order.bulkDiscountAmount || 0
+  // deliveryFee = totalAmount - itemsSubtotal + discountAmount + bulkDiscountAmount
+  return order.totalAmount - itemsSubtotal + discountAmount + bulkDiscountAmount
 }
 
 const formatDate = (date) => {

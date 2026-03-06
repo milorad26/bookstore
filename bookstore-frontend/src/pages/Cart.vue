@@ -91,6 +91,15 @@
 
         <!-- Cart Summary -->
         <div class="col-lg-4">
+          <!-- Bulk Discount Info -->
+          <BulkDiscountProgress
+            v-if="bulkDiscountInfo"
+            :discount-info="bulkDiscountInfo"
+            :active-rules="activeDiscountRules"
+            :show-tiers="true"
+            class="mb-3"
+          />
+          
           <div class="card shadow-sm sticky-top" style="top: 20px;">
             <div class="card-body">
               <h5 class="card-title mb-4">{{ t('cart.summary.title') }}</h5>
@@ -100,6 +109,16 @@
                 <span>${{ formatPrice(cartStore.subtotalAmount) }}</span>
               </div>
               
+              <!-- Bulk Discount Display -->
+              <div v-if="bulkDiscountInfo && bulkDiscountInfo.discountAmount > 0" 
+                   class="d-flex justify-content-between mb-2 text-success">
+                <span>
+                  <i class="bi bi-tag-fill"></i> {{ t('cart.summary.bulkDiscount') }}
+                  ({{ bulkDiscountInfo.discountPercentage }}%):
+                </span>
+                <span>-${{ formatPrice(bulkDiscountInfo.discountAmount) }}</span>
+              </div>
+              
               <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
                 <span>{{ t('cart.summary.delivery') }}:</span>
                 <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
@@ -107,7 +126,7 @@
               
               <div class="d-flex justify-content-between mb-4">
                 <strong>{{ t('cart.summary.total') }}:</strong>
-                <strong class="text-primary h5 mb-0">${{ formatPrice(cartStore.totalAmount) }}</strong>
+                <strong class="text-primary h5 mb-0">${{ formatPrice(finalTotal) }}</strong>
               </div>
 
               <button 
@@ -130,11 +149,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
+import BulkDiscountProgress from '../components/BulkDiscountProgress.vue'
+import bulkDiscountService from '../services/bulkDiscountService'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -143,6 +164,44 @@ const { t } = useI18n()
 const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
+const activeDiscountRules = ref([])
+const bulkDiscountInfo = ref(null)
+
+// Load active discount rules on mount
+onMounted(async () => {
+  try {
+    activeDiscountRules.value = await bulkDiscountService.getActiveRules()
+    calculateBulkDiscount()
+  } catch (error) {
+    console.error('Error loading bulk discount rules:', error)
+  }
+})
+
+// Watch cart changes and recalculate discounts
+watch(() => cartStore.cartItems.length + cartStore.cartItems.reduce((sum, item) => sum + item.quantity, 0), () => {
+  calculateBulkDiscount()
+}, { deep: true })
+
+// Calculate bulk discount for current cart
+const calculateBulkDiscount = () => {
+  if (cartStore.cartItems.length > 0 && activeDiscountRules.value.length > 0) {
+    bulkDiscountInfo.value = bulkDiscountService.calculateBulkDiscount(
+      cartStore.cartItems,
+      activeDiscountRules.value
+    )
+  } else {
+    bulkDiscountInfo.value = null
+  }
+}
+
+// Calculate final total with bulk discount
+const finalTotal = computed(() => {
+  let total = cartStore.totalAmount
+  if (bulkDiscountInfo.value && bulkDiscountInfo.value.discountAmount > 0) {
+    total = total - parseFloat(bulkDiscountInfo.value.discountAmount)
+  }
+  return total
+})
 
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
