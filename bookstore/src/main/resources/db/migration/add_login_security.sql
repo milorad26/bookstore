@@ -32,3 +32,7 @@ MODIFY COLUMN account_locked_until DATETIME NULL COMMENT 'Account locked until t
 
 ALTER TABLE users 
 MODIFY COLUMN last_failed_login DATETIME NULL COMMENT 'Timestamp of last failed login attempt';
+
+UPDATE users 
+SET failed_login_attempts = 0 
+WHERE failed_login_attempts IS NULL;
