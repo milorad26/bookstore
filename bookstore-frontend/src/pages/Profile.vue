@@ -178,6 +178,166 @@
             </div>
           </div>
 
+          <!-- Multi-Factor Authentication (2FA) -->
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0"><i class="bi bi-shield-lock-fill"></i> {{ t('profile.mfa.title') }}</h5>
+            </div>
+            <div class="card-body">
+              <!-- MFA Status Display -->
+              <div v-if="!mfaSetupMode">
+                <div class="d-flex align-items-center mb-3">
+                  <div :class="['mfa-status-icon', mfaEnabled ? 'enabled' : 'disabled']">
+                    <i :class="['bi', mfaEnabled ? 'bi-shield-check' : 'bi-shield-x']"></i>
+                  </div>
+                  <div class="ms-3">
+                    <h6 class="mb-0">
+                      {{ mfaEnabled ? t('profile.mfa.enabled') : t('profile.mfa.disabled') }}
+                    </h6>
+                    <p class="text-muted small mb-0">
+                      {{ mfaEnabled ? t('profile.mfa.statusActive') : t('profile.mfa.statusInactive') }}
+                    </p>
+                  </div>
+                </div>
+                
+                <p class="text-muted mb-3">{{ t('profile.mfa.description') }}</p>
+                
+                <!-- Enable MFA -->
+                <button 
+                  v-if="!mfaEnabled" 
+                  @click="startMfaSetup" 
+                  class="btn btn-info"
+                  :disabled="loading"
+                >
+                  <i class="bi bi-shield-plus"></i> {{ t('profile.mfa.enable') }}
+                </button>
+                
+                <!-- Disable MFA -->
+                <button 
+                  v-else 
+                  @click="mfaDisableMode = true" 
+                  class="btn btn-warning"
+                  :disabled="loading"
+                >
+                  <i class="bi bi-shield-minus"></i> {{ t('profile.mfa.disable') }}
+                </button>
+              </div>
+
+              <!-- MFA Setup/Enable Form -->
+              <div v-else>
+                <div v-if="!mfaQrCode">
+                  <div class="text-center py-3">
+                    <div class="spinner-border text-info" role="status">
+                      <span class="visually-hidden">{{ t('common.loading') }}</span>
+                    </div>
+                    <p class="mt-2 text-muted">{{ t('profile.mfa.generating') }}</p>
+                  </div>
+                </div>
+                
+                <div v-else>
+                  <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> {{ t('profile.mfa.setupInstructions') }}
+                  </div>
+                  
+                  <!-- Step 1: Scan QR Code -->
+                  <div class="mfa-setup-step mb-4">
+                    <h6><span class="badge bg-info me-2">1</span>{{ t('profile.mfa.step1') }}</h6>
+                    <div class="text-center my-3">
+                      <img :src="mfaQrCode" alt="QR Code" class="mfa-qr-code" />
+                    </div>
+                    <p class="small text-muted text-center">
+                      {{ t('profile.mfa.scanWithApp') }}
+                    </p>
+                  </div>
+
+                  <!-- Manual Entry Option -->
+                  <div class="mfa-setup-step mb-4">
+                    <h6><i class="bi bi-keyboard"></i> {{ t('profile.mfa.manualEntry') }}</h6>
+                    <div class="input-group">
+                      <input 
+                        type="text" 
+                        class="form-control font-monospace" 
+                        :value="mfaManualKey" 
+                        readonly
+                      />
+                      <button 
+                        class="btn btn-outline-secondary" 
+                        type="button"
+                        @click="copyToClipboard(mfaManualKey)"
+                      >
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Step 2: Verify Code -->
+                  <div class="mfa-setup-step mb-4">
+                    <h6><span class="badge bg-info me-2">2</span>{{ t('profile.mfa.step2') }}</h6>
+                    <form @submit.prevent="completeMfaSetup">
+                      <div class="mb-3">
+                        <label for="mfa-code" class="form-label">{{ t('profile.mfa.enterCode') }}</label>
+                        <input 
+                          type="text" 
+                          class="form-control text-center font-monospace fs-4" 
+                          id="mfa-code"
+                          v-model="mfaVerificationCode"
+                          :placeholder="t('profile.mfa.codePlaceholder')"
+                          maxlength="6"
+                          pattern="[0-9]{6}"
+                          required
+                        />
+                        <div class="form-text">{{ t('profile.mfa.codeHelp') }}</div>
+                      </div>
+                      
+                      <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success" :disabled="loading || mfaVerificationCode.length !== 6">
+                          <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                          <i v-else class="bi bi-check-circle"></i>
+                          {{ t('profile.mfa.verify') }}
+                        </button>
+                        <button type="button" @click="cancelMfaSetup" class="btn btn-secondary" :disabled="loading">
+                          <i class="bi bi-x-circle"></i> {{ t('common.cancel') }}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MFA Disable Mode -->
+              <div v-if="mfaDisableMode && mfaEnabled" class="mt-3">
+                <div class="alert alert-warning">
+                  <i class="bi bi-exclamation-triangle"></i> {{ t('profile.mfa.disableWarning') }}
+                </div>
+                <form @submit.prevent="disableMfaAuth">
+                  <div class="mb-3">
+                    <label for="disable-mfa-code" class="form-label">{{ t('profile.mfa.enterCodeToDisable') }}</label>
+                    <input 
+                      type="text" 
+                      class="form-control text-center font-monospace" 
+                      id="disable-mfa-code"
+                      v-model="mfaDisableCode"
+                      :placeholder="t('profile.mfa.codePlaceholder')"
+                      maxlength="6"
+                      pattern="[0-9]{6}"
+                      required
+                    />
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning" :disabled="loading || mfaDisableCode.length !== 6">
+                      <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-shield-x"></i>
+                      {{ t('profile.mfa.confirmDisable') }}
+                    </button>
+                    <button type="button" @click="mfaDisableMode = false; mfaDisableCode = ''" class="btn btn-secondary" :disabled="loading">
+                      <i class="bi bi-x-circle"></i> {{ t('common.cancel') }}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
           <!-- My Coupons -->
           <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white">
@@ -351,6 +511,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '../services/userService'
 import { getUserCoupons } from '../services/couponService'
+import { setupMfa, enableMfa, disableMfa, getMfaStatus } from '../services/mfaService'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Alert from '../components/Alert.vue'
@@ -389,6 +550,16 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+
+// MFA state
+const mfaEnabled = ref(false)
+const mfaSetupMode = ref(false)
+const mfaQrCode = ref(null)
+const mfaManualKey = ref('')
+const mfaSecret = ref('')
+const mfaVerificationCode = ref('')
+const mfaDisableMode = ref(false)
+const mfaDisableCode = ref('')
 
 const alert = reactive({
   show: false,
@@ -448,6 +619,8 @@ const loadProfile = async () => {
   try {
     const data = await userService.getCurrentUser()
     profile.value = data
+    // Check MFA status
+    await checkMfaStatus()
   } catch (error) {
     showAlert('danger', error.message || t('profile.loadProfileFailed'))
   } finally {
@@ -572,6 +745,90 @@ const cancelPasswordChange = () => {
   passwordForm.currentPassword = ''
   passwordForm.newPassword = ''
   passwordForm.confirmPassword = ''
+}
+
+// MFA Functions
+const checkMfaStatus = async () => {
+  try {
+    const status = await getMfaStatus()
+    mfaEnabled.value = status.mfaEnabled
+  } catch (error) {
+    console.error('Failed to check MFA status:', error)
+  }
+}
+
+const startMfaSetup = async () => {
+  mfaSetupMode.value = true
+  loading.value = true
+  
+  try {
+    const setupData = await setupMfa()
+    mfaQrCode.value = setupData.qrCodeDataUri
+    mfaManualKey.value = setupData.manualEntryKey
+    mfaSecret.value = setupData.secret
+    showAlert('info', t('profile.mfa.setupStarted'))
+  } catch (error) {
+    showAlert('danger', error.message || t('profile.mfa.setupFailed'))
+    mfaSetupMode.value = false
+  } finally {
+    loading.value = false
+  }
+}
+
+const completeMfaSetup = async () => {
+  if (mfaVerificationCode.value.length !== 6) {
+    showAlert('danger', t('profile.mfa.invalidCodeLength'))
+    return
+  }
+  
+  loading.value = true
+  try {
+    await enableMfa(mfaSecret.value, mfaVerificationCode.value)
+    mfaEnabled.value = true
+    showAlert('success', t('profile.mfa.enableSuccess'))
+    cancelMfaSetup()
+  } catch (error) {
+    showAlert('danger', error.message || t('profile.mfa.enableFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const cancelMfaSetup = () => {
+  mfaSetupMode.value = false
+  mfaQrCode.value = null
+  mfaManualKey.value = ''
+  mfaSecret.value = ''
+  mfaVerificationCode.value = ''
+}
+
+const disableMfaAuth = async () => {
+  if (mfaDisableCode.value.length !== 6) {
+    showAlert('danger', t('profile.mfa.invalidCodeLength'))
+    return
+  }
+  
+  loading.value = true
+  try {
+    await disableMfa(mfaDisableCode.value)
+    mfaEnabled.value = false
+    mfaDisableMode.value = false
+    mfaDisableCode.value = ''
+    showAlert('success', t('profile.mfa.disableSuccess'))
+  } catch (error) {
+    showAlert('danger', error.message || t('profile.mfa.disableFailed'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    showAlert('success', t('profile.mfa.copiedToClipboard'))
+  } catch (error) {
+    showAlert('danger', t('profile.mfa.copyFailed'))
+  }
 }
 
 const formatRole = (role) => {
@@ -832,5 +1089,49 @@ onMounted(async () => {
 
 .coupon-card.used .coupon-detail i {
   color: #6c757d;
+}
+
+/* MFA Styles */
+.mfa-status-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.mfa-status-icon.enabled {
+  background: #d4edda;
+  color: #155724;
+}
+
+.mfa-status-icon.disabled {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.mfa-qr-code {
+  max-width: 250px;
+  border: 3px solid #dee2e6;
+  border-radius: 10px;
+  padding: 10px;
+  background: white;
+}
+
+.mfa-setup-step {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.mfa-setup-step h6 {
+  color: #495057;
+  margin-bottom: 0.75rem;
+}
+
+.font-monospace {
+  font-family: 'Courier New', Courier, monospace;
 }
 </style>

@@ -8,6 +8,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -53,6 +54,21 @@ public class GlobalExceptionHandler {
             messageSource.getMessage("error.unauthorized", null, locale)
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(error);
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ErrorResponse> handleAccountLocked(
+            LockedException ex, WebRequest request) {
+        log.warn("Account locked: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse(
+            HttpStatus.LOCKED.value(),
+            ex.getMessage(), // This already contains the localized message with seconds
+            "Account Locked"
+        );
+        return ResponseEntity.status(HttpStatus.LOCKED)
                 .cacheControl(org.springframework.http.CacheControl.noStore())
                 .header("Pragma", "no-cache")
                 .body(error);

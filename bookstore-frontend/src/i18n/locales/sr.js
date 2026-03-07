@@ -380,6 +380,38 @@ export default {
       code: 'Kod Kupona',
       codeCopied: 'Kod kupona kopiran u clipboard!',
       loadFailed: 'Učitavanje kupona nije uspelo'
+    },
+    mfa: {
+      title: 'Dvofaktorska Autentifikacija',
+      enabled: 'Omogućena',
+      disabled: 'Onemogućena',
+      statusActive: 'Vaš nalog je zaštićen sa 2FA',
+      statusInactive: 'Omogućite 2FA za poboljšanu sigurnost',
+      description: 'Dodajte dodatni sloj sigurnosti zahtevajući kod za verifikaciju iz vaše aplikacije za autentifikaciju.',
+      enable: 'Omogući Dvofaktorsku Autentifikaciju',
+      disable: 'Onemogući Dvofaktorsku Autentifikaciju',
+      generating: 'Generisanje QR koda...',
+      setupInstructions: 'Pratite ove korake da omogućite dvofaktorsku autentifikaciju:',
+      step1: 'Skenirajte QR Kod',
+      step2: 'Verifikujte Kod',
+      scanWithApp: 'Otvorite Google Authenticator (ili kompatibilnu aplikaciju) i skenirajte ovaj QR kod',
+      manualEntry: 'Ili unesite ručno:',
+      enterCode: 'Unesite verifikacioni kod',
+      codePlaceholder: '000000',
+      codeHelp: 'Unesite 6-cifreni kod iz vaše aplikacije za autentifikaciju',
+      verify: 'Verifikuj i Omogući',
+      setupStarted: 'Skenirajte QR kod sa vašom aplikacijom za autentifikaciju',
+      setupFailed: 'Generisanje QR koda nije uspelo. Molimo pokušajte ponovo.',
+      enableSuccess: '✓ Dvofaktorska autentifikacija uspešno omogućena!',
+      enableFailed: 'Neispravan kod. Molimo pokušajte ponovo.',
+      invalidCodeLength: 'Kod mora imati tačno 6 cifara',
+      disableWarning: 'Onemogućavanje dvofaktorske autentifikacije će učiniti vaš nalog manje sigurnim.',
+      enterCodeToDisable: 'Unesite vaš trenutni 6-cifreni kod za potvrdu',
+      confirmDisable: 'Da, Onemogući 2FA',
+      disableSuccess: 'Dvofaktorska autentifikacija je onemogućena',
+      disableFailed: 'Neispravan kod. Nije moguće onemogućiti 2FA.',
+      copiedToClipboard: 'Kopirano u clipboard!',
+      copyFailed: 'Kopiranje u clipboard nije uspelo'
     }
   },
   login: {
@@ -397,7 +429,30 @@ export default {
     passwordResetSuccess: 'Nova lozinka će biti poslata na vašu registrovanu email adresu.',
     passwordResetFailed: 'Resetovanje lozinke nije uspelo. Molimo pokušajte ponovo.',
     usernameNotFound: 'Ovo korisničko ime ne postoji',
-    usernameEmpty: 'Molimo unesite korisničko ime'
+    usernameEmpty: 'Molimo unesite korisničko ime',
+    mfa: {
+      title: 'Dvofaktorska Autentifikacija',
+      required: 'Molimo unesite vaš kod za autentifikaciju',
+      instruction: 'Otvorite vašu aplikaciju za autentifikaciju i unesite 6-cifreni kod.',
+      code: 'Kod za Autentifikaciju',
+      placeholder: '000000',
+      help: 'Unesite kod prikazan u vašoj aplikaciji za autentifikaciju',
+      verify: 'Verifikuj',
+      verifying: 'Verifikacija...',
+      invalidLength: 'Kod mora imati 6 cifara',
+      success: 'Autentifikacija uspešna!',
+      failed: 'Neispravan kod za autentifikaciju. Molimo pokušajte ponovo.'
+    },
+    mfaPrompt: {
+      title: 'Omogući Dvofaktorsku Autentifikaciju',
+      message: 'Zaštitite svoj nalog sa dodatnim slojem bezbednosti!',
+      benefit1: 'Držite svoj nalog bezbednim od neovlašćenog pristupa',
+      benefit2: 'Koristite Google Authenticator ili bilo koju TOTP aplikaciju',
+      benefit3: 'Brzo podešavanje - traje manje od 2 minuta',
+      description: 'Možete omogućiti ili onemogućiti ovu funkciju bilo kada iz podešavanja profila.',
+      enableNow: 'Omogući MFA Sada',
+      notNow: 'Možda Kasnije'
+    }
   },
   register: {
     register: 'Registracija',

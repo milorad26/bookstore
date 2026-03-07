@@ -382,6 +382,38 @@ export default {
       code: 'Coupon Code',
       codeCopied: 'Coupon code copied to clipboard!',
       loadFailed: 'Failed to load coupons'
+    },
+    mfa: {
+      title: 'Two-Factor Authentication',
+      enabled: 'Enabled',
+      disabled: 'Disabled',
+      statusActive: 'Your account is protected with 2FA',
+      statusInactive: 'Enable 2FA for enhanced security',
+      description: 'Add an extra layer of security by requiring a verification code from your authenticator app.',
+      enable: 'Enable Two-Factor Authentication',
+      disable: 'Disable Two-Factor Authentication',
+      generating: 'Generating QR code...',
+      setupInstructions: 'Follow these steps to enable two-factor authentication:',
+      step1: 'Scan QR Code',
+      step2: 'Verify Code',
+      scanWithApp: 'Open Google Authenticator (or compatible app) and scan this QR code',
+      manualEntry: 'Or enter manually:',
+      enterCode: 'Enter verification code',
+      codePlaceholder: '000000',
+      codeHelp: 'Enter the 6-digit code from your authenticator app',
+      verify: 'Verify & Enable',
+      setupStarted: 'Scan the QR code with your authenticator app',
+      setupFailed: 'Failed to generate QR code. Please try again.',
+      enableSuccess: '✓ Two-factor authentication enabled successfully!',
+      enableFailed: 'Invalid code. Please try again.',
+      invalidCodeLength: 'Code must be exactly 6 digits',
+      disableWarning: 'Disabling two-factor authentication will make your account less secure.',
+      enterCodeToDisable: 'Enter your current 6-digit code to confirm',
+      confirmDisable: 'Yes, Disable 2FA',
+      disableSuccess: 'Two-factor authentication has been disabled',
+      disableFailed: 'Invalid code. Could not disable 2FA.',
+      copiedToClipboard: 'Copied to clipboard!',
+      copyFailed: 'Failed to copy to clipboard'
     }
   },
   login: {
@@ -399,7 +431,30 @@ export default {
     passwordResetSuccess: 'A new password will be sent to your registered email address.',
     passwordResetFailed: 'Failed to reset password. Please try again.',
     usernameNotFound: 'This username does not exist',
-    usernameEmpty: 'Please insert username'
+    usernameEmpty: 'Please insert username',
+    mfa: {
+      title: 'Two-Factor Authentication',
+      required: 'Please enter your authentication code',
+      instruction: 'Open your authenticator app and enter the 6-digit code.',
+      code: 'Authentication Code',
+      placeholder: '000000',
+      help: 'Enter the code shown in your authenticator app',
+      verify: 'Verify',
+      verifying: 'Verifying...',
+      invalidLength: 'Code must be 6 digits',
+      success: 'Authentication successful!',
+      failed: 'Invalid authentication code. Please try again.'
+    },
+    mfaPrompt: {
+      title: 'Enable Two-Factor Authentication',
+      message: 'Protect your account with an extra layer of security!',
+      benefit1: 'Keep your account secure from unauthorized access',
+      benefit2: 'Use Google Authenticator or any TOTP app',
+      benefit3: 'Quick setup - takes less than 2 minutes',
+      description: 'You can enable or disable this feature anytime from your profile settings.',
+      enableNow: 'Enable MFA Now',
+      notNow: 'Maybe Later'
+    }
   },
   register: {
     register: 'Register',

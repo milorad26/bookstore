@@ -8,9 +8,11 @@ import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.JwtUtil;
 import com.bookstore.service.EmailService;
+import com.bookstore.service.LoginAttemptService;
 import com.bookstore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,43 +39,96 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final MessageSource messageSource;
+    private final LoginAttemptService loginAttemptService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     @PostMapping("/login")
     @Operation(summary = "Login", description = "Authenticate user and return JWT token")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest,
+                                               HttpServletRequest request) {
+        Locale locale = LocaleContextHolder.getLocale();
+        String username = loginRequest.getUsername();
+
         try {
+            // Check if account is locked
+            if (loginAttemptService.isAccountLocked(username)) {
+                long remainingSeconds = loginAttemptService.getLockoutRemainingSeconds(username);
+                String message = messageSource.getMessage("auth.account.locked", 
+                        new Object[]{remainingSeconds}, locale);
+                log.warn("Login attempt for locked account: {}", username);
+                loginAttemptService.recordFailedLogin(username, "Account locked", request);
+                throw new org.springframework.security.authentication.LockedException(message);
+            }
+
+            // Authenticate
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getUsername(),
+                            username,
                             loginRequest.getPassword()
                     )
             );
 
-            User user = userService.findByUsername(loginRequest.getUsername())
+            User user = userService.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // Record successful login
+            loginAttemptService.recordSuccessfulLogin(username, request);
+
+            // Check if MFA is enabled for this user
+            if (user.isMfaEnabled()) {
+                // Return temporary token for MFA verification
+                String mfaToken = jwtUtil.generateToken(user.getUsername(), user.getId());
+                
+                LoginResponse response = LoginResponse.builder()
+                        .mfaRequired(true)
+                        .mfaToken(mfaToken)
+                        .build();
+                
+                log.info("MFA required for user {}", user.getUsername());
+                return ResponseEntity.ok()
+                        .cacheControl(org.springframework.http.CacheControl.noStore())
+                        .header("Pragma", "no-cache")
+                        .body(response);
+            }
+
+            // No MFA - return final token
             String token = jwtUtil.generateToken(user.getUsername(), user.getId());
 
             LoginResponse response = LoginResponse.builder()
                     .token(token)
                     .type("Bearer")
+                    .shouldPromptMfa(true) // Suggest enabling MFA for users who haven't set it up
                     .build();
 
-            log.info("User {} logged in successfully", user.getUsername());
+            log.info("User {} logged in successfully (MFA not enabled, shouldPromptMfa=true)", user.getUsername());
 
             return ResponseEntity.ok()
                     .cacheControl(org.springframework.http.CacheControl.noStore())
                     .header("Pragma", "no-cache")
                     .body(response);
+        } catch (org.springframework.security.authentication.LockedException e) {
+            throw e; // Re-throw locked exception
         } catch (org.springframework.security.authentication.BadCredentialsException e) {
-            log.warn("Login failed for user {}: Invalid credentials", loginRequest.getUsername());
-            throw new org.springframework.security.authentication.BadCredentialsException("Invalid username or password");
+            log.warn("Login failed for user {}: Invalid credentials", username);
+            loginAttemptService.recordFailedLogin(username, "Invalid credentials", request);
+            
+            // Check if account is now locked after recording failed attempt
+            if (loginAttemptService.isAccountLocked(username)) {
+                long remainingSeconds = loginAttemptService.getLockoutRemainingSeconds(username);
+                String message = messageSource.getMessage("auth.account.locked.after.attempts", 
+                        new Object[]{remainingSeconds}, locale);
+                throw new org.springframework.security.authentication.LockedException(message);
+            }
+            
+            throw new org.springframework.security.authentication.BadCredentialsException(
+                    messageSource.getMessage("auth.invalid.credentials", null, locale));
         } catch (org.springframework.security.core.AuthenticationException e) {
-            log.warn("Login failed for user {}: {}", loginRequest.getUsername(), e.getMessage());
-            throw new org.springframework.security.authentication.BadCredentialsException("Authentication failed: " + e.getMessage());
+            log.warn("Login failed for user {}: {}", username, e.getMessage());
+            loginAttemptService.recordFailedLogin(username, e.getMessage(), request);
+            throw new org.springframework.security.authentication.BadCredentialsException(
+                    messageSource.getMessage("auth.authentication.failed", null, locale));
         }
     }
 

@@ -2,6 +2,7 @@ package com.bookstore.security;
 
 import com.bookstore.model.User;
 import com.bookstore.repository.UserRepository;
+import com.bookstore.service.LoginAttemptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -20,6 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final MessageSource messageSource;
+    private final LoginAttemptService loginAttemptService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -33,13 +35,16 @@ public class CustomUserDetailsService implements UserDetailsService {
                 messageSource.getMessage("user.account.disabled", null, locale));
         }
 
+        // Check if account is locked
+        boolean isLocked = loginAttemptService.isUserLocked(user);
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .authorities(Collections.singletonList(
                         new SimpleGrantedAuthority("ROLE_" + user.getUserType().name())))
                 .accountExpired(false)
-                .accountLocked(false)
+                .accountLocked(isLocked)
                 .credentialsExpired(false)
                 .disabled(!user.getEnabled())
                 .build();
@@ -56,13 +61,16 @@ public class CustomUserDetailsService implements UserDetailsService {
                 messageSource.getMessage("user.account.disabled", null, locale));
         }
 
+        // Check if account is locked
+        boolean isLocked = loginAttemptService.isUserLocked(user);
+
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .authorities(Collections.singletonList(
                         new SimpleGrantedAuthority("ROLE_" + user.getUserType().name())))
                 .accountExpired(false)
-                .accountLocked(false)
+                .accountLocked(isLocked)
                 .credentialsExpired(false)
                 .disabled(!user.getEnabled())
                 .build();

@@ -15,4 +15,12 @@ public class LoginResponse {
     
     @Builder.Default
     private String type = "Bearer";
+    
+    @Builder.Default
+    private boolean mfaRequired = false;
+    
+    private String mfaToken; // Temporary token for MFA verification
+    
+    @Builder.Default
+    private boolean shouldPromptMfa = false; // Suggest enabling MFA if not set up
 }

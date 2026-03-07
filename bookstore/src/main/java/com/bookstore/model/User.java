@@ -67,6 +67,24 @@ public class User {
     @Column(name = "user_type", nullable = false)
     private UserType userType = UserType.USER;
 
+    // Account security fields
+    @Column(name = "failed_login_attempts", nullable = false)
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "account_locked_until")
+    private LocalDateTime accountLockedUntil;
+
+    @Column(name = "last_failed_login")
+    private LocalDateTime lastFailedLogin;
+
+    // Multi-Factor Authentication fields
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
+
+    @Column(name = "mfa_secret", length = 32)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String mfaSecret;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
