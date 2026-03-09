@@ -76,6 +76,26 @@ export const bookService = {
     } catch (error) {
       throw parseError(error)
     }
+  },
+
+  getBooksByCategory: async () => {
+    try {
+      const books = await bookService.getAllBooks()
+      
+      // Group books by category
+      const groupedBooks = books.reduce((acc, book) => {
+        const category = book.category || 'General'
+        if (!acc[category]) {
+          acc[category] = []
+        }
+        acc[category].push(book)
+        return acc
+      }, {})
+      
+      return groupedBooks
+    } catch (error) {
+      throw parseError(error)
+    }
   }
 }
 

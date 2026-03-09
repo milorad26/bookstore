@@ -1,5 +1,5 @@
 <template>
-  <div class="star-rating">
+  <div class="star-rating" :class="sizeClass">
     <span
       v-for="star in 5"
       :key="star"
@@ -21,7 +21,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
   modelValue: {
@@ -39,12 +39,19 @@ const props = defineProps({
   reviewCount: {
     type: Number,
     default: null
+  },
+  size: {
+    type: String,
+    default: 'normal', // 'small', 'normal', 'large'
+    validator: (value) => ['small', 'normal', 'large'].includes(value)
   }
 });
 
 const emit = defineEmits(['update:modelValue']);
 
 const hoverRating = ref(0);
+
+const sizeClass = computed(() => `size-${props.size}`)
 
 const selectRating = (rating) => {
   if (!props.readonly) {
@@ -82,5 +89,31 @@ const selectRating = (rating) => {
   margin-left: 8px;
   color: #666;
   font-size: 14px;
+}
+
+/* Size variations */
+.size-small .star {
+  font-size: 16px;
+}
+
+.size-small .review-count {
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.size-normal .star {
+  font-size: 24px;
+}
+
+.size-normal .review-count {
+  font-size: 14px;
+}
+
+.size-large .star {
+  font-size: 32px;
+}
+
+.size-large .review-count {
+  font-size: 16px;
 }
 </style>

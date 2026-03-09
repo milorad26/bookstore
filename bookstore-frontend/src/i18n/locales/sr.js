@@ -9,6 +9,8 @@ export default {
     logout: 'Odjava'
   },
   shop: {
+    byCategory: 'Po Kategorijama',
+    allBooks: 'Sve Knjige',
     searchBooks: 'Pretraži Knjige',
     searchByTitle: 'Pretraži po naslovu...',
     searchByAuthor: 'Pretraži po autoru...',
@@ -24,7 +26,9 @@ export default {
     price: 'Cena',
     isbn: 'ISBN',
     author: 'Autor',
-    title: 'Naslov'
+    title: 'Naslov',
+    inStock: 'Na Stanju',
+    outOfStock: 'Rasprodato'
   },
   cart: {
     title: 'Korpa za Kupovinu',

@@ -1,6 +1,30 @@
 <template>
   <div class="container-fluid py-5">
-    <!-- Search Section -->
+    <!-- View Toggle -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="btn-group" role="group">
+          <button 
+            type="button" 
+            class="btn btn-outline-primary"
+            :class="{ active: viewMode === 'categories' }"
+            @click="viewMode = 'categories'"
+          >
+            <i class="bi bi-collection"></i> {{ t('shop.byCategory') || 'By Category' }}
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-outline-primary"
+            :class="{ active: viewMode === 'all' }"
+            @click="viewMode = 'all'"
+          >
+            <i class="bi bi-grid"></i> {{ t('shop.allBooks') || 'All Books' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Section (visible in both modes) -->
     <div class="row mb-5">
       <div class="col-12">
         <div class="card shadow-sm">
@@ -96,8 +120,28 @@
       <p class="mt-3">{{ t('shop.loading') }}</p>
     </div>
 
-    <!-- Books Grid -->
-    <div v-else-if="books.length > 0" class="row">
+    <!-- Category Swipers View -->
+    <div v-else-if="viewMode === 'categories' && Object.keys(booksByCategory).length > 0">
+      <!-- Debug Info: Shows how many categories are loaded -->
+      <div v-if="Object.keys(booksByCategory).length === 1" class="alert alert-info mb-4">
+        <i class="bi bi-info-circle"></i> 
+        <strong>Note:</strong> All books are in one category. Run the SQL file to assign categories to your books.
+      </div>
+    
+      
+      <!-- One swiper per category -->
+      <CategorySwiper
+        v-for="(categoryBooks, category) in booksByCategory"
+        :key="category"
+        :category="category"
+        :books="categoryBooks"
+        @add-to-cart="addToCart"
+        @view-reviews="viewReviews"
+      />
+    </div>
+
+    <!-- All Books Grid View -->
+    <div v-else-if="viewMode === 'all' && books.length > 0" class="row">
       <div v-for="book in books" :key="book.id" class="col-md-4 col-lg-3 mb-4">
         <div class="card h-100 shadow-sm book-card">
           <img 
@@ -167,6 +211,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
 import StarRating from '../components/StarRating.vue'
+import CategorySwiper from '../components/CategorySwiper.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -174,6 +219,8 @@ const cartStore = useCartStore()
 const { t } = useI18n()
 
 const books = ref([])
+const booksByCategory = ref({})
+const viewMode = ref('categories') // 'categories' or 'all'
 const isLoading = ref(false)
 const isSearching = ref(false)
 const searchTitle = ref('')
@@ -187,6 +234,14 @@ const loadBooks = async () => {
   isLoading.value = true
   try {
     books.value = await bookService.getAllBooks()
+    booksByCategory.value = await bookService.getBooksByCategory()
+    
+    // Debug: Show how many categories were found
+    console.log('📚 Books by Category:', booksByCategory.value)
+    console.log('📊 Total categories:', Object.keys(booksByCategory.value).length)
+    Object.keys(booksByCategory.value).forEach(category => {
+      console.log(`  - ${category}: ${booksByCategory.value[category].length} books`)
+    })
   } catch (error) {
     showError(error.message || 'Failed to load books')
   } finally {
@@ -197,6 +252,10 @@ const loadBooks = async () => {
 const searchBooks = async (type) => {
   showAlert.value = false // Clear previous alerts
   isSearching.value = true
+  
+  // Switch to 'all' view when searching
+  viewMode.value = 'all'
+  
   try {
     if (type === 'title' && !searchTitle.value.trim()) {
       showError(t('messages.enterTitle'))
@@ -240,6 +299,7 @@ const resetSearch = () => {
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
+  viewMode.value = 'categories' // Reset to category view
   loadBooks()
 }
 
@@ -309,6 +369,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.btn-group .btn {
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-group .btn.active {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+.btn-group .btn:not(.active):hover {
+  background-color: #e7f1ff;
+}
+
 .book-cover {
   width: 100%;
   height: 300px;

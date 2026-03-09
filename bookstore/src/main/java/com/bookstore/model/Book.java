@@ -42,6 +42,9 @@ public class Book {
     @Column(length = 1000)
     private String description;
 
+    @Column(name = "category", length = 100)
+    private String category;
+
     @Column(name = "stock_quantity")
     private Integer stockQuantity = 0;
 

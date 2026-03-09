@@ -9,6 +9,8 @@ export default {
     logout: 'Logout'
   },
   shop: {
+    byCategory: 'By Category',
+    allBooks: 'All Books',
     searchBooks: 'Search Books',
     searchByTitle: 'Search by title...',
     searchByAuthor: 'Search by author...',
@@ -24,7 +26,9 @@ export default {
     price: 'Price',
     isbn: 'ISBN',
     author: 'Author',
-    title: 'Title'
+    title: 'Title',
+    inStock: 'In Stock',
+    outOfStock: 'Out of Stock'
   },
   cart: {
     title: 'Shopping Cart',

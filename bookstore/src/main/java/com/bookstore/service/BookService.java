@@ -87,6 +87,7 @@ public class BookService {
         existingBook.setIsbn(bookDTO.getIsbn());
         existingBook.setPrice(bookDTO.getPrice());
         existingBook.setDescription(bookDTO.getDescription());
+        existingBook.setCategory(bookDTO.getCategory());
         if (bookDTO.getStockQuantity() != null) {
             existingBook.setStockQuantity(bookDTO.getStockQuantity());
         }
@@ -113,6 +114,7 @@ public class BookService {
         dto.setIsbn(book.getIsbn());
         dto.setPrice(book.getPrice());
         dto.setDescription(book.getDescription());
+        dto.setCategory(book.getCategory());
         dto.setStockQuantity(book.getStockQuantity());
         dto.setAverageRating(book.getAverageRating());
         dto.setReviewCount(book.getReviewCount());
@@ -126,6 +128,7 @@ public class BookService {
         book.setIsbn(dto.getIsbn());
         book.setPrice(dto.getPrice());
         book.setDescription(dto.getDescription());
+        book.setCategory(dto.getCategory());
         book.setStockQuantity(dto.getStockQuantity() != null ? dto.getStockQuantity() : 0);
         return book;
     }

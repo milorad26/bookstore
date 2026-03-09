@@ -447,7 +447,7 @@ const deleteOrder = async () => {
 
 const canConfirm = (order) => {
   return isAdmin.value && 
-         (order.status === 'PENDING' || order.status === 'PAID')
+         order.status === 'PENDING'
 }
 
 const needsPayment = (order) => {

@@ -31,6 +31,8 @@ public class BookDTO {
 
     private String description;
     
+    private String category;
+    
     private Integer stockQuantity;
 
     private Double averageRating;
