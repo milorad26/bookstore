@@ -280,8 +280,7 @@ const searchBooks = async (type) => {
     } else if (type === 'author') {
       books.value = await bookService.searchByAuthor(searchAuthor.value)
     } else if (type === 'isbn') {
-      const book = await bookService.getBookByIsbn(searchIsbn.value)
-      books.value = book ? [book] : []
+      books.value = await bookService.searchByIsbn(searchIsbn.value.trim())
     }
 
     if (books.value.length === 0) {

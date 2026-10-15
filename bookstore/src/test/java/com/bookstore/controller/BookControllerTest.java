@@ -121,29 +121,28 @@ class BookControllerTest {
     @Test
     void testGetBookByIsbn_ShouldReturnBook() throws Exception {
         // Given
-        when(bookService.getBookByIsbn("978-0-13-235088-4")).thenReturn(testBookDTO1);
+        when(bookService.getBookByIsbn("978-0")).thenReturn(Arrays.asList(testBookDTO1));
 
         // When & Then
-        mockMvc.perform(get("/api/books/isbn/978-0-13-235088-4"))
+        mockMvc.perform(get("/api/books/isbn/978-0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(1)))
-                .andExpect(jsonPath("$.title", is("Clean Code")))
-                .andExpect(jsonPath("$.isbn", is("978-0-13-235088-4")));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].title", is("Clean Code")))
+                .andExpect(jsonPath("$[0].isbn", is("978-0-13-235088-4")));
 
-        verify(bookService).getBookByIsbn("978-0-13-235088-4");
+        verify(bookService).getBookByIsbn("978-0");
     }
 
     @Test
-    void testGetBookByIsbn_WithNonExistentIsbn_ShouldReturn404() throws Exception {
+    void testGetBookByIsbn_WithNonMatchingIsbn_ShouldReturnEmptyList() throws Exception {
         // Given
-        when(bookService.getBookByIsbn("999-9-99-999999-9"))
-                .thenThrow(new ResourceNotFoundException("Book not found with ISBN: 999-9-99-999999-9"));
+        when(bookService.getBookByIsbn("999-9-99-999999-9")).thenReturn(Arrays.asList());
 
         // When & Then
         mockMvc.perform(get("/api/books/isbn/999-9-99-999999-9"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code", is(404)))
-                .andExpect(jsonPath("$.message", containsString("Book not found")));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
 
         verify(bookService).getBookByIsbn("999-9-99-999999-9");
     }

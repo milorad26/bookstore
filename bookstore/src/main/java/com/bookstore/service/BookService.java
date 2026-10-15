@@ -34,12 +34,10 @@ public class BookService {
         return convertToDTO(book);
     }
 
-    public BookDTO getBookByIsbn(String isbn) {
-        Locale locale = LocaleContextHolder.getLocale();
-        Book book = bookRepository.findByIsbn(isbn)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                    messageSource.getMessage("book.notfound.isbn", new Object[]{isbn}, locale)));
-        return convertToDTO(book);
+    public List<BookDTO> getBookByIsbn(String isbn) {
+        return bookRepository.findByIsbn(isbn).stream()
+                .map(this::convertToDTO)
+                .toList();
     }
 
     public List<BookDTO> searchByAuthor(String author) {

@@ -109,31 +109,33 @@ class BookServiceTest {
     }
 
     @Test
-    void testGetBookByIsbn_ShouldReturnBookDTO() {
+    void testGetBookByIsbn_ShouldReturnMatchingBookDTOs() {
         // Given
-        when(bookRepository.findByIsbn("978-0-13-235088-4")).thenReturn(Optional.of(testBook1));
+        when(bookRepository.findByIsbn("978-0"))
+                .thenReturn(Arrays.asList(testBook1));
 
         // When
-        BookDTO result = bookService.getBookByIsbn("978-0-13-235088-4");
+        List<BookDTO> result = bookService.getBookByIsbn("978-0");
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getIsbn()).isEqualTo("978-0-13-235088-4");
-        assertThat(result.getTitle()).isEqualTo("Clean Code");
-        verify(bookRepository).findByIsbn("978-0-13-235088-4");
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getIsbn()).isEqualTo("978-0-13-235088-4");
+        assertThat(result.get(0).getTitle()).isEqualTo("Clean Code");
+        verify(bookRepository).findByIsbn("978-0");
     }
 
     @Test
-    void testGetBookByIsbn_WithNonExistentIsbn_ShouldThrowException() {
+    void testGetBookByIsbn_WithNonMatchingIsbn_ShouldReturnEmptyList() {
         // Given
-        when(bookRepository.findByIsbn("999-9-99-999999-9")).thenReturn(Optional.empty());
+        when(bookRepository.findByIsbn("no-match"))
+                .thenReturn(Arrays.asList());
 
-        // When & Then
-        assertThatThrownBy(() -> bookService.getBookByIsbn("999-9-99-999999-9"))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Book not found with ISBN: 999-9-99-999999-9");
-        
-        verify(bookRepository).findByIsbn("999-9-99-999999-9");
+        // When
+        List<BookDTO> result = bookService.getBookByIsbn("no-match");
+
+        // Then
+        assertThat(result).isEmpty();
+        verify(bookRepository).findByIsbn("no-match");
     }
 
     @Test

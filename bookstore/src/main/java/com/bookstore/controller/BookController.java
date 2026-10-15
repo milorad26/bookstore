@@ -44,13 +44,12 @@ public class BookController {
         return ResponseEntity.ok(bookService.getBookById(id));
     }
 
-    @Operation(summary = "Get book by ISBN", description = "Retrieve a specific book by its ISBN")
+    @Operation(summary = "Search books by ISBN", description = "Find all books whose ISBN contains the search text")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Book found"),
-        @ApiResponse(responseCode = "404", description = "Book not found")
+        @ApiResponse(responseCode = "200", description = "Matching books retrieved")
     })
     @GetMapping("/isbn/{isbn}")
-    public ResponseEntity<BookDTO> getBookByIsbn(@PathVariable String isbn) {
+    public ResponseEntity<List<BookDTO>> getBookByIsbn(@PathVariable String isbn) {
         return ResponseEntity.ok(bookService.getBookByIsbn(isbn));
     }
 

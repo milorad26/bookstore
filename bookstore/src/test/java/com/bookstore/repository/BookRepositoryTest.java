@@ -11,7 +11,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,13 +71,13 @@ class BookRepositoryTest {
     }, nullValues = "null")
     void testFindByIsbn(String isbn, boolean shouldExist, String expectedTitle, String expectedAuthor) {
         // When
-        Optional<Book> found = bookRepository.findByIsbn(isbn);
+        List<Book> found = bookRepository.findByIsbn(isbn);
 
         // Then
         if (shouldExist) {
-            assertThat(found).isPresent();
-            assertThat(found.get().getTitle()).isEqualTo(expectedTitle);
-            assertThat(found.get().getAuthor()).isEqualTo(expectedAuthor);
+            assertThat(found).hasSize(1);
+            assertThat(found.get(0).getTitle()).isEqualTo(expectedTitle);
+            assertThat(found.get(0).getAuthor()).isEqualTo(expectedAuthor);
         } else {
             assertThat(found).isEmpty();
         }
@@ -175,7 +174,7 @@ class BookRepositoryTest {
     @Test
     void testUpdateBook_ShouldModifyBook() {
         // Given
-        Book book = bookRepository.findByIsbn("978-0-13-235088-4").orElseThrow();
+        Book book = bookRepository.findByIsbn("978-0-13-235088-4").get(0);
         
         // When
         book.setPrice(new BigDecimal("45.99"));

@@ -20,9 +20,9 @@ export const bookService = {
     }
   },
 
-  getBookByIsbn: async (isbn) => {
+  searchByIsbn: async (isbn) => {
     try {
-      const response = await apiClient.get(`/books/isbn/${isbn}`)
+      const response = await apiClient.get(`/books/isbn/${encodeURIComponent(isbn)}`)
       return response.data
     } catch (error) {
       throw parseError(error)

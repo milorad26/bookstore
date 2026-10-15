@@ -39,14 +39,13 @@
                   </div>
                 </div>
                 <div class="col-md-2">
-                  <button @click="searchUser" class="btn btn-primary w-100" :disabled="searching || !searchUsername.trim()">
-                    <span v-if="searching" class="spinner-border spinner-border-sm me-2"></span>
-                    <i v-else class="bi bi-search"></i>
+                  <button @click="searchUser" class="btn btn-primary w-100" :disabled="!searchUsername.trim()">
+                    <i class="bi bi-search"></i>
                     {{ t('users.search.button') }}
                   </button>
                 </div>
                 <div class="col-md-2">
-                  <button @click="clearSearch" class="btn btn-outline-secondary w-100" :disabled="searching">
+                  <button @click="clearSearch" class="btn btn-outline-secondary w-100">
                     <i class="bi bi-arrow-counterclockwise"></i>
                     {{ t('users.search.reset') }}
                   </button>
@@ -68,7 +67,7 @@
                 <p class="mt-3 text-muted">{{ t('users.loadingUsers') }}</p>
               </div>
 
-              <div v-else-if="users.length === 0" class="text-center py-5">
+              <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
                 <i class="bi bi-people" style="font-size: 3rem; color: #ccc;"></i>
                 <p class="mt-3 text-muted">{{ t('users.noUsersFound') }}</p>
               </div>
@@ -88,7 +87,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="user in users" :key="user.id">
+                    <tr v-for="user in filteredUsers" :key="user.id">
                       <td>{{ user.id }}</td>
                       <td>
                         <strong>{{ user.username }}</strong>
@@ -356,7 +355,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { userService } from '../services/userService'
@@ -372,7 +371,6 @@ const users = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
-const searching = ref(false)
 const showModal = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
@@ -383,6 +381,11 @@ const currentUserRole = ref(authStore.user?.userType || 'USER')
 const searchUsername = ref('')
 const isSearchActive = ref(false)
 const lastSearchTerm = ref('')
+const filteredUsers = computed(() => {
+  const usernameQuery = searchUsername.value.trim().toLowerCase()
+  if (!usernameQuery) return users.value
+  return users.value.filter(user => user.username?.toLowerCase().includes(usernameQuery))
+})
 
 const userForm = reactive({
   id: null,
@@ -417,8 +420,6 @@ const loadUsers = async () => {
   try {
     const data = await userService.getAllUsers()
     users.value = data
-    isSearchActive.value = false
-    lastSearchTerm.value = ''
   } catch (error) {
     showAlert('danger', error.message || 'Failed to load users')
   } finally {
@@ -426,29 +427,16 @@ const loadUsers = async () => {
   }
 }
 
-const searchUser = async () => {
-  if (!searchUsername.value.trim()) return
-  
-  searching.value = true
-  try {
-    const data = await userService.getUserByUsername(searchUsername.value.trim())
-    users.value = [data]
-    isSearchActive.value = true
-    lastSearchTerm.value = searchUsername.value.trim()
-    showAlert('success', `Found user: ${data.username}`)
-  } catch (error) {
-    showAlert('danger', error.message || 'User not found')
-    users.value = []
-  } finally {
-    searching.value = false
-  }
+const searchUser = () => {
+  const query = searchUsername.value.trim()
+  isSearchActive.value = Boolean(query)
+  lastSearchTerm.value = query
 }
 
-const clearSearch = async () => {
+const clearSearch = () => {
   searchUsername.value = ''
   isSearchActive.value = false
   lastSearchTerm.value = ''
-  await loadUsers()
 }
 
 const showCreateModal = () => {
