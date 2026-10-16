@@ -26,6 +26,15 @@ public class BookService {
                 .toList();
     }
 
+    public List<BookDTO> getLowStockBooks(int threshold) {
+        if (threshold < 0) {
+            throw new IllegalArgumentException("Stock threshold cannot be negative");
+        }
+        return bookRepository.findLowStockBooks(threshold).stream()
+                .map(this::convertToDTO)
+                .toList();
+    }
+
     public BookDTO getBookById(Long id) {
         Locale locale = LocaleContextHolder.getLocale();
         Book book = bookRepository.findById(id)

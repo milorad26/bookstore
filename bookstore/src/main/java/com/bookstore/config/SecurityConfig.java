@@ -107,6 +107,7 @@ public class SecurityConfig {
                 // Public GET endpoints - no authentication required for browsing
                 .requestMatchers(HttpMethod.GET, "/api/books/isbn/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books/search/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/books/low-stock").hasAnyRole(ROLE_ADMIN, ROLE_SUPER_USER)
                 .requestMatchers(HttpMethod.GET, "/api/books/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books").permitAll()
                 // Only ADMIN can create, update, delete books

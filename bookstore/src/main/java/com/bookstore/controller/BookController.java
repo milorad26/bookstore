@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,11 +29,20 @@ public class BookController {
     private final BookService bookService;
     private final MessageSource messageSource;
 
+    @Value("${inventory.low-stock-threshold:10}")
+    private int lowStockThreshold;
+
     @Operation(summary = "Get all books", description = "Retrieve a list of all books in the bookstore")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of books")
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAllBooks());
+    }
+
+    @Operation(summary = "Get low-stock books", description = "Retrieve books at or below the configured inventory alert threshold")
+    @GetMapping("/low-stock")
+    public ResponseEntity<List<BookDTO>> getLowStockBooks() {
+        return ResponseEntity.ok(bookService.getLowStockBooks(lowStockThreshold));
     }
 
     @Operation(summary = "Get book by ID", description = "Retrieve a specific book by its ID")

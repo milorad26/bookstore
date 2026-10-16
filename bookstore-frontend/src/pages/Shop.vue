@@ -344,7 +344,11 @@ const addToCart = (book) => {
   }
 
   // Add to cart
-  cartStore.addToCart(book)
+  const result = cartStore.addToCart(book)
+  if (!result.success) {
+    showError(t('cart.stockLimit', { stock: result.availableStock, title: book.title }))
+    return
+  }
   showSuccess(`"${book.title}" ${t('messages.addedToCart')}`)
 }
 

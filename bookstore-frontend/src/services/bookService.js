@@ -29,6 +29,15 @@ export const bookService = {
     }
   },
 
+  getLowStockBooks: async () => {
+    try {
+      const response = await apiClient.get('/books/low-stock')
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   searchByTitle: async (title) => {
     try {
       const response = await apiClient.get('/books/search/title', {

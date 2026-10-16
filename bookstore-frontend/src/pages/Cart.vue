@@ -55,12 +55,14 @@
                         type="number" 
                         class="form-control text-center" 
                         :value="item.quantity"
-                        @input="updateQuantity(item.id, $event.target.value)"
+                        @change="updateQuantity(item.id, $event.target)"
                         min="1"
+                        :max="item.stockQuantity"
                       />
                       <button 
                         class="btn btn-outline-secondary" 
                         @click="increaseQuantity(item)"
+                        :disabled="item.stockQuantity != null && item.quantity >= item.stockQuantity"
                       >
                         <i class="bi bi-plus"></i>
                       </button>
@@ -208,14 +210,25 @@ const formatPrice = (price) => {
 }
 
 const updateQuantity = (itemId, quantity) => {
-  const qty = parseInt(quantity)
+  const input = typeof quantity === 'object' ? quantity : null
+  const qty = parseInt(input ? input.value : quantity)
   if (qty > 0) {
-    cartStore.updateQuantity(itemId, qty)
+    const result = cartStore.updateQuantity(itemId, qty)
+    if (!result.success) {
+      showError(t('cart.stockLimit', { stock: result.availableStock, title: result.title }))
+      if (input) {
+        const item = cartStore.cartItems.find(cartItem => cartItem.id === itemId)
+        input.value = item?.quantity ?? ''
+      }
+    }
   }
 }
 
 const increaseQuantity = (item) => {
-  cartStore.updateQuantity(item.id, item.quantity + 1)
+  const result = cartStore.updateQuantity(item.id, item.quantity + 1)
+  if (!result.success) {
+    showError(t('cart.stockLimit', { stock: result.availableStock, title: result.title }))
+  }
 }
 
 const decreaseQuantity = (item) => {
@@ -245,6 +258,12 @@ const proceedToCheckout = () => {
 const showSuccess = (message) => {
   alertMessage.value = message
   alertType.value = 'success'
+  showAlert.value = true
+}
+
+const showError = (message) => {
+  alertMessage.value = message
+  alertType.value = 'danger'
   showAlert.value = true
 }
 </script>

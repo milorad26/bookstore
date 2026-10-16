@@ -9,6 +9,7 @@ import lombok.Data;
 public class ForgotPasswordRequest {
     
     @NotBlank(message = "{auth.password.reset.username.empty}")
-    @Schema(description = "Username of the account", example = "john_doe", required = true)
+    @Schema(description = "Username of the account", example = "john_doe",
+            requiredMode = Schema.RequiredMode.REQUIRED)
     private String username;
 }

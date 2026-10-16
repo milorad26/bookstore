@@ -22,4 +22,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     Optional<Book> findByTitleAndAuthor(String title, String author);
 
     boolean existsByIsbn(String isbn);
+
+    @Query("select b from Book b where b.stockQuantity <= :threshold order by b.stockQuantity asc")
+    List<Book> findLowStockBooks(@Param("threshold") Integer threshold);
 }

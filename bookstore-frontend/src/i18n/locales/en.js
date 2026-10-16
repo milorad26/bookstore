@@ -41,6 +41,7 @@ export default {
     secureCheckout: 'Secure checkout',
     confirmRemove: 'Remove "{title}" from cart?',
     itemRemoved: 'Item removed from cart',
+    stockLimit: 'Stock limit for "{title}": only {stock} available.',
     confirmClear: 'Are you sure you want to clear your entire cart?',
     cartCleared: 'Cart cleared',
     summary: {
@@ -193,6 +194,9 @@ export default {
     subtitle: 'Manage your book inventory',
     createNew: 'Add New Book',
     backToProfile: 'Back to Profile',
+    inventoryAlertTitle: 'Low-stock alert: {count} book(s) need replenishment.',
+    inventoryAlertItem: '{title} by {author} — {stock} in stock',
+    inventoryAlertDescription: 'Books at or below the configured low-stock threshold are listed here.',
     loadingBooks: 'Loading books...',
     noBooksFound: 'No books found',
     table: {

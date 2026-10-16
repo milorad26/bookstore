@@ -41,6 +41,7 @@ export default {
     secureCheckout: 'Sigurna naplata',
     confirmRemove: 'Ukloniti "{title}" iz korpe?',
     itemRemoved: 'Stavka uklonjena iz korpe',
+    stockLimit: 'Ograničenje zaliha za knjigu „{title}“: dostupna količina je {stock}.',
     confirmClear: 'Da li ste sigurni da želite da ispraznite celu korpu?',
     cartCleared: 'Korpa ispražnjena',
     summary: {
@@ -191,6 +192,9 @@ export default {
     subtitle: 'Upravljajte inventarom knjiga',
     createNew: 'Dodaj Novu Knjigu',
     backToProfile: 'Nazad na Profil',
+    inventoryAlertTitle: 'Upozorenje za malu zalihu: dopunite zalihe za {count} knjiga.',
+    inventoryAlertItem: '{title} — autor: {author}; na stanju: {stock}',
+    inventoryAlertDescription: 'Ovde su prikazane knjige čija je zaliha na ili ispod podešenog praga.',
     loadingBooks: 'Učitavanje knjiga...',
     noBooksFound: 'Nema pronađenih knjiga',
     table: {

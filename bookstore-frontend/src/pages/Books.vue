@@ -22,6 +22,21 @@
             </div>
           </div>
 
+          <div v-if="lowStockBooks.length > 0" class="alert alert-warning shadow-sm" role="alert">
+            <div class="d-flex align-items-start">
+              <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+              <div class="flex-grow-1">
+                <strong>{{ t('books.inventoryAlertTitle', { count: lowStockBooks.length }) }}</strong>
+                <ul class="mb-0 mt-2">
+                  <li v-for="book in lowStockBooks" :key="book.id">
+                    {{ t('books.inventoryAlertItem', { title: book.title, author: book.author, stock: book.stockQuantity || 0 }) }}
+                  </li>
+                </ul>
+                <small class="d-block mt-2">{{ t('books.inventoryAlertDescription') }}</small>
+              </div>
+            </div>
+          </div>
+
           <!-- Search Books -->
           <div class="card shadow-sm mb-3">
             <div class="card-body">
@@ -351,6 +366,8 @@ const router = useRouter()
 const { t } = useI18n()
 
 const books = ref([])
+const lowStockBooks = ref([])
+const loadingAlerts = ref(false)
 const loading = ref(false)
 const isSearching = ref(false)
 const activeSearch = ref('')
@@ -404,6 +421,18 @@ const loadBooks = async () => {
     showAlert('danger', error.message || 'Failed to load books')
   } finally {
     if (requestId === searchRequestId) loading.value = false
+  }
+}
+
+const loadInventoryAlerts = async () => {
+  loadingAlerts.value = true
+  try {
+    lowStockBooks.value = await bookService.getLowStockBooks()
+  } catch (error) {
+    // The inventory alert endpoint is restricted to administrators.
+    lowStockBooks.value = []
+  } finally {
+    loadingAlerts.value = false
   }
 }
 
@@ -508,6 +537,7 @@ const saveBook = async () => {
     }
     closeModal()
     await loadBooks()
+    await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', error.message || 'Failed to save book')
   } finally {
@@ -529,6 +559,7 @@ const deleteBook = async () => {
     showAlert('success', 'Book deleted successfully!')
     closeDeleteModal()
     await loadBooks()
+    await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', error.message || 'Failed to delete book')
   } finally {
@@ -589,6 +620,7 @@ const goBack = () => {
 
 onMounted(() => {
   loadBooks()
+  loadInventoryAlerts()
 })
 </script>
 
