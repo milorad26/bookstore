@@ -4,6 +4,7 @@ import com.bookstore.dto.ApplyCouponRequest;
 import com.bookstore.dto.CouponDTO;
 import com.bookstore.security.AuthenticationHelper;
 import com.bookstore.service.CouponService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/coupons")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Coupon management", description = "Apis for managing all coupons in the shop")
 public class CouponController {
 
     private final CouponService couponService;

@@ -22,6 +22,47 @@
             </div>
           </div>
 
+          <!-- Search Books -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="card-title mb-0"><i class="bi bi-search"></i> {{ t('shop.searchBooks') }}</h5>
+                <button class="btn btn-secondary btn-sm" @click="resetSearch">
+                  <i class="bi bi-arrow-clockwise"></i> {{ t('shop.reset') }}
+                </button>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="input-group">
+                    <input v-model="searchTitle" type="text" class="form-control" :placeholder="t('shop.searchByTitle')" @input="searchBooks('title')" @keyup.enter="searchBooks('title')" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('title')" :disabled="isSearching || !searchTitle.trim()">
+                      <span v-if="isSearching && activeSearch === 'title'" class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="input-group">
+                    <input v-model="searchAuthor" type="text" class="form-control" :placeholder="t('shop.searchByAuthor')" @input="searchBooks('author')" @keyup.enter="searchBooks('author')" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('author')" :disabled="isSearching || !searchAuthor.trim()">
+                      <span v-if="isSearching && activeSearch === 'author'" class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="input-group">
+                    <input v-model="searchIsbn" type="text" class="form-control" :placeholder="t('shop.searchByIsbn')" @input="searchBooks('isbn')" @keyup.enter="searchBooks('isbn')" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('isbn')" :disabled="isSearching || !searchIsbn.trim()">
+                      <span v-if="isSearching && activeSearch === 'isbn'" class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Books Table -->
           <div class="card shadow-sm">
             <div class="card-body">
@@ -300,6 +341,13 @@ const { t } = useI18n()
 
 const books = ref([])
 const loading = ref(false)
+const isSearching = ref(false)
+const activeSearch = ref('')
+const searchTitle = ref('')
+const searchAuthor = ref('')
+const searchIsbn = ref('')
+let searchDebounceTimer
+let searchRequestId = 0
 const saving = ref(false)
 const deleting = ref(false)
 const showModal = ref(false)
@@ -335,15 +383,64 @@ const showAlert = (type, message) => {
 }
 
 const loadBooks = async () => {
+  const requestId = searchRequestId
   loading.value = true
   try {
     const data = await bookService.getAllBooks()
-    books.value = data
+    if (requestId === searchRequestId) books.value = data
   } catch (error) {
     showAlert('danger', error.message || 'Failed to load books')
   } finally {
-    loading.value = false
+    if (requestId === searchRequestId) loading.value = false
   }
+}
+
+const searchBooks = (type) => {
+  clearTimeout(searchDebounceTimer)
+  const requestId = ++searchRequestId
+  const searchValues = {
+    title: searchTitle.value.trim(),
+    author: searchAuthor.value.trim(),
+    isbn: searchIsbn.value.trim()
+  }
+  if (!searchValues[type]) {
+    isSearching.value = false
+    loadBooks()
+    return
+  }
+
+  activeSearch.value = type
+  isSearching.value = true
+  searchDebounceTimer = setTimeout(async () => {
+    try {
+      let results
+      if (type === 'title') results = await bookService.searchByTitle(searchValues.title)
+      else if (type === 'author') results = await bookService.searchByAuthor(searchValues.author)
+      else results = await bookService.searchByIsbn(searchValues.isbn)
+      if (requestId === searchRequestId) books.value = results
+    } catch (error) {
+      if (requestId === searchRequestId) {
+        books.value = []
+        if (error.status !== 404) showAlert('danger', error.message || 'Failed to search books')
+      }
+    } finally {
+      if (requestId === searchRequestId) {
+        isSearching.value = false
+        activeSearch.value = ''
+      }
+    }
+  }, 250)
+}
+
+const resetSearch = async () => {
+  clearTimeout(searchDebounceTimer)
+  searchRequestId++
+  isSearching.value = false
+  activeSearch.value = ''
+  searchTitle.value = ''
+  searchAuthor.value = ''
+  searchIsbn.value = ''
+  await loadBooks()
 }
 
 const showCreateModal = () => {

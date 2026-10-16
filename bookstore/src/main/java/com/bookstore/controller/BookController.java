@@ -12,6 +12,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,11 +47,19 @@ public class BookController {
 
     @Operation(summary = "Search books by ISBN", description = "Find all books whose ISBN contains the search text")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Matching books retrieved")
+        @ApiResponse(responseCode = "200", description = "Matching books retrieved"),
+        @ApiResponse(responseCode = "404", description = "No books found with the ISBN")
     })
     @GetMapping("/isbn/{isbn}")
     public ResponseEntity<List<BookDTO>> getBookByIsbn(@PathVariable String isbn) {
-        return ResponseEntity.ok(bookService.getBookByIsbn(isbn));
+        Locale locale = LocaleContextHolder.getLocale();
+        List<BookDTO> books = bookService.getBookByIsbn(isbn);
+        if (books.isEmpty()) {
+            String message = messageSource.getMessage("book.notfound.isbn",
+                new Object[]{isbn}, locale);
+            throw new com.bookstore.exception.ResourceNotFoundException(message);
+        }
+        return ResponseEntity.ok(books);
     }
 
     @Operation(summary = "Search books by author", description = "Find all books by a specific author name")
@@ -84,9 +93,11 @@ public class BookController {
     @Operation(summary = "Create a new book", description = "Add a new book to the bookstore inventory")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Book created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid input data")
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "403", description = "Only administrators can create books")
     })
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BookDTO> createBook(@Valid @RequestBody BookDTO bookDTO) {
         BookDTO createdBook = bookService.createBook(bookDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdBook);
@@ -95,9 +106,11 @@ public class BookController {
     @Operation(summary = "Update a book", description = "Update an existing book's information")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Book updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Book not found")
+        @ApiResponse(responseCode = "404", description = "Book not found"),
+        @ApiResponse(responseCode = "403", description = "Only administrators can update books")
     })
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BookDTO> updateBook(@PathVariable Long id, 
                                                @Valid @RequestBody BookDTO bookDTO) {
         BookDTO updatedBook = bookService.updateBook(id, bookDTO);
@@ -107,9 +120,11 @@ public class BookController {
     @Operation(summary = "Delete a book", description = "Remove a book from the bookstore inventory")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Book deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Book not found")
+        @ApiResponse(responseCode = "404", description = "Book not found"),
+        @ApiResponse(responseCode = "403", description = "Only administrators can delete books")
     })
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         bookService.deleteBook(id);
         return ResponseEntity.noContent().build();

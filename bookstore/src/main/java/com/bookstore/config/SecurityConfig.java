@@ -132,7 +132,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/users").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 .requestMatchers(HttpMethod.GET, USERS_API_PATTERN).hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)           
                 .requestMatchers(HttpMethod.POST, USERS_API_PATTERN).hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)              
-                .requestMatchers(HttpMethod.PUT, USERS_API_PATTERN).hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
+                .requestMatchers(HttpMethod.PUT, "/api/users/*").hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, USERS_API_PATTERN).hasRole(ROLE_ADMIN)
                 
                 // Orders endpoints - Role-based access control

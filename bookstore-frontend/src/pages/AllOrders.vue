@@ -30,9 +30,11 @@
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input 
                       v-model="searchOrderId" 
-                      type="number" 
+                      type="text"
+                      inputmode="numeric"
                       class="form-control" 
                       :placeholder="t('orders.search.placeholder')"
+                      @input="searchOrder"
                       @keyup.enter="searchOrder"
                     />
                   </div>
@@ -67,7 +69,7 @@
                 <p class="mt-3 text-muted">{{ t('orders.loadingOrders') }}</p>
               </div>
 
-              <div v-else-if="orders.length === 0" class="text-center py-5">
+              <div v-else-if="filteredOrders.length === 0" class="text-center py-5">
                 <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
                 <p class="mt-3 text-muted">{{ t('orders.noOrdersFound') }}</p>
               </div>
@@ -87,7 +89,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="order in orders" :key="order.id">
+                    <tr v-for="order in filteredOrders" :key="order.id">
                       <td><strong>#{{ order.id }}</strong></td>
                       <td>{{ order.userId }}</td>
                       <td>{{ formatDate(order.orderDate) }}</td>
@@ -310,6 +312,11 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const orders = ref([])
+const filteredOrders = computed(() => {
+  const prefix = searchOrderId.value.trim()
+  if (!prefix) return orders.value
+  return orders.value.filter(order => String(order.id).startsWith(prefix))
+})
 const loading = ref(false)
 const deleting = ref(false)
 const searching = ref(false)
@@ -358,21 +365,9 @@ const loadOrders = async () => {
 }
 
 const searchOrder = async () => {
-  if (!searchOrderId.value) return
-  
-  searching.value = true
-  try {
-    const data = await orderService.getOrderById(searchOrderId.value)
-    orders.value = [data]
-    isSearchActive.value = true
-    lastSearchTerm.value = searchOrderId.value
-    showAlert('success', `${t('orders.foundOrder')} #${data.id}`)
-  } catch (error) {
-    showAlert('danger', error.message || t('orders.notFound'))
-    orders.value = []
-  } finally {
-    searching.value = false
-  }
+  const prefix = searchOrderId.value.trim()
+  isSearchActive.value = Boolean(prefix)
+  lastSearchTerm.value = prefix
 }
 
 const clearSearch = async () => {

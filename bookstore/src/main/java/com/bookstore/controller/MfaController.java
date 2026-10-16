@@ -6,6 +6,9 @@ import com.bookstore.dto.MfaVerifyRequest;
 import com.bookstore.model.User;
 import com.bookstore.service.MfaService;
 import com.bookstore.service.UserService;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import com.bookstore.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -23,6 +26,7 @@ import java.util.Map;
 @RequestMapping("/api/mfa")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Mfa management", description = "Apis for managing multifactor authentication in the shop")
 public class MfaController {
     
     private final MfaService mfaService;

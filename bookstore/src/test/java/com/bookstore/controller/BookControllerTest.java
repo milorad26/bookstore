@@ -135,14 +135,15 @@ class BookControllerTest {
     }
 
     @Test
-    void testGetBookByIsbn_WithNonMatchingIsbn_ShouldReturnEmptyList() throws Exception {
+    void testGetBookByIsbn_WithNonMatchingIsbn_ShouldReturnNotFound() throws Exception {
         // Given
         when(bookService.getBookByIsbn("999-9-99-999999-9")).thenReturn(Arrays.asList());
 
         // When & Then
         mockMvc.perform(get("/api/books/isbn/999-9-99-999999-9"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is(404)))
+                .andExpect(jsonPath("$.message", containsString("Book not found with ISBN")));
 
         verify(bookService).getBookByIsbn("999-9-99-999999-9");
     }

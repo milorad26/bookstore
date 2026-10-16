@@ -22,6 +22,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -241,7 +242,13 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update user", description = "Updates user information (excluding username and password) - SUPER_USER and ADMIN only")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Operation(summary = "Update user", description = "Updates user information (excluding username and password) - ADMIN only")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User updated successfully"),
+        @ApiResponse(responseCode = "403", description = "Only administrators can update users"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable Long id,
             HttpServletRequest httpRequest,
@@ -256,36 +263,16 @@ public class UserController {
         User currentUser = userService.findById(currentUserId)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Current user not found with ID: " + currentUserId));
-        
-        // Regular users should use /api/users/me to update their own profile
-        if (currentUser.getUserType() == UserType.USER) {
+
+        if (currentUser.getUserType() != UserType.ADMIN) {
             throw new AccessDeniedException(
-                "Permission denied: Regular users should use /api/users/me to update their profile.");
+                "Permission denied: Only administrators can update users.");
         }
         
         // Get the user being edited
-        User targetUser = userService.findById(id)
+        userService.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Cannot update user. User not found with ID: " + id));
-        
-        // Validate permissions based on current user type
-        UserType currentUserType = currentUser.getUserType();
-        UserType targetUserType = targetUser.getUserType();
-        
-        // Super users can only edit regular users (not admins or other super users)
-        if (currentUserType == UserType.SUPER_USER) {
-            if (targetUserType != UserType.USER) {
-                throw new AccessDeniedException(
-                    "Permission denied: Super users can only edit regular users.");
-            }
-            // Super users cannot change userType
-            if (updateRequest.getUserType() != null && updateRequest.getUserType() != UserType.USER) {
-                throw new AccessDeniedException(
-                    "Permission denied: Super users cannot change user type.");
-            }
-        }
-        
-        // Admins can edit everyone - no additional checks needed
         
         User user = new User();
         user.setFirstName(updateRequest.getFirstName());
@@ -301,7 +288,13 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Operation(summary = "Delete user", description = "Deletes a user by their ID - ADMIN only")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
+        @ApiResponse(responseCode = "403", description = "Only administrators can delete users"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, HttpServletRequest httpRequest) {
         // Get the current user who is making the request from JWT
         Long currentUserId = authenticationHelper.getUserIdFromRequest(httpRequest);
@@ -405,7 +398,6 @@ public class UserController {
                 // SUPER_USER has limited admin permissions
                 permissions.add("manage_regular_users");
                 permissions.add("create_regular_users");
-                permissions.add("edit_regular_users");
                 permissions.add("view_all_users");
                 permissions.add("view_all_orders");
                 permissions.add("confirm_orders");
@@ -417,7 +409,6 @@ public class UserController {
                 endpoints.add("GET /api/users/{id}");
                 endpoints.add("GET /api/users/username/{username}");
                 endpoints.add("POST /api/users");
-                endpoints.add("PUT /api/users/{id}");
                 endpoints.add("GET /api/orders");
                 endpoints.add("GET /api/orders/{id}");
                 endpoints.add("GET /api/orders/user/{userId}");

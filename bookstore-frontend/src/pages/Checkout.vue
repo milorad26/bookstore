@@ -228,7 +228,6 @@ const bulkDiscountInfo = ref(null)
 onMounted(async () => {
   try {
     activeDiscountRules.value = await bulkDiscountService.getActiveRules()
-    console.log('Active discount rules loaded:', activeDiscountRules.value)
     // Calculate discount after rules are loaded
     calculateBulkDiscount()
   } catch (error) {
@@ -243,10 +242,8 @@ const calculateBulkDiscount = () => {
       cartStore.cartItems,
       activeDiscountRules.value
     )
-    console.log('Bulk discount calculated:', bulkDiscountInfo.value)
   } else {
     bulkDiscountInfo.value = null
-    console.log('No bulk discount - items:', cartStore.cartItems.length, 'rules:', activeDiscountRules.value.length)
   }
 }
 
@@ -261,26 +258,22 @@ watch(
 
 const finalTotal = computed(() => {
   let total = cartStore.totalAmount
-  console.log('Calculating final total - base:', total)
   
   // Apply bulk discount
   if (bulkDiscountInfo.value?.discountAmount > 0) {
     const bulkDiscount = parseFloat(bulkDiscountInfo.value.discountAmount)
     total -= bulkDiscount
-    console.log('Applied bulk discount:', bulkDiscount, 'new total:', total)
   }
   
   // Apply coupon discount
   if (selectedCoupon.value) {
     const couponDiscount = parseFloat(selectedCoupon.value.value)
     total -= couponDiscount
-    console.log('Applied coupon discount:', couponDiscount, 'new total:', total)
   }
   
   // Ensure total doesn't go below 0
   if (total < 0) total = 0
   
-  console.log('Final total:', total)
   return total
 })
 

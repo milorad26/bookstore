@@ -2,6 +2,7 @@ package com.bookstore.controller;
 
 import com.bookstore.dto.BulkDiscountRuleDTO;
 import com.bookstore.service.BulkDiscountService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
+@Tag(name = "Bulk discount management", description = "Apis for managing all discounts in the shop")
 public class BulkDiscountController {
 
     private final BulkDiscountService bulkDiscountService;

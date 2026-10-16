@@ -7,18 +7,18 @@
           <button 
             type="button" 
             class="btn btn-outline-primary"
-            :class="{ active: viewMode === 'categories' }"
-            @click="viewMode = 'categories'"
-          >
-            <i class="bi bi-collection"></i> {{ t('shop.byCategory') || 'By Category' }}
-          </button>
-          <button 
-            type="button" 
-            class="btn btn-outline-primary"
             :class="{ active: viewMode === 'all' }"
             @click="viewMode = 'all'"
           >
             <i class="bi bi-grid"></i> {{ t('shop.allBooks') || 'All Books' }}
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-outline-primary"
+            :class="{ active: viewMode === 'categories' }"
+            @click="viewMode = 'categories'"
+          >
+            <i class="bi bi-collection"></i> {{ t('shop.byCategory') || 'By Category' }}
           </button>
         </div>
       </div>
@@ -220,7 +220,7 @@ const { t } = useI18n()
 
 const books = ref([])
 const booksByCategory = ref({})
-const viewMode = ref('categories') // 'categories' or 'all'
+const viewMode = ref('all') // 'all' or 'categories'
 const isLoading = ref(false)
 const isSearching = ref(false)
 const searchTitle = ref('')
@@ -236,12 +236,6 @@ const loadBooks = async () => {
     books.value = await bookService.getAllBooks()
     booksByCategory.value = await bookService.getBooksByCategory()
     
-    // Debug: Show how many categories were found
-    console.log('📚 Books by Category:', booksByCategory.value)
-    console.log('📊 Total categories:', Object.keys(booksByCategory.value).length)
-    Object.keys(booksByCategory.value).forEach(category => {
-      console.log(`  - ${category}: ${booksByCategory.value[category].length} books`)
-    })
   } catch (error) {
     showError(error.message || 'Failed to load books')
   } finally {
@@ -298,7 +292,7 @@ const resetSearch = () => {
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
-  viewMode.value = 'categories' // Reset to category view
+  viewMode.value = 'all' // Reset to All Books view
   loadBooks()
 }
 
