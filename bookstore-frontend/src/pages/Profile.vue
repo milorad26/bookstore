@@ -462,6 +462,18 @@
                   </button>
                 </div>
 
+                <!-- Bulk Discount Management (ADMIN) -->
+                <div v-if="isAdmin" class="action-card">
+                  <div class="action-icon bg-danger">
+                    <i class="bi bi-percent"></i>
+                  </div>
+                  <h6>Bulk Discount Management</h6>
+                  <p class="text-muted small">Manage bulk discount rules and tiers</p>
+                  <button @click="manageBulkDiscounts" class="btn btn-danger btn-sm w-100">
+                    <i class="bi bi-sliders"></i> Manage Bulk Discounts
+                  </button>
+                </div>
+
                 <!-- Order Management Actions (ADMIN & SUPER_USER) -->
                 <div v-if="canManageOrders" class="action-card">
                   <div class="action-icon bg-info">
@@ -596,6 +608,8 @@ const canManageUsers = computed(() =>
 const canManageBooks = computed(() => 
   profile.value.userType === 'ADMIN'
 )
+
+const isAdmin = computed(() => profile.value.userType === 'ADMIN')
 
 const canManageOrders = computed(() => 
   profile.value.userType === 'ADMIN' || profile.value.userType === 'SUPER_USER'
@@ -857,6 +871,10 @@ const viewAllUsers = () => {
 
 const manageBooks = () => {
   router.push('/books')
+}
+
+const manageBulkDiscounts = () => {
+  router.push('/admin/bulk-discounts')
 }
 
 const viewAllOrders = () => {

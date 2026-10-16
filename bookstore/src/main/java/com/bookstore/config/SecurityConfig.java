@@ -134,6 +134,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, USERS_API_PATTERN).hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)              
                 .requestMatchers(HttpMethod.PUT, "/api/users/*").hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.DELETE, USERS_API_PATTERN).hasRole(ROLE_ADMIN)
+
+                // Public active rules support customer cart and checkout previews
+                .requestMatchers(HttpMethod.GET, "/api/bulk-discounts/public/active").permitAll()
+                // All six bulk discount management endpoints are ADMIN-only
+                .requestMatchers("/api/bulk-discounts", "/api/bulk-discounts/**").hasRole(ROLE_ADMIN)
                 
                 // Orders endpoints - Role-based access control
                 // /me endpoint for regular users to access own orders

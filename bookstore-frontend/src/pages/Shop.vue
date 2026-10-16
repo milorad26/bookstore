@@ -203,7 +203,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { bookService } from '../services/bookService'
@@ -219,6 +219,7 @@ const cartStore = useCartStore()
 const { t } = useI18n()
 
 const books = ref([])
+const allBooks = ref([])
 const booksByCategory = ref({})
 const viewMode = ref('all') // 'all' or 'categories'
 const isLoading = ref(false)
@@ -230,10 +231,30 @@ const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
 
+const applySearch = () => {
+  const title = searchTitle.value.trim().toLocaleLowerCase()
+  const author = searchAuthor.value.trim().toLocaleLowerCase()
+  const isbn = searchIsbn.value.trim().toLocaleLowerCase()
+
+  if (title || author || isbn) {
+    viewMode.value = 'all'
+    books.value = allBooks.value.filter(book =>
+      (!title || (book.title || '').toLocaleLowerCase().includes(title)) &&
+      (!author || (book.author || '').toLocaleLowerCase().includes(author)) &&
+      (!isbn || String(book.isbn || '').toLocaleLowerCase().includes(isbn))
+    )
+  } else {
+    books.value = allBooks.value
+  }
+}
+
+watch([searchTitle, searchAuthor, searchIsbn], applySearch)
+
 const loadBooks = async () => {
   isLoading.value = true
   try {
-    books.value = await bookService.getAllBooks()
+    allBooks.value = await bookService.getAllBooks()
+    applySearch()
     booksByCategory.value = await bookService.getBooksByCategory()
     
   } catch (error) {
@@ -245,46 +266,17 @@ const loadBooks = async () => {
 
 const searchBooks = async (type) => {
   showAlert.value = false // Clear previous alerts
-  isSearching.value = true
-  
-  // Switch to 'all' view when searching
-  viewMode.value = 'all'
-  
-  try {
-    if (type === 'title' && !searchTitle.value.trim()) {
-      showError(t('messages.enterTitle'))
-      isSearching.value = false
-      return
-    }
-
-    if (type === 'author' && !searchAuthor.value.trim()) {
-      showError(t('messages.enterAuthor'))
-      isSearching.value = false
-      return
-    }
-
-    if (type === 'isbn' && !searchIsbn.value.trim()) {
-      showError(t('messages.enterIsbn'))
-      isSearching.value = false
-      return
-    }
-
-    if (type === 'title') {
-      books.value = await bookService.searchByTitle(searchTitle.value)
-    } else if (type === 'author') {
-      books.value = await bookService.searchByAuthor(searchAuthor.value)
-    } else if (type === 'isbn') {
-      books.value = await bookService.searchByIsbn(searchIsbn.value.trim())
-    }
-
-    if (books.value.length === 0) {
-      showInfo(t('shop.noBooksFound'))
-    }
-  } catch (error) {
-    showError(error.message || t('messages.searchFailed'))
-  } finally {
-    isSearching.value = false
+  const query = type === 'title' ? searchTitle.value.trim()
+    : type === 'author' ? searchAuthor.value.trim()
+      : searchIsbn.value.trim()
+  if (!query) {
+    const messageKey = type === 'title' ? 'messages.enterTitle'
+      : type === 'author' ? 'messages.enterAuthor' : 'messages.enterIsbn'
+    showError(t(messageKey))
+    return
   }
+
+  applySearch()
 }
 
 const resetSearch = () => {
@@ -293,7 +285,7 @@ const resetSearch = () => {
   searchAuthor.value = ''
   searchIsbn.value = ''
   viewMode.value = 'all' // Reset to All Books view
-  loadBooks()
+  applySearch()
 }
 
 const formatPrice = (price) => {

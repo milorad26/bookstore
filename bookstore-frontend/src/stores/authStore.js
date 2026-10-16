@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { isTokenExpired, getTokenExpiration } from '../utils/jwt'
+import { isTokenExpired } from '../utils/jwt'
+import { useCartStore } from './cartStore'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('authToken') || null)
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
-  let expirationTimer = null
 
   // Check if token exists AND is not expired
   const isAuthenticated = computed(() => {
@@ -19,53 +19,25 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   const setAuth = (authToken, userData) => {
+    // A newly established login starts with an empty basket, even if a prior
+    // browser session left persisted cart data behind.
+    useCartStore().clearCart()
     token.value = authToken
     user.value = userData
     localStorage.setItem('authToken', authToken)
     localStorage.setItem('user', JSON.stringify(userData))
     
-    // Set up automatic logout when token expires
-    setupExpirationTimer()
   }
 
   const logout = () => {
+    // A cart belongs to the current signed-in session. Clear both Pinia state
+    // and its persisted copy for manual and automatic logout paths.
+    useCartStore().clearCart()
     token.value = null
     user.value = null
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
     
-    // Clear expiration timer
-    if (expirationTimer) {
-      clearTimeout(expirationTimer)
-      expirationTimer = null
-    }
-  }
-
-  const setupExpirationTimer = () => {
-    // Clear existing timer
-    if (expirationTimer) {
-      clearTimeout(expirationTimer)
-    }
-
-    if (!token.value) return
-
-    const expirationTime = getTokenExpiration(token.value)
-    if (!expirationTime) return
-
-    const now = Date.now()
-    const timeUntilExpiration = expirationTime - now
-
-    // Only set timer if token hasn't expired yet
-    if (timeUntilExpiration > 0) {
-      expirationTimer = setTimeout(() => {
-        logout()
-        // Redirect to login page
-        window.location.href = '/auth/login'
-      }, timeUntilExpiration)
-    } else {
-      // Token already expired
-      logout()
-    }
   }
 
   // Check token on store initialization
@@ -73,8 +45,6 @@ export const useAuthStore = defineStore('auth', () => {
     if (token.value) {
       if (isTokenExpired(token.value)) {
         logout()
-      } else {
-        setupExpirationTimer()
       }
     }
   }

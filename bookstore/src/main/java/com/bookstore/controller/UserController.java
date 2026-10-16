@@ -389,6 +389,12 @@ public class UserController {
                 endpoints.add("POST /api/books");
                 endpoints.add("PUT /api/books/{id}");
                 endpoints.add("DELETE /api/books/{id}");
+                endpoints.add("GET /api/bulk-discounts");
+                endpoints.add("GET /api/bulk-discounts/active");
+                endpoints.add("GET /api/bulk-discounts/{id}");
+                endpoints.add("POST /api/bulk-discounts");
+                endpoints.add("PUT /api/bulk-discounts/{id}");
+                endpoints.add("DELETE /api/bulk-discounts/{id}");
                 endpoints.add("GET /api/order-items/{id}");
                 endpoints.add("GET /api/order-items/order/{orderId}");
                 endpoints.add("GET /api/order-items/book/{bookId}");

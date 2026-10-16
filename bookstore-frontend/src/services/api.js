@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/authStore'
+import { isTokenExpired } from '../utils/jwt'
 
 // Use proxy in development, direct URL in production
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
@@ -36,8 +37,12 @@ apiClient.interceptors.response.use(
     
     if (error.response?.status === 401 && !isAuthEndpoint) {
       const authStore = useAuthStore()
-      authStore.logout()
-      window.location.href = '/auth/login'
+      // A 401 can be a transient or endpoint-specific rejection. Only end the
+      // session when its 15-minute JWT has actually expired.
+      if (authStore.token && isTokenExpired(authStore.token)) {
+        authStore.logout()
+        window.location.href = '/auth/login'
+      }
     }
     return Promise.reject(error)
   }

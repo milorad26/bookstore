@@ -67,6 +67,12 @@ const routes = [
     name: 'AllOrders',
     component: () => import('../pages/AllOrders.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/bulk-discounts',
+    name: 'BulkDiscounts',
+    component: () => import('../pages/BulkDiscounts.vue'),
+    meta: { requiresAuth: true, requiresAdminRole: true }
   }
 ]
 
@@ -80,6 +86,12 @@ router.beforeEach((to, from, next) => {
   
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/auth/login')
+  } else if (to.meta.requiresAdminRole) {
+    if (authStore.user?.userType !== 'ADMIN') {
+      next('/profile')
+    } else {
+      next()
+    }
   } else if (to.meta.requiresAdmin) {
     // Check if user has admin/super_user privileges
     const userType = authStore.user?.userType

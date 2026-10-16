@@ -86,6 +86,7 @@
                       <th>{{ t('books.table.title') }}</th>
                       <th>{{ t('books.table.author') }}</th>
                       <th>{{ t('books.table.isbn') }}</th>
+                      <th>Category</th>
                       <th>{{ t('books.table.price') }}</th>
                       <th>{{ t('books.table.stock') }}</th>
                       <th>{{ t('books.form.description') }}</th>
@@ -102,6 +103,7 @@
                       <td>
                         <code class="isbn-code">{{ book.isbn }}</code>
                       </td>
+                      <td>{{ book.category || 'General' }}</td>
                       <td>
                         <span class="price-badge">${{ formatPrice(book.price) }}</span>
                       </td>
@@ -198,6 +200,15 @@
                   :placeholder="t('books.form.enterIsbn')"
                   :disabled="isEditMode"
                   required
+                />
+              </div>
+              <div class="col-md-6 mb-3">
+                <FormField
+                  id="book-category"
+                  v-model="bookForm.category"
+                  label="Category"
+                  type="text"
+                  placeholder="e.g. Fantasy, Science Fiction, Romance"
                 />
               </div>
               <div class="col-md-6 mb-3">
@@ -362,6 +373,7 @@ const bookForm = reactive({
   title: '',
   author: '',
   isbn: '',
+  category: '',
   price: '',
   description: '',
   stockQuantity: 0
@@ -460,6 +472,7 @@ const editBook = (book) => {
   bookForm.title = book.title
   bookForm.author = book.author
   bookForm.isbn = book.isbn
+  bookForm.category = book.category || ''
   bookForm.price = book.price
   bookForm.description = book.description || ''
   bookForm.stockQuantity = book.stockQuantity || 0
@@ -478,6 +491,7 @@ const saveBook = async () => {
       title: bookForm.title,
       author: bookForm.author,
       isbn: bookForm.isbn,
+      category: bookForm.category.trim() || null,
       price: parseFloat(bookForm.price),
       description: bookForm.description || null,
       stockQuantity: parseInt(bookForm.stockQuantity) || 0
@@ -527,6 +541,7 @@ const resetForm = () => {
   bookForm.title = ''
   bookForm.author = ''
   bookForm.isbn = ''
+  bookForm.category = ''
   bookForm.price = ''
   bookForm.description = ''
   bookForm.stockQuantity = 0

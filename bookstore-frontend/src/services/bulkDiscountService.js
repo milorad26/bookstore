@@ -19,10 +19,21 @@ const bulkDiscountService = {
    */
   async getActiveRules() {
     try {
-      const response = await api.get('/bulk-discounts/active')
+      const response = await api.get('/bulk-discounts/public/active')
       return response.data
     } catch (error) {
       console.error('Error fetching active bulk discount rules:', error)
+      throw error
+    }
+  },
+
+  /** Get active bulk discount rules through the admin-only management endpoint. */
+  async getActiveRulesForAdmin() {
+    try {
+      const response = await api.get('/bulk-discounts/active')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching admin bulk discount rules:', error)
       throw error
     }
   },
