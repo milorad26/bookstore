@@ -96,12 +96,20 @@ public class ReportController {
     }
 
     private SalesReportDTO buildSalesReport(String startDate, String endDate) {
-        LocalDate today = LocalDate.now();
         LocalDate parsedEndDate = parseDate("endDate", endDate);
         LocalDate parsedStartDate = parseDate("startDate", startDate);
-        LocalDate effectiveEnd = parsedEndDate != null ? parsedEndDate : today;
-        LocalDate effectiveStart = parsedStartDate != null ? parsedStartDate : effectiveEnd.minusDays(29);
-        return reportService.getSalesReport(effectiveStart, effectiveEnd);
+
+        if (parsedStartDate == null) {
+            throw new IllegalArgumentException("Please select a start date.");
+        }
+        if (parsedEndDate == null) {
+            throw new IllegalArgumentException("Please select an end date.");
+        }
+        if (parsedEndDate.isBefore(parsedStartDate)) {
+            throw new IllegalArgumentException("End date must be on or after the start date.");
+        }
+
+        return reportService.getSalesReport(parsedStartDate, parsedEndDate);
     }
 
     private ResponseEntity<byte[]> excelDownload(byte[] workbook, String filename) {
