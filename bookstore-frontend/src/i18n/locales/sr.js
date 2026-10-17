@@ -504,6 +504,7 @@ export default {
     backToProfile: 'Nazad na profil',
     startDate: 'Početni datum',
     endDate: 'Krajnji datum',
+    datePickerHint: 'Izaberite datum iz kalendara (format: dd-mm-yyyy).',
     applyFilter: 'Primeni datume',
     reset: 'Poništi',
     downloadSales: 'Preuzmi izveštaj o prodaji u Excel formatu',
@@ -530,6 +531,8 @@ export default {
     isbn: 'ISBN',
     stock: 'Zaliha',
     unitPrice: 'Cena po jedinici',
+    startDateRequired: 'Molimo izaberite početni datum.',
+    endDateRequired: 'Molimo izaberite krajnji datum.',
     invalidDateRange: 'Krajnji datum mora biti isti ili kasniji od početnog datuma.',
     loadFailed: 'Učitavanje izveštaja nije uspelo.'
   },

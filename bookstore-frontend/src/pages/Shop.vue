@@ -173,11 +173,18 @@
               <span class="h5 mb-0 text-success">
                 ${{ formatPrice(book.price) }}
               </span>
+              <span v-if="Number(book.stockQuantity) > 0" class="badge bg-success small">
+                {{ t('shop.inStock') }}
+              </span>
+              <span v-else class="badge bg-danger small">
+                {{ t('shop.outOfStock') }}
+              </span>
             </div>
 
             <button
               class="btn btn-primary w-100 mt-3"
               @click="addToCart(book)"
+              :disabled="Number(book.stockQuantity) <= 0"
             >
               <i class="bi bi-cart-plus"></i> {{ t('shop.addToCart') }}
             </button>

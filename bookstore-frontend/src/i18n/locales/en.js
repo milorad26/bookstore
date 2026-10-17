@@ -506,6 +506,7 @@ export default {
     backToProfile: 'Back to Profile',
     startDate: 'Start date',
     endDate: 'End date',
+    datePickerHint: 'Choose a date from the calendar (format: dd-mm-yyyy).',
     applyFilter: 'Apply dates',
     reset: 'Reset',
     downloadSales: 'Download sales report as Excel',
@@ -532,6 +533,8 @@ export default {
     isbn: 'ISBN',
     stock: 'Stock',
     unitPrice: 'Unit price',
+    startDateRequired: 'Please select a start date.',
+    endDateRequired: 'Please select an end date.',
     invalidDateRange: 'End date must be on or after the start date.',
     loadFailed: 'Failed to load reports.'
   },

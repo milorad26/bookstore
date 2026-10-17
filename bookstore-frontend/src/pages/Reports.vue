@@ -16,20 +16,26 @@
       <div class="row g-3 align-items-end">
         <div class="col-sm-5 col-md-4">
           <label class="form-label" for="report-start-date">{{ t('reports.startDate') }}</label>
-          <input id="report-start-date" v-model="startDate" type="date" class="form-control" />
+          <input id="report-start-date" v-model="startDate" type="date" class="form-control" @keydown="preventManualDateEntry" @paste.prevent @drop.prevent />
+          <div class="form-text">{{ t('reports.datePickerHint') }}</div>
         </div>
         <div class="col-sm-5 col-md-4">
           <label class="form-label" for="report-end-date">{{ t('reports.endDate') }}</label>
-          <input id="report-end-date" v-model="endDate" type="date" class="form-control" :min="startDate || undefined" />
+          <input id="report-end-date" v-model="endDate" type="date" class="form-control" :min="startDate || undefined" :disabled="!startDate" @keydown="preventManualDateEntry" @paste.prevent @drop.prevent />
+          <div class="form-text">{{ t('reports.datePickerHint') }}</div>
         </div>
-        <div class="col-sm-2 col-md-4 d-flex gap-2">
-          <button class="btn btn-primary" type="submit" :disabled="loading">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-            {{ t('reports.applyFilter') }}
-          </button>
-          <button class="btn btn-outline-secondary" type="button" :disabled="loading" @click="resetFilters">
-            {{ t('reports.reset') }}
-          </button>
+        <div class="col-sm-2 col-md-4">
+          <div class="form-label invisible" aria-hidden="true">{{ t('reports.startDate') }}</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit" :disabled="loading">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              {{ t('reports.applyFilter') }}
+            </button>
+            <button class="btn btn-outline-secondary" type="button" :disabled="loading" @click="resetFilters">
+              {{ t('reports.reset') }}
+            </button>
+          </div>
+          <div class="form-text invisible" aria-hidden="true">{{ t('reports.datePickerHint') }}</div>
         </div>
       </div>
     </form>
@@ -141,6 +147,12 @@ const toDateInput = (date) => {
 const startDate = ref('')
 const endDate = ref('')
 
+const preventManualDateEntry = (event) => {
+  if (event.key !== 'Tab') {
+    event.preventDefault()
+  }
+}
+
 const formatCurrency = (amount) => new Intl.NumberFormat(undefined, {
   style: 'currency',
   currency: 'USD'
@@ -158,6 +170,8 @@ const saveWorkbook = (blob, filename) => {
 }
 
 const downloadSalesReport = async () => {
+  if (!validateDateRange()) return
+
   try {
     const workbook = await reportService.exportSalesReport(startDate.value, endDate.value)
     const reportStart = salesReport.value?.startDate || startDate.value
@@ -178,10 +192,7 @@ const downloadInventoryReport = async () => {
 }
 
 const loadReports = async () => {
-  if (endDate.value < startDate.value) {
-    errorMessage.value = t('reports.invalidDateRange')
-    return
-  }
+  if (!validateDateRange()) return
 
   loading.value = true
   errorMessage.value = ''
@@ -197,6 +208,23 @@ const loadReports = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const validateDateRange = () => {
+  if (!startDate.value) {
+    errorMessage.value = t('reports.startDateRequired')
+    return false
+  }
+  if (!endDate.value) {
+    errorMessage.value = t('reports.endDateRequired')
+    return false
+  }
+  if (endDate.value < startDate.value) {
+    errorMessage.value = t('reports.invalidDateRange')
+    return false
+  }
+  errorMessage.value = ''
+  return true
 }
 
 const resetFilters = () => {
