@@ -332,7 +332,19 @@ public class OrderService {
 
     @Transactional
     public OrderDTO deliverOrder(Long orderId) {
-        return updateOrderStatus(orderId, OrderStatus.DELIVERED);
+        OrderDTO delivered = updateOrderStatus(orderId, OrderStatus.DELIVERED);
+        orderRepository.findById(orderId).ifPresent(order -> {
+            if (!Boolean.TRUE.equals(order.getDeliveryEmailSent())) {
+                try {
+                    emailService.sendDeliveryEmail(order);
+                    order.setDeliveryEmailSent(true);
+                    orderRepository.save(order);
+                } catch (Exception e) {
+                    log.warn("Order {} delivered, but delivery email failed and will be retried: {}", orderId, e.getMessage());
+                }
+            }
+        });
+        return delivered;
     }
 
     @Transactional

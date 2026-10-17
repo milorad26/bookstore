@@ -48,6 +48,9 @@ class OrderServiceTest {
     @Mock
     private PaymentService paymentService;
 
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -723,7 +726,31 @@ class OrderServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).save(any(Order.class));
+        assertThat(testOrder.getDeliveryEmailSent()).isTrue();
+        verify(emailService).sendDeliveryEmail(testOrder);
+        verify(orderRepository, times(2)).findById(1L);
+        verify(orderRepository, times(2)).save(any(Order.class));
+    }
+
+    @Test
+    void testDeliverOrder_ShouldLeaveDeliveryEmailUnsentWhenSendingFails() {
+        testOrder.setStatus(OrderStatus.PAID);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        doThrow(new IllegalStateException("Mail server unavailable"))
+                .when(emailService).sendDeliveryEmail(testOrder);
+
+        Order deliveredOrder = new Order();
+        deliveredOrder.setId(1L);
+        deliveredOrder.setUser(testUser);
+        deliveredOrder.setStatus(OrderStatus.DELIVERED);
+        deliveredOrder.setOrderItems(new ArrayList<>());
+        when(orderRepository.save(any(Order.class))).thenReturn(deliveredOrder);
+
+        OrderDTO result = orderService.deliverOrder(1L);
+
+        assertThat(result).isNotNull();
+        assertThat(testOrder.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(testOrder.getDeliveryEmailSent()).isFalse();
+        verify(emailService).sendDeliveryEmail(testOrder);
     }
 }

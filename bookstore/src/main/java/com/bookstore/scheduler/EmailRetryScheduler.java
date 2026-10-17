@@ -73,4 +73,26 @@ public class EmailRetryScheduler {
             log.error("Error during email retry scheduler execution: {}", e.getMessage(), e);
         }
     }
+
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void retryFailedDeliveryEmails() {
+        try {
+            long count = orderRepository.countOrdersNeedingDeliveryEmail();
+            if (count == 0) return;
+            log.info("Found {} delivered order(s) needing delivery email", count);
+            List<Order> orders = orderRepository.findOrdersNeedingDeliveryEmail();
+            for (Order order : orders) {
+                try {
+                    emailService.sendDeliveryEmail(order);
+                    order.setDeliveryEmailSent(true);
+                    orderRepository.save(order);
+                } catch (Exception e) {
+                    log.warn("Failed to send delivery email for order {}: {}", order.getId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error during delivery email retry: {}", e.getMessage(), e);
+        }
+    }
 }

@@ -140,6 +140,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/bulk-discounts/public/active").permitAll()
                 // All six bulk discount management endpoints are ADMIN-only
                 .requestMatchers("/api/bulk-discounts", "/api/bulk-discounts/**").hasRole(ROLE_ADMIN)
+
+                // Sales and inventory reports are restricted to store administrators
+                .requestMatchers("/api/admin/reports/**").hasAnyRole(ROLE_ADMIN, ROLE_SUPER_USER)
                 
                 // Orders endpoints - Role-based access control
                 // /me endpoint for regular users to access own orders

@@ -486,6 +486,17 @@
                   </button>
                 </div>
 
+                <div v-if="canManageOrders" class="action-card">
+                  <div class="action-icon bg-success">
+                    <i class="bi bi-bar-chart-fill"></i>
+                  </div>
+                  <h6>{{ t('reports.title') }}</h6>
+                  <p class="text-muted small">{{ t('reports.subtitle') }}</p>
+                  <button @click="viewReports" class="btn btn-success btn-sm w-100">
+                    <i class="bi bi-graph-up-arrow"></i> {{ t('reports.open') }}
+                  </button>
+                </div>
+
                 <!-- My Orders (ALL USERS) -->
                 <div class="action-card">
                   <div class="action-icon bg-secondary">
@@ -879,6 +890,10 @@ const manageBulkDiscounts = () => {
 
 const viewAllOrders = () => {
   router.push('/admin/orders')
+}
+
+const viewReports = () => {
+  router.push('/admin/reports')
 }
 
 const viewMyOrders = () => {

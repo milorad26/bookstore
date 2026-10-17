@@ -73,6 +73,12 @@ const routes = [
     name: 'BulkDiscounts',
     component: () => import('../pages/BulkDiscounts.vue'),
     meta: { requiresAuth: true, requiresAdminRole: true }
+  },
+  {
+    path: '/admin/reports',
+    name: 'Reports',
+    component: () => import('../pages/Reports.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 

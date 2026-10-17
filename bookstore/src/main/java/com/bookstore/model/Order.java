@@ -63,6 +63,9 @@ public class Order {
     @Column(name = "confirmation_email_sent")
     private Boolean confirmationEmailSent = false;
 
+    @Column(name = "delivery_email_sent", nullable = false)
+    private Boolean deliveryEmailSent = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

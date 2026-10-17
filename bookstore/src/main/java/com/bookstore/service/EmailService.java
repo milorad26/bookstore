@@ -54,6 +54,37 @@ public class EmailService {
         }
     }
 
+    public void sendDeliveryEmail(Order order) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(order.getUser().getEmail());
+            Locale sr = Locale.forLanguageTag("sr");
+            helper.setSubject(messageSource.getMessage("email.delivery.subject", new Object[]{order.getId()}, Locale.ENGLISH)
+                    + " / " + messageSource.getMessage("email.delivery.subject", new Object[]{order.getId()}, sr));
+
+            StringBuilder html = new StringBuilder("<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:Arial,sans-serif;color:#333'>");
+            html.append("<h1>").append(messageSource.getMessage("email.delivery.title", null, Locale.ENGLISH)).append(" / ")
+                    .append(messageSource.getMessage("email.delivery.title", null, sr)).append("</h1>");
+            html.append("<section><h2>English</h2><p>")
+                    .append(messageSource.getMessage("email.order.dear", new Object[]{order.getUser().getFirstName(), order.getUser().getLastName()}, Locale.ENGLISH))
+                    .append("</p><p>").append(messageSource.getMessage("email.delivery.message", null, Locale.ENGLISH))
+                    .append("</p><p>").append(messageSource.getMessage("email.delivery.number", new Object[]{order.getId()}, Locale.ENGLISH)).append("</p></section>");
+            html.append("<section><h2>Srpski</h2><p>")
+                    .append(messageSource.getMessage("email.order.dear", new Object[]{order.getUser().getFirstName(), order.getUser().getLastName()}, sr))
+                    .append("</p><p>").append(messageSource.getMessage("email.delivery.message", null, sr))
+                    .append("</p><p>").append(messageSource.getMessage("email.delivery.number", new Object[]{order.getId()}, sr)).append("</p></section>");
+            html.append("<p>").append(messageSource.getMessage("email.footer.automated", null, Locale.ENGLISH)).append("<br>")
+                    .append(messageSource.getMessage("email.footer.automated", null, sr)).append("</p></body></html>");
+            helper.setText(html.toString(), true);
+            mailSender.send(message);
+            log.info("Delivery email sent to {} for order #{}", order.getUser().getEmail(), order.getId());
+        } catch (MessagingException e) {
+            throw new IllegalStateException("Failed to send delivery email for order " + order.getId(), e);
+        }
+    }
+
     private String buildBilingualOrderConfirmationEmail(Order order) {
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
         Locale localeEn = Locale.ENGLISH;

@@ -3,6 +3,7 @@ package com.bookstore.repository;
 import com.bookstore.model.Order;
 import com.bookstore.model.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,9 +12,16 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.book"})
+    @Query("SELECT DISTINCT o FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate < :endDateExclusive AND o.status IN :statuses")
+    List<Order> findSalesOrdersForReport(@Param("startDate") LocalDateTime startDate,
+                                         @Param("endDateExclusive") LocalDateTime endDateExclusive,
+                                         @Param("statuses") Set<OrderStatus> statuses);
 
     List<Order> findByUserId(Long userId);
 
@@ -45,4 +53,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o WHERE o.confirmationEmailSent = false AND (o.status = 'CONFIRMED' OR o.status = 'PAID') ORDER BY o.orderDate DESC")
     List<Order> findOrdersNeedingConfirmationEmail();
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED'")
+    long countOrdersNeedingDeliveryEmail();
+
+    @Query("SELECT o FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED' ORDER BY o.orderDate DESC")
+    List<Order> findOrdersNeedingDeliveryEmail();
 }

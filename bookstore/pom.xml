@@ -100,6 +100,13 @@
             <version>2.3.0</version>
         </dependency>
 
+        <!-- Excel workbook generation for downloadable reports -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+
         <!-- Stripe Payment Processing -->
         <dependency>
             <groupId>com.stripe</groupId>
