@@ -369,6 +369,7 @@ export default {
     passwordNeedsSpecialChar: 'Password must contain at least one special character (!@#$%^&*...)',
     passwordMustBeDifferent: 'New password must be different from current password',
     passwordChangeSuccess: '✓ Password changed successfully! Please use your new password for future logins.',
+    passwordChangedLogoutMessage: 'You have changed your password and that is why you have been logged out. Please log in again with your new password.',
     passwordChangeFailed: 'Failed to change password.',
     currentPasswordIncorrect: 'Current password is incorrect. Please try again.',
     tryAgainOrContact: 'Please try again or contact support if the problem persists.',

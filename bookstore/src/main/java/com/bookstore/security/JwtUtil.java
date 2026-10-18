@@ -13,7 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @Component
 @Slf4j
@@ -27,6 +30,8 @@ public class JwtUtil {
 
     @Value("${jwt.issuer}")
     private String issuer;
+
+    private final Map<String, Long> revokedTokens = new ConcurrentHashMap<>();
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -80,7 +85,7 @@ public class JwtUtil {
     public Boolean validateToken(String token, UserDetails userDetails) {
         try {
             final String username = extractUsername(token);
-            return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+            return username.equals(userDetails.getUsername()) && Boolean.TRUE.equals(validateToken(token));
         } catch (Exception e) {
             log.error("Token validation failed: {}", e.getMessage());
             return false;
@@ -89,11 +94,50 @@ public class JwtUtil {
 
     public Boolean validateToken(String token) {
         try {
-            extractAllClaims(token);
-            return !isTokenExpired(token);
+            Claims claims = extractAllClaims(token);
+            String tokenHash = hashToken(token);
+            Long revokedUntil = revokedTokens.get(tokenHash);
+            if (revokedUntil != null) {
+                if (revokedUntil > System.currentTimeMillis()) {
+                    return false;
+                }
+                revokedTokens.remove(tokenHash, revokedUntil);
+            }
+
+            return !claims.getExpiration().before(new Date());
         } catch (Exception e) {
             log.error("Token validation failed: {}", e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Revokes a token until its natural expiration time.
+     * The raw token is never stored.
+     */
+    public void revokeToken(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+
+        try {
+            revokedTokens.put(hashToken(token), extractExpiration(token).getTime());
+        } catch (Exception e) {
+            log.warn("Could not revoke token: {}", e.getMessage());
+        }
+    }
+
+    private String hashToken(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hash = new StringBuilder(digest.length * 2);
+            for (byte value : digest) {
+                hash.append(String.format("%02x", value));
+            }
+            return hash.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
         }
     }
 

@@ -367,6 +367,7 @@ export default {
     passwordNeedsSpecialChar: 'Lozinka mora sadržati bar jedan specijalni karakter (!@#$%^&*...)',
     passwordMustBeDifferent: 'Nova lozinka mora biti različita od trenutne lozinke',
     passwordChangeSuccess: '✓ Lozinka uspešno promenjena! Koristite novu lozinku za buduće prijave.',
+    passwordChangedLogoutMessage: 'Promenili ste lozinku i zato ste odjavljeni. Molimo prijavite se ponovo sa novom lozinkom.',
     passwordChangeFailed: 'Promena lozinke nije uspela.',
     currentPasswordIncorrect: 'Trenutna lozinka je netačna. Molimo pokušajte ponovo.',
     tryAgainOrContact: 'Molimo pokušajte ponovo ili kontaktirajte podršku ako se problem nastavi.',

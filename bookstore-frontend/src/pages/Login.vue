@@ -251,7 +251,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -304,6 +304,15 @@ const isMfaLoading = ref(false)
 const showMfaAlert = ref(false)
 const mfaAlertMessage = ref('')
 const mfaAlertType = ref('info')
+
+onMounted(() => {
+  const postLogoutMessage = sessionStorage.getItem('postLogoutMessage')
+
+  if (postLogoutMessage) {
+    sessionStorage.removeItem('postLogoutMessage')
+    showInfo(t(postLogoutMessage))
+  }
+})
 
 // MFA prompt state
 const showMfaPrompt = ref(false)

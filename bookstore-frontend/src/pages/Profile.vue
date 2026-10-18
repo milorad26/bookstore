@@ -535,12 +535,14 @@ import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { userService } from '../services/userService'
 import { getUserCoupons } from '../services/couponService'
 import { setupMfa, enableMfa, disableMfa, getMfaStatus } from '../services/mfaService'
+import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const { t, locale } = useI18n()
 
 const profile = ref({
@@ -744,8 +746,9 @@ const changePassword = async () => {
       currentPassword: passwordForm.currentPassword,
       newPassword: passwordForm.newPassword
     })
-    showAlert('success', t('profile.passwordChangeSuccess'))
-    cancelPasswordChange()
+    sessionStorage.setItem('postLogoutMessage', 'profile.passwordChangedLogoutMessage')
+    authStore.logout()
+    await router.push('/auth/login')
   } catch (error) {
     // Provide specific error messages
     let errorMessage = t('profile.passwordChangeFailed') + ' '

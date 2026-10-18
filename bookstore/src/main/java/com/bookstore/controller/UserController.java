@@ -10,6 +10,7 @@ import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.AuthenticationHelper;
+import com.bookstore.security.JwtUtil;
 import com.bookstore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,6 +37,7 @@ public class UserController {
 
     private final UserService userService;
     private final AuthenticationHelper authenticationHelper;
+    private final JwtUtil jwtUtil;
     private final MessageSource messageSource;
 
     @PostMapping
@@ -237,8 +239,17 @@ public class UserController {
             changePasswordRequest.getCurrentPassword(), 
             changePasswordRequest.getNewPassword()
         );
+
+        jwtUtil.revokeToken(extractBearerToken(httpRequest));
         
         return ResponseEntity.ok("Password changed successfully");
+    }
+
+    private String extractBearerToken(HttpServletRequest request) {
+        String authorization = request.getHeader("Authorization");
+        return authorization != null && authorization.startsWith("Bearer ")
+                ? authorization.substring(7)
+                : null;
     }
 
     @PutMapping("/{id}")
