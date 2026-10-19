@@ -244,6 +244,7 @@ export default {
       refundSuccess: 'Order refunded successfully!',
       refundFailed: 'Failed to refund order',
       paymentSuccess: 'Payment successful! Your order has been paid.',
+      paymentPending: 'Stripe is still processing your payment. Your order will update when payment is confirmed.',
       paymentProcessing: 'Payment received, processing order status...'
     }
   },

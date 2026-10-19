@@ -85,7 +85,13 @@ public class PaymentController {
         log.info("========================================");
         
         try {
-            paymentService.handlePaymentSuccess(sessionId);
+            boolean paid = paymentService.handlePaymentSuccess(sessionId, orderId);
+            if (!paid) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "pending",
+                        "message", "Stripe is still processing this payment.",
+                        "orderId", orderId.toString()));
+            }
             
             log.info("✓ Payment processed successfully for Order ID: {}", orderId);
             log.info("========================================");

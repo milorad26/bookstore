@@ -10,6 +10,7 @@ import com.bookstore.repository.OrderRepository;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.RequestOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,12 @@ class PaymentServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private CouponService couponService;
+
+    @Mock
+    private EmailService emailService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -71,7 +78,7 @@ class PaymentServiceTest {
         testOrder = new Order();
         testOrder.setId(1L);
         testOrder.setUser(testUser);
-        testOrder.setStatus(OrderStatus.PENDING);
+        testOrder.setStatus(OrderStatus.CONFIRMED);
         testOrder.setTotalAmount(new BigDecimal("85.98"));
         testOrder.setOrderDate(LocalDateTime.now());
         testOrder.setOrderItems(new ArrayList<>());
@@ -98,7 +105,7 @@ class PaymentServiceTest {
 
         // When
         try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
-            sessionMock.when(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class)))
+            sessionMock.when(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class), any(RequestOptions.class)))
                     .thenReturn(mockSession);
 
             PaymentSessionResponse response = paymentService.createCheckoutSession(1L);
@@ -110,7 +117,7 @@ class PaymentServiceTest {
             assertThat(response.getPublicKey()).isEqualTo("pk_test_dummy");
 
             verify(orderRepository).findById(1L);
-            sessionMock.verify(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class)));
+            sessionMock.verify(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class), any(RequestOptions.class)));
         }
     }
 
@@ -150,12 +157,16 @@ class PaymentServiceTest {
         when(mockSession.getStatus()).thenReturn("complete");
         when(mockSession.getPaymentStatus()).thenReturn("paid");
         when(mockSession.getPaymentIntent()).thenReturn(paymentIntentId);
+        when(mockSession.getMode()).thenReturn("payment");
+        when(mockSession.getClientReferenceId()).thenReturn("1");
+        when(mockSession.getCurrency()).thenReturn("usd");
+        when(mockSession.getAmountTotal()).thenReturn(8598L);
         
         Map<String, String> metadata = new HashMap<>();
         metadata.put("orderId", "1");
         when(mockSession.getMetadata()).thenReturn(metadata);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(orderRepository.save(any(Order.class))).thenReturn(testOrder);
 
         // When
@@ -165,11 +176,54 @@ class PaymentServiceTest {
             paymentService.handlePaymentSuccess(sessionId);
 
             // Then
-            verify(orderRepository).findById(1L);
+            verify(orderRepository).findByIdForUpdate(1L);
             verify(orderRepository).save(argThat(order -> 
                 order.getStatus() == OrderStatus.PAID && 
                 order.getPaymentIntentId().equals(paymentIntentId)
             ));
+        }
+    }
+
+    @Test
+    void testHandlePaymentSuccess_CompletedButUnpaidSessionRemainsPending() throws StripeException {
+        Session mockSession = mock(Session.class);
+        when(mockSession.getStatus()).thenReturn("complete");
+        when(mockSession.getPaymentStatus()).thenReturn("unpaid");
+
+        try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
+            sessionMock.when(() -> Session.retrieve("cs_unpaid")).thenReturn(mockSession);
+
+            assertThat(paymentService.handlePaymentSuccess("cs_unpaid")).isFalse();
+            verifyNoInteractions(orderRepository, couponService);
+        }
+    }
+
+    @Test
+    void testHandlePaymentSuccess_IsIdempotentForAnAlreadyPaidOrder() throws StripeException {
+        String sessionId = "cs_test_12345";
+        String paymentIntentId = "pi_test_67890";
+        testOrder.setStatus(OrderStatus.PROCESSING);
+        testOrder.setPaymentIntentId(paymentIntentId);
+
+        Session mockSession = mock(Session.class);
+        when(mockSession.getStatus()).thenReturn("complete");
+        when(mockSession.getPaymentStatus()).thenReturn("paid");
+        when(mockSession.getPaymentIntent()).thenReturn(paymentIntentId);
+        when(mockSession.getMode()).thenReturn("payment");
+        when(mockSession.getClientReferenceId()).thenReturn("1");
+        when(mockSession.getCurrency()).thenReturn("usd");
+        when(mockSession.getAmountTotal()).thenReturn(8598L);
+        when(mockSession.getMetadata()).thenReturn(Map.of("orderId", "1"));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
+
+        try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
+            sessionMock.when(() -> Session.retrieve(sessionId)).thenReturn(mockSession);
+
+            paymentService.handlePaymentSuccess(sessionId);
+            paymentService.handlePaymentSuccess(sessionId);
+
+            verify(orderRepository, never()).save(any());
+            verify(couponService, times(2)).generateCouponForOrder(testOrder);
         }
     }
 
@@ -180,6 +234,8 @@ class PaymentServiceTest {
 
         Session mockSession = mock(Session.class);
         when(mockSession.getId()).thenReturn(sessionId);
+        when(mockSession.getStatus()).thenReturn("complete");
+        when(mockSession.getPaymentStatus()).thenReturn("paid");
         when(mockSession.getMetadata()).thenReturn(new HashMap<>()); // Empty metadata
 
         // When & Then
@@ -193,7 +249,7 @@ class PaymentServiceTest {
     }
 
     @Test
-    void testHandlePaymentSuccess_WithIncompletePayment_ShouldThrowException() throws StripeException {
+    void testHandlePaymentSuccess_WithIncompletePaymentDoesNotMarkOrderPaid() throws StripeException {
         // Given
         String sessionId = "cs_test_12345";
 
@@ -210,9 +266,7 @@ class PaymentServiceTest {
         try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
             sessionMock.when(() -> Session.retrieve(sessionId)).thenReturn(mockSession);
 
-            assertThatThrownBy(() -> paymentService.handlePaymentSuccess(sessionId))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Payment session is not complete");
+            assertThat(paymentService.handlePaymentSuccess(sessionId)).isFalse();
 
             verify(orderRepository, never()).save(any());
         }
@@ -296,12 +350,16 @@ class PaymentServiceTest {
         when(mockSession.getStatus()).thenReturn("complete");
         when(mockSession.getPaymentStatus()).thenReturn("paid");
         when(mockSession.getPaymentIntent()).thenReturn("pi_test_67890");
+        when(mockSession.getMode()).thenReturn("payment");
+        when(mockSession.getClientReferenceId()).thenReturn("999");
+        when(mockSession.getCurrency()).thenReturn("usd");
+        when(mockSession.getAmountTotal()).thenReturn(8598L);
         
         Map<String, String> metadata = new HashMap<>();
         metadata.put("orderId", "999");
         when(mockSession.getMetadata()).thenReturn(metadata);
 
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // When & Then
         try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
@@ -311,7 +369,7 @@ class PaymentServiceTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Order not found with ID: 999");
 
-            verify(orderRepository).findById(999L);
+            verify(orderRepository).findByIdForUpdate(999L);
             verify(orderRepository, never()).save(any());
         }
     }

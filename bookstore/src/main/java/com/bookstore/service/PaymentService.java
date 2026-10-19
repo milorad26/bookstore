@@ -8,6 +8,7 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,14 @@ public class PaymentService {
         // Fetch order from database
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
+
+        if (order.getStatus() != com.bookstore.model.OrderStatus.PENDING
+                && order.getStatus() != com.bookstore.model.OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Order is not in a payable state: " + order.getStatus());
+        }
+        if (order.getPaymentIntentId() != null) {
+            throw new IllegalStateException("Order already has a successful payment");
+        }
         
         // Confirm the order if it's still PENDING (this sends the confirmation email)
         if (order.getStatus() == com.bookstore.model.OrderStatus.PENDING) {
@@ -179,13 +188,16 @@ public class PaymentService {
         // Create Stripe Checkout Session
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setClientReferenceId(orderId.toString())
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}&order_id=" + orderId)
                 .setCancelUrl(cancelUrl)
                 .addAllLineItem(lineItems)
                 .putMetadata("orderId", orderId.toString())
                 .build();
 
-        Session session = Session.create(params);
+        Session session = Session.create(params, RequestOptions.builder()
+                .setIdempotencyKey("checkout-session-order-" + orderId)
+                .build());
 
         log.info("Created Stripe Checkout Session: {} for Order ID: {}", session.getId(), orderId);
 
@@ -197,68 +209,118 @@ public class PaymentService {
     }
 
     @Transactional
-    public void handlePaymentSuccess(String sessionId) throws StripeException {
-        log.info("========================================");
-        log.info("PAYMENT SUCCESS HANDLER START");
-        log.info("Retrieving Stripe session: {}", sessionId);
-        
+    public boolean handlePaymentSuccess(String sessionId) throws StripeException {
         Session session = Session.retrieve(sessionId);
-        
-        log.info("Session retrieved - ID: {}", session.getId());
-        log.info("Session Status: {}", session.getStatus());
-        log.info("Payment Status: {}", session.getPaymentStatus());
-        log.info("Session Metadata: {}", session.getMetadata());
-        
-        // Get order ID from metadata
-        String orderIdStr = session.getMetadata().get("orderId");
-        if (orderIdStr == null || orderIdStr.isEmpty()) {
-            log.error("Order ID not found in session metadata!");
-            throw new RuntimeException("Order ID not found in session metadata");
+        if (!isPaymentSuccessful(session)) {
+            return false;
         }
-        
-        Long orderId = Long.parseLong(orderIdStr);
-        log.info("Processing payment for Order ID: {}", orderId);
-        
-        // Check if session is complete (successful checkout)
-        // Stripe Checkout Session status will be "complete" when payment succeeds
-        if ("complete".equals(session.getStatus()) || "paid".equals(session.getPaymentStatus())) {
-            log.info("✓ Payment successful! Updating order status to PAID...");
-            
-            // Get payment intent ID from session
-            String paymentIntentId = session.getPaymentIntent();
-            log.info("Payment Intent ID: {}", paymentIntentId);
-            
-            // Update order with payment intent ID and status
-            Order order = orderRepository.findById(orderId)
-                    .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
-            
-            order.setPaymentIntentId(paymentIntentId);
-            order.setStatus(com.bookstore.model.OrderStatus.PAID);
-            order.setUpdatedAt(java.time.LocalDateTime.now());
-            Order savedOrder = orderRepository.save(order);
-            
-            log.info("✓ SUCCESS! Order ID: {} status updated to PAID with Payment Intent: {}", orderId, paymentIntentId);
-            
-            // Generate promo coupon if order qualifies (over $100)
-            try {
-                couponService.generateCouponForOrder(savedOrder);
-            } catch (Exception e) {
-                log.error("Failed to generate coupon for order {}: {}", orderId, e.getMessage(), e);
-                // Don't fail the payment if coupon generation fails
+        processVerifiedSession(session, null);
+        return true;
+    }
+
+    @Transactional
+    public boolean handlePaymentSuccess(String sessionId, Long expectedOrderId) throws StripeException {
+        Session session = Session.retrieve(sessionId);
+        if (!isPaymentSuccessful(session)) {
+            return false;
+        }
+        processVerifiedSession(session, expectedOrderId);
+        return true;
+    }
+
+    private void processVerifiedSession(Session session, Long expectedOrderId) {
+        if (!isPaymentSuccessful(session)) {
+            throw new IllegalStateException("Checkout session is not complete and paid");
+        }
+        String orderIdValue = session.getMetadata() == null ? null : session.getMetadata().get("orderId");
+        if (orderIdValue == null || orderIdValue.isBlank()) {
+            throw new IllegalArgumentException("Order ID not found in Stripe session metadata");
+        }
+        Long orderId;
+        try {
+            orderId = Long.parseLong(orderIdValue);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Stripe session contains an invalid order ID", e);
+        }
+        if (expectedOrderId != null && !expectedOrderId.equals(orderId)) {
+            throw new IllegalArgumentException("Stripe session does not belong to the requested order");
+        }
+        if (!orderId.toString().equals(session.getClientReferenceId())) {
+            throw new IllegalArgumentException("Stripe session order reference does not match its metadata");
+        }
+        if (!"payment".equals(session.getMode())) {
+            throw new IllegalArgumentException("Stripe session is not a payment Checkout Session");
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+        validateSessionAmount(session, order);
+        String paymentIntentId = session.getPaymentIntent();
+        if (order.getPaymentIntentId() != null || order.getStatus() == com.bookstore.model.OrderStatus.PAID) {
+            if (order.getPaymentIntentId() != null && !order.getPaymentIntentId().equals(paymentIntentId)) {
+                throw new IllegalStateException("Order is already paid by a different Stripe payment");
             }
-            
-            log.info("========================================");
-            
-        } else {
-            // Payment not complete
-            log.error("✗ Payment not complete!");
-            log.error("Session Status: {}", session.getStatus());
-            log.error("Payment Status: {}", session.getPaymentStatus());
-            log.info("========================================");
-            throw new RuntimeException("Payment session is not complete. Session Status: " + session.getStatus() + ", Payment Status: " + session.getPaymentStatus());
+            // The browser can return repeatedly; processing remains idempotent.
+            couponService.generateCouponForOrder(order);
+            return;
+        }
+        if (order.getStatus() != com.bookstore.model.OrderStatus.CONFIRMED) {
+            throw new IllegalStateException("Order is not in a payable state: " + order.getStatus());
+        }
+
+        order.setPaymentIntentId(paymentIntentId);
+        order.setStatus(com.bookstore.model.OrderStatus.PAID);
+        order.setUpdatedAt(java.time.LocalDateTime.now());
+        Order savedOrder = orderRepository.save(order);
+        couponService.generateCouponForOrder(savedOrder);
+        log.info("Payment confirmed for order {} using Stripe payment intent {}", orderId, paymentIntentId);
+    }
+
+    private boolean isPaymentSuccessful(Session session) {
+        if (session == null || !"complete".equals(session.getStatus())) {
+            return false;
+        }
+        return "paid".equals(session.getPaymentStatus())
+                || "no_payment_required".equals(session.getPaymentStatus());
+    }
+
+    private void validateSessionAmount(Session session, Order order) {
+        if (!"usd".equalsIgnoreCase(session.getCurrency())) {
+            throw new IllegalArgumentException("Stripe session currency does not match this store");
+        }
+        Long actualAmount = session.getAmountTotal();
+        long expectedAmount = calculateCheckoutTotalInCents(order);
+        if (actualAmount == null || actualAmount.longValue() != expectedAmount) {
+            throw new IllegalArgumentException("Stripe session total does not match order " + order.getId());
         }
     }
 
+    private long calculateCheckoutTotalInCents(Order order) {
+        BigDecimal couponDiscount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal bulkDiscount = order.getBulkDiscountAmount() != null ? order.getBulkDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal totalDiscount = couponDiscount.add(bulkDiscount);
+        BigDecimal originalTotal = order.getTotalAmount().add(totalDiscount);
+        BigDecimal discountMultiplier = BigDecimal.ONE;
+        if (totalDiscount.compareTo(BigDecimal.ZERO) > 0 && originalTotal.compareTo(BigDecimal.ZERO) > 0) {
+            discountMultiplier = originalTotal.subtract(totalDiscount).divide(originalTotal, 10, RoundingMode.HALF_UP);
+        }
+        BigDecimal booksTotal = BigDecimal.ZERO;
+        long totalCents = 0;
+        for (OrderItem item : order.getOrderItems()) {
+            BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            booksTotal = booksTotal.add(itemTotal);
+            long unitCents = item.getPrice().multiply(discountMultiplier)
+                    .setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
+            totalCents = Math.addExact(totalCents, Math.multiplyExact(unitCents, item.getQuantity()));
+        }
+        BigDecimal deliveryFee = originalTotal.subtract(booksTotal);
+        if (deliveryFee.compareTo(BigDecimal.ZERO) > 0) {
+            long deliveryCents = deliveryFee.multiply(discountMultiplier)
+                    .setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
+            totalCents = Math.addExact(totalCents, deliveryCents);
+        }
+        return totalCents;
+    }
     public String getPublishableKey() {
         return stripePublishableKey;
     }

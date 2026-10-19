@@ -242,6 +242,7 @@ export default {
       refundSuccess: 'Porudžbina uspešno refundirana!',
       refundFailed: 'Refundiranje porudžbine nije uspelo',
       paymentSuccess: 'Plaćanje uspešno! Vaša porudžbina je plaćena.',
+      paymentPending: 'Stripe još obrađuje plaćanje. Status porudžbine će se ažurirati nakon potvrde.',
       paymentProcessing: 'Plaćanje primljeno, obrada statusa porudžbine...'
     }
   },

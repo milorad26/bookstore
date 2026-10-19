@@ -581,6 +581,11 @@ const handlePaymentSuccess = async () => {
         
         // Reload orders to show updated status
         await loadOrders()
+      } else if (response.status === 'pending') {
+        cartStore.clearCart()
+        showAlert('info', t('orders.messages.paymentPending'))
+        router.replace({ path: '/orders' })
+        await loadOrders()
       } else {
         throw new Error(response.message || 'Payment status update failed')
       }

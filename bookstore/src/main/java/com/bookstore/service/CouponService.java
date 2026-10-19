@@ -39,8 +39,20 @@ public class CouponService {
      */
     @Transactional
     public CouponDTO generateCouponForOrder(Order order) {
+        if (order.getId() != null) {
+            List<Coupon> existingCoupons = couponRepository
+                    .findEarnedForOrder(order.getId());
+            if (!existingCoupons.isEmpty()) {
+                return convertToDTO(existingCoupons.get(0));
+            }
+        }
+
         // Check if order amount qualifies for a coupon (excluding any discount already applied)
-        BigDecimal orderAmount = order.getTotalAmount().add(order.getDiscountAmount());
+        BigDecimal discountAmount = order.getDiscountAmount() != null
+                ? order.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal bulkDiscountAmount = order.getBulkDiscountAmount() != null
+                ? order.getBulkDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal orderAmount = order.getTotalAmount().add(discountAmount).add(bulkDiscountAmount);
         
         if (orderAmount.compareTo(COUPON_THRESHOLD) < 0) {
             log.debug("Order {} amount {} is below threshold {}, no coupon generated", 
