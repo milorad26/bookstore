@@ -158,7 +158,11 @@ public class UserService {
             .orElseThrow(() -> new ResourceNotFoundException(
                 messageSource.getMessage("user.notfound.password", new Object[]{userId}, locale)));
         
-        // Encode and set new password (no validation needed for system-generated passwords)
+        String validationMessage = PasswordValidator.getValidationMessage(newPassword);
+        if (validationMessage != null) {
+            throw new IllegalArgumentException(validationMessage);
+        }
+
         user.setPassword(passwordEncoder.encode(newPassword));
         
         userRepository.save(user);

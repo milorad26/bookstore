@@ -35,6 +35,15 @@ export const authService = {
     } catch (error) {
       throw parseError(error)
     }
+  },
+
+  resetPassword: async (token, newPassword) => {
+    try {
+      const response = await apiClient.post('/auth/reset-password', { token, newPassword })
+      return { message: response.data, status: response.status }
+    } catch (error) {
+      throw parseError(error)
+    }
   }
 }
 

@@ -18,6 +18,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 @Component
 @Slf4j
@@ -27,6 +30,9 @@ public class JwtUtil {
     private static final String TOKEN_TYPE_CLAIM = "token_type";
     private static final String ACCESS_TOKEN = "access";
     private static final String MFA_TOKEN = "mfa";
+    private static final String PASSWORD_RESET_TOKEN = "password_reset";
+    private static final String PASSWORD_FINGERPRINT_CLAIM = "password_fingerprint";
+    private static final long PASSWORD_RESET_EXPIRATION_MILLIS = 30 * 60 * 1000L;
 
     @Value("${jwt.secret}")
     private String secret;
@@ -81,6 +87,45 @@ public class JwtUtil {
         return createToken(claims, userId.toString());
     }
 
+    public String generatePasswordResetToken(Long userId, String encodedPassword) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE_CLAIM, PASSWORD_RESET_TOKEN);
+        claims.put(PASSWORD_FINGERPRINT_CLAIM, passwordFingerprint(encodedPassword));
+        return createToken(claims, userId.toString(), PASSWORD_RESET_EXPIRATION_MILLIS);
+    }
+
+    public Long validatePasswordResetToken(String token, String encodedPassword) {
+        try {
+            Claims claims = extractAllClaims(token);
+            if (!PASSWORD_RESET_TOKEN.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
+                return null;
+            }
+
+            String tokenFingerprint = claims.get(PASSWORD_FINGERPRINT_CLAIM, String.class);
+            String currentFingerprint = passwordFingerprint(encodedPassword);
+            if (tokenFingerprint == null || !MessageDigest.isEqual(
+                    tokenFingerprint.getBytes(StandardCharsets.UTF_8),
+                    currentFingerprint.getBytes(StandardCharsets.UTF_8))) {
+                return null;
+            }
+            return Long.parseLong(claims.getSubject());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public Long extractPasswordResetUserId(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            if (!PASSWORD_RESET_TOKEN.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
+                return null;
+            }
+            return Long.parseLong(claims.getSubject());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public boolean isMfaToken(String token) {
         try {
             return MFA_TOKEN.equals(extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class))
@@ -100,8 +145,12 @@ public class JwtUtil {
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
+        return createToken(claims, subject, expiration);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject, long tokenExpiration) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
+        Date expiryDate = new Date(now.getTime() + tokenExpiration);
 
         return Jwts.builder()
                 .claims(claims)
@@ -111,6 +160,17 @@ public class JwtUtil {
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
+    }
+
+    private String passwordFingerprint(String encodedPassword) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(mac.doFinal(encodedPassword.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to create password reset fingerprint", e);
+        }
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {

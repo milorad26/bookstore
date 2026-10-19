@@ -4,11 +4,13 @@ import com.bookstore.dto.ForgotPasswordRequest;
 import com.bookstore.dto.LoginRequest;
 import com.bookstore.dto.LoginResponse;
 import com.bookstore.dto.RegisterRequest;
+import com.bookstore.dto.ResetPasswordRequest;
 import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.JwtUtil;
 import com.bookstore.service.EmailService;
 import com.bookstore.service.LoginAttemptService;
+import com.bookstore.service.PasswordResetService;
 import com.bookstore.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +42,7 @@ public class AuthController {
     private final EmailService emailService;
     private final MessageSource messageSource;
     private final LoginAttemptService loginAttemptService;
+    private final PasswordResetService passwordResetService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -135,9 +138,6 @@ public class AuthController {
     @PostMapping("/register")
     @Operation(summary = "Register", description = "Register a new user account")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
-        // Store plain password before it gets hashed (for email only)
-        String plainPassword = registerRequest.getPassword();
-        
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setPassword(registerRequest.getPassword());
@@ -151,11 +151,10 @@ public class AuthController {
 
         User savedUser = userService.createUser(user);
 
-        // Send welcome email with credentials
+        // Welcome emails never include passwords.
         String loginUrl = frontendUrl + "/auth/login";
         emailService.sendWelcomeEmail(
             savedUser.getUsername(),
-            plainPassword,
             savedUser.getEmail(),
             savedUser.getFirstName(),
             savedUser.getLastName(),
@@ -180,55 +179,36 @@ public class AuthController {
         String username = request.getUsername();
         Locale locale = LocaleContextHolder.getLocale();
 
-        // Check if user exists
-        java.util.Optional<User> userOpt = userService.findByUsername(username.trim());
-        
-        if (userOpt.isEmpty()) {
-            log.warn("Password reset attempt for non-existent username: {}", username);
-            String message = messageSource.getMessage("auth.password.reset.username.notfound", null, locale);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(message);
-        }
-
         try {
-            User user = userOpt.get();
-            
-            // Generate new random password (10 characters)
-            String newPassword = generateRandomPassword();
-            
-            // Update user's password
-            userService.resetPassword(user.getId(), newPassword);
-            
-            // Send password reset email
-            String loginUrl = frontendUrl + "/auth/login";
-            emailService.sendPasswordResetEmail(
-                user.getUsername(),
-                newPassword,
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                loginUrl
-            );
+            userService.findByUsername(username.trim()).ifPresent(user -> {
+                String token = passwordResetService.createToken(user);
+                String resetUrl = frontendUrl + "/auth/reset-password?token=" + token;
+                emailService.sendPasswordResetEmail(
+                        user.getUsername(), resetUrl, user.getEmail(),
+                        user.getFirstName(), user.getLastName());
+            });
 
-            log.info("Password reset successful for user: {}", username);
-            String message = messageSource.getMessage("auth.password.reset.success", null, locale);
-            return ResponseEntity.ok(message);
-            
         } catch (Exception e) {
-            log.error("Password reset failed for username {}: {}", username, e.getMessage());
-            String message = messageSource.getMessage("auth.password.reset.failed", null, locale);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(message);
+            // Do not make account existence observable through response status or body.
+            log.error("Could not process password reset request: {}", e.getMessage());
         }
+
+        String message = messageSource.getMessage("auth.password.reset.success", null, locale);
+        return ResponseEntity.ok(message);
     }
 
-    private String generateRandomPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-        StringBuilder password = new StringBuilder();
-        java.util.Random random = new java.util.Random();
-        
-        for (int i = 0; i < 10; i++) {
-            password.append(chars.charAt(random.nextInt(chars.length())));
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password", description = "Set a new password using a one-time reset link")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        boolean reset = passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+        if (!reset) {
+            String message = messageSource.getMessage("auth.password.reset.invalid", null,
+                    LocaleContextHolder.getLocale());
+            return ResponseEntity.badRequest().body(message);
         }
-        
-        return password.toString();
+
+        String message = messageSource.getMessage("auth.password.reset.completed", null,
+                LocaleContextHolder.getLocale());
+        return ResponseEntity.ok(message);
     }
 }

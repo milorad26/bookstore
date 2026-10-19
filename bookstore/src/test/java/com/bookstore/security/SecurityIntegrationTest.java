@@ -8,6 +8,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,6 +62,15 @@ class SecurityIntegrationTest {
                         .contentType("application/json")
                         .content("{\"code\":\"123456\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void passwordResetTokenStopsWorkingAfterPasswordChanges() {
+        String originalPasswordHash = "$2a$10$original-encoded-password-hash";
+        String resetToken = jwtUtil.generatePasswordResetToken(42L, originalPasswordHash);
+
+        assertEquals(42L, jwtUtil.validatePasswordResetToken(resetToken, originalPasswordHash));
+        assertNull(jwtUtil.validatePasswordResetToken(resetToken, "$2a$10$new-encoded-password-hash"));
     }
 
     @Test

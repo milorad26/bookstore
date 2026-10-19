@@ -402,7 +402,7 @@ public class EmailService {
         return html.toString();
     }
 
-    public void sendWelcomeEmail(String username, String password, String email, String firstName, String lastName, String loginUrl) {
+    public void sendWelcomeEmail(String username, String email, String firstName, String lastName, String loginUrl) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -415,7 +415,7 @@ public class EmailService {
             String subjectSr = messageSource.getMessage("email.welcome.subject", new Object[]{username}, Locale.forLanguageTag("sr"));
             helper.setSubject(subjectEn + " / " + subjectSr);
 
-            String htmlContent = buildBilingualWelcomeEmail(username, password, firstName, lastName, loginUrl);
+            String htmlContent = buildBilingualWelcomeEmail(username, firstName, lastName, loginUrl);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -427,7 +427,7 @@ public class EmailService {
         }
     }
 
-    private String buildBilingualWelcomeEmail(String username, String password, String firstName, String lastName, String loginUrl) {
+    private String buildBilingualWelcomeEmail(String username, String firstName, String lastName, String loginUrl) {
         Locale localeEn = Locale.ENGLISH;
         Locale localeSr = Locale.forLanguageTag("sr");
         
@@ -499,13 +499,6 @@ public class EmailService {
         html.append("<span class='credential-value'>").append(username).append("</span>");
         html.append("</div>");
         
-        html.append("<div class='credential-row'>");
-        html.append("<span class='credential-label'>")
-            .append(messageSource.getMessage("email.welcome.password", null, localeEn))
-            .append(":</span> ");
-        html.append("<span class='credential-value'>").append(password).append("</span>");
-        html.append("</div>");
-        
         html.append("</div>"); // credentials-box
         
         // Security Note - English
@@ -571,13 +564,6 @@ public class EmailService {
         html.append("<span class='credential-value'>").append(username).append("</span>");
         html.append("</div>");
         
-        html.append("<div class='credential-row'>");
-        html.append("<span class='credential-label'>")
-            .append(messageSource.getMessage("email.welcome.password", null, localeSr))
-            .append(":</span> ");
-        html.append("<span class='credential-value'>").append(password).append("</span>");
-        html.append("</div>");
-        
         html.append("</div>"); // credentials-box
         
         // Security Note - Serbian
@@ -641,7 +627,7 @@ public class EmailService {
         return html.toString();
     }
 
-    public void sendPasswordResetEmail(String username, String newPassword, String email, String firstName, String lastName, String loginUrl) {
+    public void sendPasswordResetEmail(String username, String resetUrl, String email, String firstName, String lastName) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -654,7 +640,7 @@ public class EmailService {
             String subjectSr = messageSource.getMessage("email.password.subject", new Object[]{username}, Locale.forLanguageTag("sr"));
             helper.setSubject(subjectEn + " / " + subjectSr);
 
-            String htmlContent = buildBilingualPasswordResetEmail(username, newPassword, firstName, lastName, loginUrl);
+            String htmlContent = buildPasswordResetLinkEmail(username, resetUrl, firstName, lastName);
             helper.setText(htmlContent, true);
 
             mailSender.send(message);
@@ -666,180 +652,24 @@ public class EmailService {
         }
     }
 
-    private String buildBilingualPasswordResetEmail(String username, String newPassword, String firstName, String lastName, String loginUrl) {
-        Locale localeEn = Locale.ENGLISH;
-        Locale localeSr = Locale.forLanguageTag("sr");
-        
-        StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html>");
-        html.append("<html>");
-        html.append("<head>");
-        html.append("<meta charset='UTF-8'>");
-        html.append("<style>");
-        html.append("body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }");
-        html.append(".container { max-width: 700px; margin: 0 auto; padding: 0; }");
-        html.append(".header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 40px 20px; text-align: center; }");
-        html.append(".header h1 { margin: 0; font-size: 32px; }");
-        html.append(".language-toggle { background-color: #e91e63; padding: 10px; text-align: center; font-size: 14px; color: white; }");
-        html.append(".content { padding: 0; }");
-        html.append(".language-section { padding: 30px 20px; border-bottom: 3px solid #e0e0e0; }");
-        html.append(".language-section:last-of-type { border-bottom: none; }");
-        html.append(".language-label { display: inline-block; background-color: #e91e63; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }");
-        html.append(".password-box { background-color: #fff3e0; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #ff9800; }");
-        html.append(".password-row { margin: 15px 0; padding: 10px; background-color: white; border-radius: 5px; }");
-        html.append(".password-label { font-weight: bold; color: #555; display: inline-block; min-width: 120px; }");
-        html.append(".password-value { color: #333; font-family: monospace; font-size: 18px; background-color: #f9f9f9; padding: 8px 15px; border-radius: 3px; display: inline-block; letter-spacing: 1px; }");
-        html.append(".warning-note { background-color: #ffebee; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #f44336; }");
-        html.append(".warning-note strong { color: #c62828; }");
-        html.append(".login-button { display: inline-block; background-color: #e91e63; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }");
-        html.append(".login-button:hover { background-color: #c2185b; }");
-        html.append(".login-url { background-color: #f9f9f9; padding: 10px; border-radius: 5px; word-break: break-all; color: #e91e63; font-family: monospace; }");
-        html.append(".footer { text-align: center; padding: 30px 20px; background-color: #f5f5f5; color: #666; font-size: 12px; }");
-        html.append(".footer p { margin: 8px 0; }");
-        html.append("</style>");
-        html.append("</head>");
-        html.append("<body>");
-        html.append("<div class='container'>");
-        
-        // Header
-        html.append("<div class='header'>");
-        html.append("<h1>🔐 ")
-            .append(messageSource.getMessage("email.password.title", null, localeEn))
-            .append(" / ")
-            .append(messageSource.getMessage("email.password.title", null, localeSr))
-            .append("</h1>");
-        html.append("</div>");
-        
-        html.append("<div class='language-toggle'>🇬🇧 English / 🇷🇸 Srpski</div>");
-        
-        html.append("<div class='content'>");
-        
-        // ========== ENGLISH SECTION ==========
-        html.append("<div class='language-section'>");
-        html.append("<div class='language-label'>🇬🇧 ENGLISH</div>");
-        
-        html.append("<p>").append(messageSource.getMessage("email.password.dear", 
-            new Object[]{firstName, lastName}, localeEn)).append("</p>");
-        html.append("<p>").append(messageSource.getMessage("email.password.intro", null, localeEn)).append("</p>");
-        
-        // Password Box - English
-        html.append("<div class='password-box'>");
-        html.append("<h3 style='margin-top: 0; color: #ff9800;'>")
-            .append(messageSource.getMessage("email.password.newpassword", null, localeEn))
-            .append("</h3>");
-        
-        html.append("<div class='password-row'>");
-        html.append("<span class='password-label'>")
-            .append(messageSource.getMessage("email.password.password", null, localeEn))
-            .append(":</span> ");
-        html.append("<span class='password-value'>").append(newPassword).append("</span>");
-        html.append("</div>");
-        
-        html.append("</div>"); // password-box
-        
-        // Warning Note - English
-        html.append("<div class='warning-note'>");
-        html.append("<strong>⚠️ Important:</strong><br>");
-        html.append(messageSource.getMessage("email.password.temporary", null, localeEn));
-        html.append("</div>");
-        
-        // Login Section - English
-        html.append("<h3 style='color: #e91e63;'>")
-            .append(messageSource.getMessage("email.password.login", null, localeEn))
-            .append("</h3>");
-        html.append("<p>").append(messageSource.getMessage("email.password.login.instruction", null, localeEn)).append("</p>");
-        html.append("<p style='text-align: center;'>");
-        html.append("<a href='").append(loginUrl).append("' class='login-button'>")
-            .append(messageSource.getMessage("email.password.login.button", null, localeEn))
-            .append("</a>");
-        html.append("</p>");
-        html.append("<p style='font-size: 12px; color: #666;'>")
-            .append(messageSource.getMessage("email.password.login.url", null, localeEn))
-            .append("</p>");
-        html.append("<p class='login-url'>").append(loginUrl).append("</p>");
-        
-        // Security Notice - English
-        html.append("<p style='margin-top: 30px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>");
-        html.append("<strong>🔒 </strong>")
-            .append(messageSource.getMessage("email.password.notrequest", null, localeEn));
-        html.append("</p>");
-        
-        html.append("<p>").append(messageSource.getMessage("email.password.regards", null, localeEn))
-            .append("<br>").append(messageSource.getMessage("email.password.team", null, localeEn)).append("</p>");
-        
-        html.append("</div>"); // language-section English
-        
-        // ========== SERBIAN SECTION ==========
-        html.append("<div class='language-section'>");
-        html.append("<div class='language-label'>🇷🇸 SRPSKI</div>");
-        
-        html.append("<p>").append(messageSource.getMessage("email.password.dear", 
-            new Object[]{firstName, lastName}, localeSr)).append("</p>");
-        html.append("<p>").append(messageSource.getMessage("email.password.intro", null, localeSr)).append("</p>");
-        
-        // Password Box - Serbian
-        html.append("<div class='password-box'>");
-        html.append("<h3 style='margin-top: 0; color: #ff9800;'>")
-            .append(messageSource.getMessage("email.password.newpassword", null, localeSr))
-            .append("</h3>");
-        
-        html.append("<div class='password-row'>");
-        html.append("<span class='password-label'>")
-            .append(messageSource.getMessage("email.password.password", null, localeSr))
-            .append(":</span> ");
-        html.append("<span class='password-value'>").append(newPassword).append("</span>");
-        html.append("</div>");
-        
-        html.append("</div>"); // password-box
-        
-        // Warning Note - Serbian
-        html.append("<div class='warning-note'>");
-        html.append("<strong>⚠️ Važno:</strong><br>");
-        html.append(messageSource.getMessage("email.password.temporary", null, localeSr));
-        html.append("</div>");
-        
-        // Login Section - Serbian
-        html.append("<h3 style='color: #e91e63;'>")
-            .append(messageSource.getMessage("email.password.login", null, localeSr))
-            .append("</h3>");
-        html.append("<p>").append(messageSource.getMessage("email.password.login.instruction", null, localeSr)).append("</p>");
-        html.append("<p style='text-align: center;'>");
-        html.append("<a href='").append(loginUrl).append("' class='login-button'>")
-            .append(messageSource.getMessage("email.password.login.button", null, localeSr))
-            .append("</a>");
-        html.append("</p>");
-        html.append("<p style='font-size: 12px; color: #666;'>")
-            .append(messageSource.getMessage("email.password.login.url", null, localeSr))
-            .append("</p>");
-        html.append("<p class='login-url'>").append(loginUrl).append("</p>");
-        
-        // Security Notice - Serbian
-        html.append("<p style='margin-top: 30px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;'>");
-        html.append("<strong>🔒 </strong>")
-            .append(messageSource.getMessage("email.password.notrequest", null, localeSr));
-        html.append("</p>");
-        
-        html.append("<p>").append(messageSource.getMessage("email.password.regards", null, localeSr))
-            .append("<br>").append(messageSource.getMessage("email.password.team", null, localeSr)).append("</p>");
-        
-        html.append("</div>"); // language-section Serbian
-        
-        html.append("</div>"); // content
-        
-        // Footer
-        html.append("<div class='footer'>");
-        html.append("<p>")
-            .append(messageSource.getMessage("email.footer.automated", null, localeEn))
-            .append("<br>")
-            .append(messageSource.getMessage("email.footer.automated", null, localeSr))
-            .append("</p>");
-        html.append("<p>").append(messageSource.getMessage("email.footer.copyright", null, localeEn)).append("</p>");
-        html.append("</div>");
-        
-        html.append("</div>"); // container
-        html.append("</body>");
-        html.append("</html>");
-        
-        return html.toString();
+    private String buildPasswordResetLinkEmail(String username, String resetUrl, String firstName, String lastName) {
+        Locale english = Locale.ENGLISH;
+        Locale serbian = Locale.forLanguageTag("sr");
+        return "<!DOCTYPE html><html><body>"
+                + "<h2>Password reset / Resetovanje lozinke</h2>"
+                + "<p>" + escapeHtml(messageSource.getMessage("email.password.dear", new Object[]{firstName, lastName}, english)) + "</p>"
+                + "<p>A password reset was requested for " + escapeHtml(username) + ". Use this one-time link within 30 minutes:</p>"
+                + "<p><a href=\"" + escapeHtml(resetUrl) + "\">Reset password</a></p>"
+                + "<p>If you did not request this, ignore this email.</p><hr>"
+                + "<p>" + escapeHtml(messageSource.getMessage("email.password.dear", new Object[]{firstName, lastName}, serbian)) + "</p>"
+                + "<p>Zatraženo je resetovanje lozinke za nalog " + escapeHtml(username) + ". Iskoristite jednokratni link u roku od 30 minuta:</p>"
+                + "<p><a href=\"" + escapeHtml(resetUrl) + "\">Resetuj lozinku</a></p>"
+                + "<p>Ako niste tražili resetovanje, zanemarite ovu poruku.</p></body></html>";
     }
+
+    private String escapeHtml(String value) {
+        return value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
 }
