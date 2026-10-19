@@ -1,0 +1,24 @@
+# Development-only credentials. Production deployments must use JWT_SECRET.
+jwt:
+  secret: local-development-only-signing-key-change-before-deployment-2026
+
+spring:
+  config:
+    import: optional:file:./application-local-secrets.yml,optional:file:./bookstore/application-local-secrets.yml
+  datasource:
+    url: ${DATABASE_URL:jdbc:h2:file:./data/bookstore}
+    driver-class-name: ${DATABASE_DRIVER:org.h2.Driver}
+    username: ${DATABASE_USERNAME:sa}
+    password: ${DATABASE_PASSWORD:}
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:3000
+
+stripe:
+  api-key: ${STRIPE_SECRET_KEY:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}

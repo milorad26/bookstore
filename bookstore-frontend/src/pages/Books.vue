@@ -358,6 +358,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { localizedError } from '../utils/localizedError'
 import { bookService } from '../services/bookService'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
@@ -418,7 +419,7 @@ const loadBooks = async () => {
     const data = await bookService.getAllBooks()
     if (requestId === searchRequestId) books.value = data
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to load books')
+    showAlert('danger', localizedError(error, t, 'errors.loadBooks'))
   } finally {
     if (requestId === searchRequestId) loading.value = false
   }
@@ -462,7 +463,7 @@ const searchBooks = (type) => {
     } catch (error) {
       if (requestId === searchRequestId) {
         books.value = []
-        if (error.status !== 404) showAlert('danger', error.message || 'Failed to search books')
+        if (error.status !== 404) showAlert('danger', localizedError(error, t, 'errors.searchBooks'))
       }
     } finally {
       if (requestId === searchRequestId) {
@@ -539,7 +540,7 @@ const saveBook = async () => {
     await loadBooks()
     await loadInventoryAlerts()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to save book')
+    showAlert('danger', localizedError(error, t, 'errors.saveBook'))
   } finally {
     saving.value = false
   }
@@ -561,7 +562,7 @@ const deleteBook = async () => {
     await loadBooks()
     await loadInventoryAlerts()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to delete book')
+    showAlert('danger', localizedError(error, t, 'errors.deleteBook'))
   } finally {
     deleting.value = false
   }

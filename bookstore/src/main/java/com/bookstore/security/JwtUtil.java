@@ -1,9 +1,11 @@
 package com.bookstore.security;
 
+import com.bookstore.service.TokenRevocationService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -13,13 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class JwtUtil {
 
     @Value("${jwt.secret}")
@@ -31,7 +33,7 @@ public class JwtUtil {
     @Value("${jwt.issuer}")
     private String issuer;
 
-    private final Map<String, Long> revokedTokens = new ConcurrentHashMap<>();
+    private final TokenRevocationService tokenRevocationService;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -96,12 +98,8 @@ public class JwtUtil {
         try {
             Claims claims = extractAllClaims(token);
             String tokenHash = hashToken(token);
-            Long revokedUntil = revokedTokens.get(tokenHash);
-            if (revokedUntil != null) {
-                if (revokedUntil > System.currentTimeMillis()) {
-                    return false;
-                }
-                revokedTokens.remove(tokenHash, revokedUntil);
+            if (tokenRevocationService.isRevoked(tokenHash)) {
+                return false;
             }
 
             return !claims.getExpiration().before(new Date());
@@ -121,7 +119,7 @@ public class JwtUtil {
         }
 
         try {
-            revokedTokens.put(hashToken(token), extractExpiration(token).getTime());
+            tokenRevocationService.revoke(hashToken(token), extractExpiration(token).getTime());
         } catch (Exception e) {
             log.warn("Could not revoke token: {}", e.getMessage());
         }

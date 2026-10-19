@@ -49,6 +49,10 @@ public class PaymentService {
 
     @Transactional
     public PaymentSessionResponse createCheckoutSession(Long orderId) throws StripeException {
+        if (stripeApiKey == null || stripeApiKey.isBlank()) {
+            throw new IllegalStateException("Stripe is not configured. Set STRIPE_SECRET_KEY in the backend environment and restart the application.");
+        }
+
         // Fetch order from database
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));

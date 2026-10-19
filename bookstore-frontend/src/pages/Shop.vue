@@ -213,6 +213,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { localizedError } from '../utils/localizedError'
 import { bookService } from '../services/bookService'
 import { useAuthStore } from '../stores/authStore'
 import { useCartStore } from '../stores/cartStore'
@@ -265,7 +266,7 @@ const loadBooks = async () => {
     booksByCategory.value = await bookService.getBooksByCategory()
     
   } catch (error) {
-    showError(error.message || 'Failed to load books')
+    showError(localizedError(error, t, 'errors.loadBooks'))
   } finally {
     isLoading.value = false
   }

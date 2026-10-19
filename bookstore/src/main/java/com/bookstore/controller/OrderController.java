@@ -82,12 +82,10 @@ public class OrderController {
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Current user not found with ID: " + currentUserId));
         
-        if (currentUser.getUserType() == UserType.USER) {
-            throw new AccessDeniedException(
-                "Permission denied: You are not allowed to view this order.");
-        }
-        
         OrderDTO order = orderService.getOrderById(id);
+        if (currentUser.getUserType() == UserType.USER && !order.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("Permission denied: You can only view your own orders");
+        }
         
         return ResponseEntity.ok(order);
     }
@@ -211,9 +209,16 @@ public class OrderController {
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
             throw new AccessDeniedException("Authentication required");
-        }    
+        }
 
-        
+        User currentUser = userService.findById(currentUserId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Current user not found with ID: " + currentUserId));
+        OrderDTO order = orderService.getOrderById(id);
+        if (currentUser.getUserType() == UserType.USER && !order.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("Permission denied: You can only confirm delivery for your own orders");
+        }
+
         OrderDTO deliveredOrder = orderService.deliverOrder(id);
         return ResponseEntity.ok(deliveredOrder);
     }

@@ -303,6 +303,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { localizedError } from '../utils/localizedError'
 import { orderService } from '../services/orderService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
@@ -358,7 +359,7 @@ const loadOrders = async () => {
     isSearchActive.value = false
     lastSearchTerm.value = ''
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to load orders')
+    showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
   } finally {
     loading.value = false
   }
@@ -390,7 +391,7 @@ const confirmOrderAction = async (order) => {
     showAlert('success', `Order #${order.id} confirmed successfully`)
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to confirm order')
+    showAlert('danger', localizedError(error, t, 'errors.confirmOrder'))
   }
 }
 
@@ -402,7 +403,7 @@ const cancelOrderAction = async (order) => {
     showAlert('success', `Order #${order.id} cancelled successfully`)
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to cancel order')
+    showAlert('danger', localizedError(error, t, 'errors.cancelOrder'))
   }
 }
 
@@ -414,7 +415,7 @@ const deliverOrderAction = async (order) => {
     showAlert('success', `Order #${order.id} marked as delivered successfully`)
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to mark order as delivered')
+    showAlert('danger', localizedError(error, t, 'errors.deliverOrder'))
   }
 }
 
@@ -426,7 +427,7 @@ const refundOrderAction = async (order) => {
     showAlert('success', `Order #${order.id} refunded successfully`)
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to refund order')
+    showAlert('danger', localizedError(error, t, 'errors.refundOrder'))
   }
 }
 
@@ -445,7 +446,7 @@ const deleteOrder = async () => {
     closeDeleteModal()
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to delete order')
+    showAlert('danger', localizedError(error, t, 'errors.deleteOrder'))
   } finally {
     deleting.value = false
   }
@@ -542,7 +543,7 @@ const getStatusBadgeClass = (status) => {
 onMounted(() => {
   // Check if user has admin permissions
   if (!isAdmin.value) {
-    showAlert('danger', 'Access denied. Admin privileges required.')
+    showAlert('danger', t('errors.adminOnly'))
     setTimeout(() => router.push('/profile'), 2000)
     return
   }

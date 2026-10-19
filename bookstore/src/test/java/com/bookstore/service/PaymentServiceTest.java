@@ -128,6 +128,17 @@ class PaymentServiceTest {
     }
 
     @Test
+    void testCreateCheckoutSession_WithoutStripeKeyFailsBeforeChangingOrder() {
+        ReflectionTestUtils.setField(paymentService, "stripeApiKey", " ");
+
+        assertThatThrownBy(() -> paymentService.createCheckoutSession(1L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("STRIPE_SECRET_KEY");
+
+        verifyNoInteractions(orderRepository);
+    }
+
+    @Test
     void testHandlePaymentSuccess_ShouldUpdateOrderStatus() throws StripeException {
         // Given
         String sessionId = "cs_test_12345";

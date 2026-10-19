@@ -179,17 +179,33 @@ class OrderControllerTest {
     }
 
     @Test
-    void testGetOrderById_AsRegularUser_ShouldReturn403() throws Exception {
+    void testGetOrderById_AsRegularUser_ShouldReturnOwnOrder() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
         when(userService.findById(1L)).thenReturn(Optional.of(testUser));
+        when(orderService.getOrderById(1L)).thenReturn(testOrderDTO);
 
         // When & Then
         mockMvc.perform(get("/api/orders/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId", is(1)));
+
+        verify(orderService).getOrderById(1L);
+    }
+
+    @Test
+    void testGetOrderById_AsRegularUser_ShouldRejectAnotherUsersOrder() throws Exception {
+        // Given
+        OrderDTO anotherUsersOrder = new OrderDTO();
+        anotherUsersOrder.setId(1L);
+        anotherUsersOrder.setUserId(2L);
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
+        when(userService.findById(1L)).thenReturn(Optional.of(testUser));
+        when(orderService.getOrderById(1L)).thenReturn(anotherUsersOrder);
+
+        mockMvc.perform(get("/api/orders/1"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is(403)));
-
-        verify(orderService, never()).getOrderById(any());
     }
 
     @Test
@@ -415,6 +431,8 @@ class OrderControllerTest {
         // Given
         testOrderDTO.setStatus(OrderStatus.DELIVERED);
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getOrderById(1L)).thenReturn(testOrderDTO);
         when(orderService.deliverOrder(1L)).thenReturn(testOrderDTO);
 
         // When & Then
@@ -427,9 +445,28 @@ class OrderControllerTest {
     }
 
     @Test
+    void testDeliverOrder_AsRegularUser_ShouldRejectAnotherUsersOrder() throws Exception {
+        OrderDTO anotherUsersOrder = new OrderDTO();
+        anotherUsersOrder.setId(1L);
+        anotherUsersOrder.setUserId(2L);
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
+        when(userService.findById(1L)).thenReturn(Optional.of(testUser));
+        when(orderService.getOrderById(1L)).thenReturn(anotherUsersOrder);
+
+        mockMvc.perform(put("/api/orders/deliver/1"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code", is(403)));
+
+        verify(orderService, never()).deliverOrder(any());
+    }
+
+    @Test
     void testDeliverOrder_WithNonExistentOrder_ShouldReturn404() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getOrderById(999L))
+                .thenThrow(new ResourceNotFoundException("Order not found with id: 999"));
         when(orderService.deliverOrder(999L))
                 .thenThrow(new ResourceNotFoundException("Order not found with id: 999"));
 
@@ -444,6 +481,8 @@ class OrderControllerTest {
     void testDeliverOrder_WithInvalidStatus_ShouldReturn400() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getOrderById(1L)).thenReturn(testOrderDTO);
         when(orderService.deliverOrder(1L))
                 .thenThrow(new InvalidOrderStatusException("Invalid status transition"));
 

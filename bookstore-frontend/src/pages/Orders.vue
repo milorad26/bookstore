@@ -317,6 +317,7 @@
 import { ref, reactive, onMounted, onActivated, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { localizedError } from '../utils/localizedError'
 import { orderService } from '../services/orderService'
 import { paymentService } from '../services/paymentService'
 import { useAuthStore } from '../stores/authStore'
@@ -371,7 +372,7 @@ const loadOrders = async () => {
     const data = await orderService.getMyOrders()
     orders.value = data
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to load orders')
+    showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
   } finally {
     loading.value = false
   }
@@ -439,7 +440,7 @@ const deleteOrder = async () => {
     closeDeleteModal()
     await loadOrders()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to delete order')
+    showAlert('danger', localizedError(error, t, 'errors.deleteOrder'))
   } finally {
     deleting.value = false
   }
@@ -468,7 +469,7 @@ const retryPayment = async (order) => {
     window.location.href = paymentData.sessionUrl
     
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to create payment session')
+    showAlert('danger', localizedError(error, t, 'errors.createPayment'))
   }
 }
 
@@ -588,7 +589,7 @@ const handlePaymentSuccess = async () => {
       // Still clear cart even if status update fails, because order was created
       cartStore.clearCart()
       
-      const errorMsg = error.response?.data?.message || error.message || 'Unknown error'
+      const errorMsg = localizedError(error, t, 'errors.unknown')
       showAlert('danger', `Payment processing failed: ${errorMsg}. Please contact support.`)
       
       router.replace({ path: '/orders' })

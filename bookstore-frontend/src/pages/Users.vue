@@ -358,6 +358,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { localizedError } from '../utils/localizedError'
 import { userService } from '../services/userService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
@@ -421,7 +422,7 @@ const loadUsers = async () => {
     const data = await userService.getAllUsers()
     users.value = data
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to load users')
+    showAlert('danger', localizedError(error, t, 'errors.loadUsers'))
   } finally {
     loading.value = false
   }
@@ -497,7 +498,7 @@ const saveUser = async () => {
     closeModal()
     await loadUsers()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to save user')
+    showAlert('danger', localizedError(error, t, 'errors.saveUser'))
   } finally {
     saving.value = false
   }
@@ -518,7 +519,7 @@ const deleteUser = async () => {
     closeDeleteModal()
     await loadUsers()
   } catch (error) {
-    showAlert('danger', error.message || 'Failed to delete user')
+    showAlert('danger', localizedError(error, t, 'errors.deleteUser'))
   } finally {
     deleting.value = false
   }

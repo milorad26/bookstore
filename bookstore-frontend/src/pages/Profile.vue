@@ -467,10 +467,10 @@
                   <div class="action-icon bg-danger">
                     <i class="bi bi-percent"></i>
                   </div>
-                  <h6>Bulk Discount Management</h6>
-                  <p class="text-muted small">Manage bulk discount rules and tiers</p>
+                  <h6>{{ t('bulkDiscountManagement.title') }}</h6>
+                  <p class="text-muted small">{{ t('bulkDiscountManagement.subtitle') }}</p>
                   <button @click="manageBulkDiscounts" class="btn btn-danger btn-sm w-100">
-                    <i class="bi bi-sliders"></i> Manage Bulk Discounts
+                    <i class="bi bi-sliders"></i> {{ t('bulkDiscountManagement.manageButton') }}
                   </button>
                 </div>
 
