@@ -79,7 +79,7 @@ public class AuthController {
             // Check if MFA is enabled for this user
             if (user.isMfaEnabled()) {
                 // Return temporary token for MFA verification
-                String mfaToken = jwtUtil.generateToken(user.getUsername(), user.getId());
+                String mfaToken = jwtUtil.generateMfaToken(user.getId());
                 
                 LoginResponse response = LoginResponse.builder()
                         .mfaRequired(true)

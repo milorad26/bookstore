@@ -152,8 +152,28 @@ public class MfaController {
     public ResponseEntity<?> verifyMfa(
             @Valid @RequestBody MfaVerifyRequest verifyRequest,
             HttpServletRequest request) {
-        
-        String username = extractUsernameFromToken(request);
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(createErrorResponse("MFA challenge token required"));
+        }
+        String mfaToken = authHeader.substring(7);
+        if (!jwtUtil.isMfaToken(mfaToken)) {
+            return ResponseEntity.status(401).body(createErrorResponse("Invalid MFA challenge token"));
+        }
+
+        String username;
+        try {
+            Long userId = jwtUtil.extractUserId(mfaToken);
+            User challengeUser = userService.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            username = challengeUser.getUsername();
+            if (!challengeUser.isMfaEnabled()) {
+                return ResponseEntity.status(401).body(createErrorResponse("MFA is not enabled for this account"));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(createErrorResponse("Invalid MFA challenge token"));
+        }
         
         try {
             boolean valid = mfaService.validateMfaCode(username, verifyRequest.getCode());
@@ -167,6 +187,7 @@ public class MfaController {
                 
                 // Generate final JWT token after successful MFA verification
                 String token = jwtUtil.generateToken(user.getUsername(), user.getId());
+                jwtUtil.revokeToken(mfaToken);
                 
                 Map<String, Object> response = new HashMap<>();
                 response.put("token", token);

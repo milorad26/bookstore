@@ -30,7 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = extractJwtFromRequest(request);
 
-            if (jwt != null && Boolean.TRUE.equals(jwtUtil.validateToken(jwt))) {
+            // MFA challenge tokens must never establish normal application authentication.
+            if (jwt != null && jwtUtil.isAccessToken(jwt)) {
                 Long userId = jwtUtil.extractUserId(jwt);
 
                 UserDetails userDetails = userDetailsService.loadUserById(userId);

@@ -24,6 +24,10 @@ import java.security.NoSuchAlgorithmException;
 @RequiredArgsConstructor
 public class JwtUtil {
 
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+    private static final String ACCESS_TOKEN = "access";
+    private static final String MFA_TOKEN = "mfa";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -66,8 +70,33 @@ public class JwtUtil {
 
     public String generateToken(String username, Long userId) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE_CLAIM, ACCESS_TOKEN);
         // Use userId as subject to avoid exposing username in JWT payload
         return createToken(claims, userId.toString());
+    }
+
+    public String generateMfaToken(Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE_CLAIM, MFA_TOKEN);
+        return createToken(claims, userId.toString());
+    }
+
+    public boolean isMfaToken(String token) {
+        try {
+            return MFA_TOKEN.equals(extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class))
+                    && Boolean.TRUE.equals(validateToken(token));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isAccessToken(String token) {
+        try {
+            return ACCESS_TOKEN.equals(extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class))
+                    && Boolean.TRUE.equals(validateToken(token));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
