@@ -47,9 +47,9 @@ public class ReportController {
     @Operation(summary = "Get sales report")
     @GetMapping("/sales")
     public ResponseEntity<SalesReportDTO> getSalesReport(
-            @Parameter(description = "Accepted formats: yyyy-MM-dd, dd.MM.yyyy, or dd/MM/yyyy")
+            @Parameter(description = "Accepted format: dd/MM/yyyy")
             @RequestParam(required = false) String startDate,
-            @Parameter(description = "Accepted formats: yyyy-MM-dd, dd.MM.yyyy, or dd/MM/yyyy")
+            @Parameter(description = "Accepted format : dd/MM/yyyy")
             @RequestParam(required = false) String endDate) {
         return ResponseEntity.ok(buildSalesReport(startDate, endDate));
     }
@@ -57,9 +57,9 @@ public class ReportController {
     @Operation(summary = "Export sales report as an Excel workbook")
     @GetMapping(value = "/sales/export", produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     public ResponseEntity<byte[]> exportSalesReport(
-            @Parameter(description = "Accepted formats: yyyy-MM-dd, dd.MM.yyyy, or dd/MM/yyyy")
+            @Parameter(description = "Accepted format: dd/MM/yyyy")
             @RequestParam(required = false) String startDate,
-            @Parameter(description = "Accepted formats: yyyy-MM-dd, dd.MM.yyyy, or dd/MM/yyyy")
+            @Parameter(description = "Accepted format : dd/MM/yyyy")
             @RequestParam(required = false) String endDate) {
         byte[] workbook = reportExcelExportService.exportSalesReport(buildSalesReport(startDate, endDate));
         return excelDownload(workbook, "sales-report.xlsx");
@@ -79,7 +79,7 @@ public class ReportController {
         }
 
         throw new IllegalArgumentException("Invalid " + parameterName
-                + ": use yyyy-MM-dd, dd.MM.yyyy, or dd/MM/yyyy.");
+                + ": use dd/MM/yyyy.");
     }
 
     @Operation(summary = "Get inventory report")
