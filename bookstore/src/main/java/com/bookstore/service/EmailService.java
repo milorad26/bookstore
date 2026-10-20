@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.mail.MailSendException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -647,8 +648,8 @@ public class EmailService {
             log.info("Password reset email sent successfully to {} for user '{}'", email, username);
 
         } catch (MessagingException e) {
-            log.error("Failed to send password reset email to {} for user '{}': {}", email, username, e.getMessage());
-            // Don't throw exception - email failure shouldn't break password reset
+            throw new MailSendException(
+                    "Failed to prepare password reset email for user '" + username + "'", e);
         }
     }
 

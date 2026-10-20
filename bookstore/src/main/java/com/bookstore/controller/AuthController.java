@@ -23,6 +23,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
@@ -179,18 +180,23 @@ public class AuthController {
         String username = request.getUsername();
         Locale locale = LocaleContextHolder.getLocale();
 
-        try {
-            userService.findByUsername(username.trim()).ifPresent(user -> {
-                String token = passwordResetService.createToken(user);
-                String resetUrl = frontendUrl + "/auth/reset-password?token=" + token;
-                emailService.sendPasswordResetEmail(
-                        user.getUsername(), resetUrl, user.getEmail(),
-                        user.getFirstName(), user.getLastName());
-            });
+        User user = userService.findByUsername(username.trim()).orElse(null);
+        if (user == null) {
+            String message = messageSource.getMessage(
+                    "auth.password.reset.username.notfound", null, locale);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(message);
+        }
 
-        } catch (Exception e) {
-            // Do not make account existence observable through response status or body.
-            log.error("Could not process password reset request: {}", e.getMessage());
+        String token = passwordResetService.createToken(user);
+        String resetUrl = frontendUrl + "/auth/reset-password?token=" + token;
+        try {
+            emailService.sendPasswordResetEmail(
+                    user.getUsername(), resetUrl, user.getEmail(),
+                    user.getFirstName(), user.getLastName());
+        } catch (MailException e) {
+            log.error("Could not send password reset email for user '{}'", username, e);
+            String message = messageSource.getMessage("auth.password.reset.failed", null, locale);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(message);
         }
 
         String message = messageSource.getMessage("auth.password.reset.success", null, locale);
