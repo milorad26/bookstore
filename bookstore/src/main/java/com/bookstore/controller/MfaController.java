@@ -10,6 +10,7 @@ import com.bookstore.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.bookstore.security.JwtUtil;
+import com.bookstore.security.RefreshTokenCookieService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class MfaController {
     private final MfaService mfaService;
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenCookieService refreshTokenCookieService;
     private final MessageSource messageSource;
     
     /**
@@ -187,6 +189,7 @@ public class MfaController {
                 
                 // Generate final JWT token after successful MFA verification
                 String token = jwtUtil.generateToken(user.getUsername(), user.getId());
+                String refreshToken = jwtUtil.generateRefreshToken(user.getId());
                 jwtUtil.revokeToken(mfaToken);
                 
                 Map<String, Object> response = new HashMap<>();
@@ -194,7 +197,11 @@ public class MfaController {
                 response.put("type", "Bearer");
                 response.put("message", getMessage("mfa.verification.success", request));
                 
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok()
+                        .header("Set-Cookie",
+                                refreshTokenCookieService.createRefreshTokenCookieHeader(refreshToken))
+                        .cacheControl(org.springframework.http.CacheControl.noStore())
+                        .body(response);
             } else {
                 log.warn("Invalid MFA code for user: {}", username);
                 return ResponseEntity.badRequest()

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/order-items")
@@ -45,5 +46,25 @@ public class OrderItemController {
     @GetMapping("/book/{bookId}")
     public ResponseEntity<List<OrderItemDTO>> getOrderItemsByBookId(@PathVariable Long bookId) {
         return ResponseEntity.ok(orderItemService.getOrderItemsByBookId(bookId));
+    }
+
+    @Operation(summary = "Get total quantity sold for a book")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Total quantity returned"),
+        @ApiResponse(responseCode = "404", description = "Book not found")
+    })
+    @GetMapping("/book/{bookId}/total-sold")
+    public ResponseEntity<Integer> getTotalQuantitySoldForBook(@PathVariable Long bookId) {
+        return ResponseEntity.ok(orderItemService.getTotalQuantitySoldForBook(bookId));
+    }
+
+    @Operation(summary = "Get total amount for an order")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Total amount returned"),
+        @ApiResponse(responseCode = "404", description = "Order not found")
+    })
+    @GetMapping("/order/{orderId}/total-amount")
+    public ResponseEntity<BigDecimal> getTotalAmountForOrder(@PathVariable Long orderId) {
+        return ResponseEntity.ok(orderItemService.getTotalAmountForOrder(orderId));
     }
 }

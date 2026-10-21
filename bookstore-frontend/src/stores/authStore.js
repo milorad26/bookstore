@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getTokenExpiration, isTokenExpired } from '../utils/jwt'
 import { useCartStore } from './cartStore'
 
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000
 const USER_ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'scroll']
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('authToken') || null)
@@ -35,39 +35,20 @@ export const useAuthStore = defineStore('auth', () => {
     clearSessionTimer()
     if (!token.value) return
 
-    const tokenExpiresAt = getTokenExpiration(token.value)
-    if (!tokenExpiresAt || tokenExpiresAt <= Date.now()) {
-      expireSession()
-      return
-    }
-
-    const resetTimer = () => {
+    const resetInactivityTimer = () => {
       if (sessionTimer) clearTimeout(sessionTimer)
-      const remainingTokenLife = tokenExpiresAt - Date.now()
-      const timeout = Math.min(SESSION_TIMEOUT_MS, remainingTokenLife)
-      sessionTimer = setTimeout(expireSession, Math.max(timeout, 0))
+      sessionTimer = setTimeout(expireSession, SESSION_TIMEOUT_MS)
     }
 
-    activityHandler = resetTimer
+    activityHandler = resetInactivityTimer
     USER_ACTIVITY_EVENTS.forEach(eventName => window.addEventListener(eventName, activityHandler, { passive: true }))
     window.addEventListener('focus', activityHandler)
-    resetTimer()
+    resetInactivityTimer()
   }
 
-  // Check if token exists AND is not expired
-  const isAuthenticated = computed(() => {
-    if (!token.value) return false
-    if (isTokenExpired(token.value)) {
-      // Token is expired, clear it
-      logout()
-      return false
-    }
-    return true
-  })
+  const isAuthenticated = computed(() => Boolean(token.value))
 
   const setAuth = (authToken, userData) => {
-    // A newly established login starts with an empty basket, even if a prior
-    // browser session left persisted cart data behind.
     useCartStore().clearCart()
     token.value = authToken
     user.value = userData
@@ -76,30 +57,44 @@ export const useAuthStore = defineStore('auth', () => {
     startSessionTimer()
   }
 
-  const logout = () => {
+  const setToken = (authToken) => {
+    token.value = authToken
+    localStorage.setItem('authToken', authToken)
+  }
+
+  const logout = ({ revokeServer = true } = {}) => {
+    if (revokeServer) {
+      const headers = token.value
+        ? { Authorization: `Bearer ${token.value}` }
+        : {}
+      fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        keepalive: true
+      }).then((response) => {
+        if (!response.ok) {
+          console.error(`Server logout failed with status ${response.status}`)
+        }
+      }).catch((error) => {
+        console.error('Could not revoke the server session during logout', error)
+      })
+    }
+
     clearSessionTimer()
-    // A cart belongs to the current signed-in session. Clear both Pinia state
-    // and its persisted copy for manual and automatic logout paths.
     useCartStore().clearCart()
     token.value = null
     user.value = null
     localStorage.removeItem('authToken')
     localStorage.removeItem('user')
-    
   }
 
-  // Check token on store initialization
   const initializeAuth = () => {
     if (token.value) {
-      if (isTokenExpired(token.value)) {
-        logout()
-      } else {
-        startSessionTimer()
-      }
+      startSessionTimer()
     }
   }
 
-  // Run initialization
   initializeAuth()
 
   return {
@@ -107,6 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isAuthenticated,
     setAuth,
+    setToken,
     logout,
     initializeAuth
   }

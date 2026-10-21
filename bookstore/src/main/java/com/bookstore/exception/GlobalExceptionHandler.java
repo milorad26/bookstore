@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -137,6 +138,17 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
             HttpStatus.NOT_FOUND.value(),
             ex.getMessage(),
             messageSource.getMessage("error.notfound", null, locale)
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEndpointNotFound(NoResourceFoundException ex) {
+        log.warn("No endpoint found for {} {}", ex.getHttpMethod(), ex.getResourcePath());
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "The requested endpoint was not found.",
+                messageSource.getMessage("error.notfound", null, LocaleContextHolder.getLocale())
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }

@@ -1,6 +1,7 @@
 # Development-only credentials. Production deployments must use JWT_SECRET.
 jwt:
   secret: local-development-only-signing-key-change-before-deployment-2026
+  refresh-cookie-secure: false
 
 spring:
   config:

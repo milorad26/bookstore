@@ -8,11 +8,18 @@ import com.bookstore.dto.ResetPasswordRequest;
 import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.JwtUtil;
+import com.bookstore.security.RefreshTokenCookieService;
 import com.bookstore.service.EmailService;
 import com.bookstore.service.LoginAttemptService;
 import com.bookstore.service.PasswordResetService;
 import com.bookstore.service.UserService;
+import com.bookstore.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,6 +36,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Locale;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,6 +47,7 @@ public class AuthController {
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
+    private final RefreshTokenCookieService refreshTokenCookieService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final MessageSource messageSource;
@@ -50,6 +59,13 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Login", description = "Authenticate user and return JWT token")
+    @SecurityRequirements
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Login succeeded or MFA verification is required",
+                    content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest,
                                                HttpServletRequest request) {
         Locale locale = LocaleContextHolder.getLocale();
@@ -99,6 +115,7 @@ public class AuthController {
 
             // No MFA - return final token
             String token = jwtUtil.generateToken(user.getUsername(), user.getId());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
             LoginResponse response = LoginResponse.builder()
                     .token(token)
@@ -111,6 +128,8 @@ public class AuthController {
             return ResponseEntity.ok()
                     .cacheControl(org.springframework.http.CacheControl.noStore())
                     .header("Pragma", "no-cache")
+                    .header("Set-Cookie",
+                            refreshTokenCookieService.createRefreshTokenCookieHeader(refreshToken))
                     .body(response);
         } catch (org.springframework.security.authentication.LockedException e) {
             throw e; // Re-throw locked exception
@@ -136,8 +155,89 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token", description = "Rotate the refresh cookie and issue a new access token")
+    @SecurityRequirements
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Access token refreshed and refresh cookie rotated",
+                    content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Refresh cookie is missing, invalid, expired, or revoked",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<?> refresh(HttpServletRequest request) {
+        Optional<String> refreshToken = refreshTokenCookieService.getRefreshToken(request);
+        if (refreshToken.isEmpty() || !jwtUtil.isRefreshToken(refreshToken.get())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header("Set-Cookie", refreshTokenCookieService.createClearRefreshTokenCookieHeader())
+                    .cacheControl(org.springframework.http.CacheControl.noStore())
+                    .body(new ErrorResponse(
+                            HttpStatus.UNAUTHORIZED.value(),
+                            "Refresh token is missing, invalid, expired, or revoked. Please log in again.",
+                            "Unauthorized"));
+        }
+
+        Long userId = jwtUtil.extractUserId(refreshToken.get());
+        User user = userService.findById(userId)
+                .filter(candidate -> Boolean.TRUE.equals(candidate.getEnabled()))
+                .orElse(null);
+        if (user == null) {
+            jwtUtil.revokeTokenOrThrow(refreshToken.get());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header("Set-Cookie", refreshTokenCookieService.createClearRefreshTokenCookieHeader())
+                    .cacheControl(org.springframework.http.CacheControl.noStore())
+                    .body(new ErrorResponse(
+                            HttpStatus.UNAUTHORIZED.value(),
+                            "The account for this refresh token is unavailable. Please log in again.",
+                            "Unauthorized"));
+        }
+
+        jwtUtil.revokeTokenOrThrow(refreshToken.get());
+        String accessToken = jwtUtil.generateToken(user.getUsername(), user.getId());
+        String rotatedRefreshToken = jwtUtil.generateRefreshToken(user.getId());
+        LoginResponse response = LoginResponse.builder()
+                .token(accessToken)
+                .type("Bearer")
+                .build();
+
+        return ResponseEntity.ok()
+                .header("Set-Cookie",
+                        refreshTokenCookieService.createRefreshTokenCookieHeader(rotatedRefreshToken))
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(response);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout", description = "Revoke the current access and refresh tokens and clear the refresh cookie")
+    @SecurityRequirements
+    @ApiResponse(responseCode = "204", description = "Session ended and refresh cookie cleared")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        refreshTokenCookieService.getRefreshToken(request)
+                .filter(jwtUtil::isRefreshToken)
+                .ifPresent(jwtUtil::revokeTokenOrThrow);
+
+        String authorization = request.getHeader("Authorization");
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            String accessToken = authorization.substring(7);
+            if (jwtUtil.isAccessToken(accessToken)) {
+                jwtUtil.revokeTokenOrThrow(accessToken);
+            }
+        }
+
+        return ResponseEntity.noContent()
+                .header("Set-Cookie", refreshTokenCookieService.createClearRefreshTokenCookieHeader())
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .build();
+    }
+
     @PostMapping("/register")
     @Operation(summary = "Register", description = "Register a new user account")
+    @SecurityRequirements
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Account created and tokens issued",
+                    content = @Content(schema = @Schema(implementation = LoginResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Registration data is invalid",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         User user = new User();
         user.setUsername(registerRequest.getUsername());
@@ -163,6 +263,7 @@ public class AuthController {
         );
 
         String token = jwtUtil.generateToken(savedUser.getUsername(), savedUser.getId());
+        String refreshToken = jwtUtil.generateRefreshToken(savedUser.getId());
 
         LoginResponse response = LoginResponse.builder()
                 .token(token)
@@ -171,11 +272,15 @@ public class AuthController {
 
         log.info("User {} registered successfully", savedUser.getUsername());
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header("Set-Cookie", refreshTokenCookieService.createRefreshTokenCookieHeader(refreshToken))
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(response);
     }
 
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot Password", description = "Request password reset for a user account")
+    @SecurityRequirements
     public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         String username = request.getUsername();
         Locale locale = LocaleContextHolder.getLocale();
@@ -205,6 +310,7 @@ public class AuthController {
 
     @PostMapping("/reset-password")
     @Operation(summary = "Reset password", description = "Set a new password using a one-time reset link")
+    @SecurityRequirements
     public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         boolean reset = passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
         if (!reset) {

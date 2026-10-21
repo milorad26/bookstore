@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -29,6 +30,7 @@ public class JwtUtil {
 
     private static final String TOKEN_TYPE_CLAIM = "token_type";
     private static final String ACCESS_TOKEN = "access";
+    private static final String REFRESH_TOKEN = "refresh";
     private static final String MFA_TOKEN = "mfa";
     private static final String PASSWORD_RESET_TOKEN = "password_reset";
     private static final String PASSWORD_FINGERPRINT_CLAIM = "password_fingerprint";
@@ -39,6 +41,9 @@ public class JwtUtil {
 
     @Value("${jwt.expiration}")
     private Long expiration;
+
+    @Value("${jwt.refresh-expiration}")
+    private Long refreshExpiration;
 
     @Value("${jwt.issuer}")
     private String issuer;
@@ -85,6 +90,13 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         claims.put(TOKEN_TYPE_CLAIM, MFA_TOKEN);
         return createToken(claims, userId.toString());
+    }
+
+    public String generateRefreshToken(Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(TOKEN_TYPE_CLAIM, REFRESH_TOKEN);
+        claims.put("jti", UUID.randomUUID().toString());
+        return createToken(claims, userId.toString(), refreshExpiration);
     }
 
     public String generatePasswordResetToken(Long userId, String encodedPassword) {
@@ -138,6 +150,15 @@ public class JwtUtil {
     public boolean isAccessToken(String token) {
         try {
             return ACCESS_TOKEN.equals(extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class))
+                    && Boolean.TRUE.equals(validateToken(token));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            return REFRESH_TOKEN.equals(extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class))
                     && Boolean.TRUE.equals(validateToken(token));
         } catch (Exception e) {
             return false;
@@ -212,6 +233,13 @@ public class JwtUtil {
         } catch (Exception e) {
             log.warn("Could not revoke token: {}", e.getMessage());
         }
+    }
+
+    public void revokeTokenOrThrow(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("A token is required for revocation");
+        }
+        tokenRevocationService.revoke(hashToken(token), extractExpiration(token).getTime());
     }
 
     private String hashToken(String token) {

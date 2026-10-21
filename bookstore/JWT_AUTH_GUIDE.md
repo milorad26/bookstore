@@ -40,7 +40,8 @@ The Virtual Bookstore API now implements JWT (JSON Web Token) authentication to 
 }
 ```
 
-**Response:** (201 Created)
+**Response:** (201 Created). The access token is in the JSON response. A separate
+refresh token is set as an HttpOnly cookie and is not exposed to JavaScript.
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -65,7 +66,9 @@ The Virtual Bookstore API now implements JWT (JSON Web Token) authentication to 
 }
 ```
 
-**Response:** (200 OK)
+**Response:** (200 OK). The access token is in the JSON response. A separate
+refresh token is set as an HttpOnly cookie only after login completes; MFA users
+receive it after successful MFA verification.
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -196,7 +199,28 @@ Returned when the user doesn't have permission to access the resource:
 
 ## Token Expiration
 
-JWT tokens expire after 15 minutes. When a token expires, you'll receive a 401 Unauthorized response. To continue, simply login again to get a new token.
+Access tokens expire after 15 minutes. The frontend automatically uses the
+HttpOnly refresh cookie to obtain a new access token and rotates the refresh
+cookie. Refresh tokens expire after 7 days and are single-use: the previous
+refresh token is revoked whenever it is exchanged.
+
+`POST /api/auth/refresh` rotates the refresh cookie and returns a new access
+token. `POST /api/auth/logout` revokes the current refresh and access tokens and
+clears the cookie. The refresh cookie is `HttpOnly`, `SameSite=Strict`, and
+`Secure` by default in non-local profiles. Local development disables `Secure`;
+set `JWT_REFRESH_COOKIE_SECURE=true` when serving over HTTPS.
+
+When using Swagger UI, call `/api/auth/login` first in that same browser session
+so the browser receives the HttpOnly refresh cookie. Then call
+`POST /api/auth/refresh`; it does not accept an access token in the request body
+or as a substitute for the refresh cookie. Calling refresh without a valid
+cookie returns `401` with an `ErrorResponse` explaining that login is required.
+Swagger documents the standard `401`, `403`, and `404` responses across API
+operations, alongside each endpoint's successful `200` or `201` response.
+
+The existing `revoked_tokens` table remains in use. It stores SHA-256 hashes
+(never raw tokens) for invalidated access, MFA challenge, and rotated refresh
+tokens. Expired entries are removed when tokens are revoked.
 
 ## Security Best Practices
 

@@ -3,6 +3,7 @@ package com.bookstore.controller;
 import com.bookstore.dto.ForgotPasswordRequest;
 import com.bookstore.model.User;
 import com.bookstore.security.JwtUtil;
+import com.bookstore.security.RefreshTokenCookieService;
 import com.bookstore.service.EmailService;
 import com.bookstore.service.LoginAttemptService;
 import com.bookstore.service.PasswordResetService;
@@ -27,6 +28,7 @@ class AuthControllerTest {
 
     private UserService userService;
     private JwtUtil jwtUtil;
+    private RefreshTokenCookieService refreshTokenCookieService;
     private AuthenticationManager authenticationManager;
     private EmailService emailService;
     private MessageSource messageSource;
@@ -39,13 +41,14 @@ class AuthControllerTest {
     void setUp() {
         userService = mock(UserService.class);
         jwtUtil = mock(JwtUtil.class);
+        refreshTokenCookieService = mock(RefreshTokenCookieService.class);
         authenticationManager = mock(AuthenticationManager.class);
         emailService = mock(EmailService.class);
         messageSource = mock(MessageSource.class);
         loginAttemptService = mock(LoginAttemptService.class);
         passwordResetService = mock(PasswordResetService.class);
         controller = new AuthController(
-                userService, jwtUtil, authenticationManager, emailService, messageSource,
+                userService, jwtUtil, refreshTokenCookieService, authenticationManager, emailService, messageSource,
                 loginAttemptService, passwordResetService);
         ReflectionTestUtils.setField(controller, "frontendUrl", "https://bookstore.example");
         LocaleContextHolder.setLocale(java.util.Locale.ENGLISH);
@@ -109,7 +112,9 @@ class AuthControllerTest {
         when(passwordResetService.createToken(user)).thenReturn("one-time-token");
         doThrow(new MailSendException("mail unavailable"))
                 .when(emailService)
-                .sendPasswordResetEmail(anyString(), anyString(), anyString(), anyString(), anyString());
+                .sendPasswordResetEmail(
+                        anyString(), anyString(), anyString(),
+                        nullable(String.class), nullable(String.class));
         when(messageSource.getMessage(
                 "auth.password.reset.failed", null, LocaleContextHolder.getLocale()))
                 .thenReturn("Password reset email could not be sent. Try again later.");

@@ -153,7 +153,6 @@ class PaymentServiceTest {
 
         // Mock Stripe Session
         Session mockSession = mock(Session.class);
-        when(mockSession.getId()).thenReturn(sessionId);
         when(mockSession.getStatus()).thenReturn("complete");
         when(mockSession.getPaymentStatus()).thenReturn("paid");
         when(mockSession.getPaymentIntent()).thenReturn(paymentIntentId);
@@ -233,7 +232,6 @@ class PaymentServiceTest {
         String sessionId = "cs_test_12345";
 
         Session mockSession = mock(Session.class);
-        when(mockSession.getId()).thenReturn(sessionId);
         when(mockSession.getStatus()).thenReturn("complete");
         when(mockSession.getPaymentStatus()).thenReturn("paid");
         when(mockSession.getMetadata()).thenReturn(new HashMap<>()); // Empty metadata
@@ -244,7 +242,7 @@ class PaymentServiceTest {
 
             assertThatThrownBy(() -> paymentService.handlePaymentSuccess(sessionId))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("Order ID not found in session metadata");
+                    .hasMessageContaining("Order ID not found in Stripe session metadata");
         }
     }
 
@@ -254,13 +252,7 @@ class PaymentServiceTest {
         String sessionId = "cs_test_12345";
 
         Session mockSession = mock(Session.class);
-        when(mockSession.getId()).thenReturn(sessionId);
         when(mockSession.getStatus()).thenReturn("open"); // Not complete
-        when(mockSession.getPaymentStatus()).thenReturn("unpaid");
-        
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put("orderId", "1");
-        when(mockSession.getMetadata()).thenReturn(metadata);
 
         // When & Then
         try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
@@ -346,14 +338,10 @@ class PaymentServiceTest {
         String sessionId = "cs_test_12345";
 
         Session mockSession = mock(Session.class);
-        when(mockSession.getId()).thenReturn(sessionId);
         when(mockSession.getStatus()).thenReturn("complete");
         when(mockSession.getPaymentStatus()).thenReturn("paid");
-        when(mockSession.getPaymentIntent()).thenReturn("pi_test_67890");
         when(mockSession.getMode()).thenReturn("payment");
         when(mockSession.getClientReferenceId()).thenReturn("999");
-        when(mockSession.getCurrency()).thenReturn("usd");
-        when(mockSession.getAmountTotal()).thenReturn(8598L);
         
         Map<String, String> metadata = new HashMap<>();
         metadata.put("orderId", "999");

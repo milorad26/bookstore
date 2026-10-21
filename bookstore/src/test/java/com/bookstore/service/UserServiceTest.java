@@ -8,11 +8,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,6 +31,9 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private UserService userService;
 
@@ -36,10 +41,23 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(messageSource.getMessage(anyString(), any(), any(Locale.class)))
+                .thenAnswer(invocation -> {
+                    String key = invocation.getArgument(0);
+                    Object[] args = invocation.getArgument(1);
+                    return switch (key) {
+                        case "user.username.taken" -> "Username " + args[0] + " is already taken";
+                        case "user.email.taken" -> "Email address " + args[0] + " is already registered";
+                        case "user.notfound.update" -> "Cannot update user. User not found with ID: " + args[0];
+                        case "user.notfound.password" -> "User not found with ID: " + args[0];
+                        default -> key;
+                    };
+                });
+
         testUser = new User();
         testUser.setId(1L);
         testUser.setUsername("johndoe");
-        testUser.setPassword("plainPassword123");
+        testUser.setPassword("plainPassword123!");
         testUser.setFirstName("John");
         testUser.setLastName("Doe");
         testUser.setEmail("john.doe@example.com");
@@ -49,7 +67,7 @@ class UserServiceTest {
     @Test
     void testCreateUser_ShouldEncryptPassword() {
         // Given
-        String plainPassword = "plainPassword123";
+        String plainPassword = "plainPassword123!";
         String encodedPassword = "$2a$10$encoded.password.hash";
         
         when(userRepository.existsByUsername(anyString())).thenReturn(false);

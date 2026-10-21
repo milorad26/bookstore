@@ -42,6 +42,7 @@ public class UserController {
 
     @PostMapping
     @Operation(summary = "Create a new user", description = "Creates a new user with encrypted password")
+    @ApiResponse(responseCode = "201", description = "User created successfully")
     public ResponseEntity<UserDTO> createUser(
             HttpServletRequest request,
             @Valid @RequestBody CreateUserRequest createRequest) {

@@ -4,6 +4,8 @@ import com.bookstore.dto.OrderDTO;
 import com.bookstore.model.User;
 import com.bookstore.model.UserType;
 import com.bookstore.security.AuthenticationHelper;
+import com.bookstore.security.CustomUserDetailsService;
+import com.bookstore.security.JwtUtil;
 import com.bookstore.service.OrderService;
 import com.bookstore.service.PaymentService;
 import com.bookstore.service.UserService;
@@ -42,6 +44,12 @@ class PaymentControllerTest {
 
     @MockBean
     private OrderService orderService;
+
+    @MockBean
+    private JwtUtil jwtUtil;
+
+    @MockBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Test
     void regularUserCannotCreateCheckoutForAnotherUsersOrder() throws Exception {

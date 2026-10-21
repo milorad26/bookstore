@@ -51,6 +51,9 @@ class OrderServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private BulkDiscountService bulkDiscountService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -293,12 +296,10 @@ class OrderServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        // Verify existing pending order was cancelled
-        verify(orderRepository, atLeastOnce()).save(argThat(order -> 
-            order.getId() != null && order.getId().equals(99L) && order.getStatus() == OrderStatus.CANCELLED
-        ));
-        // Verify new order was created
-        verify(orderRepository, atLeastOnce()).save(any(Order.class));
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(existingPendingOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(existingPendingOrder.getOrderItems()).hasSize(1);
+        verify(orderRepository).save(existingPendingOrder);
     }
 
     @Test
@@ -362,8 +363,6 @@ class OrderServiceTest {
         orderItem.setPrice(testBook1.getPrice());
         testOrder.getOrderItems().add(orderItem);
         
-        when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
-        
         Order confirmedOrder = new Order();
         confirmedOrder.setId(1L);
         confirmedOrder.setUser(testUser);
@@ -377,7 +376,7 @@ class OrderServiceTest {
         // Then
         assertThat(result).isNotNull();
         verify(orderRepository).findById(1L);
-        verify(orderRepository).save(any(Order.class));
+        verify(orderRepository, times(2)).save(any(Order.class));
     }
 
     @Test

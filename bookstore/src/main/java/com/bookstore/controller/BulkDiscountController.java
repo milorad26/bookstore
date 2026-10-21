@@ -2,6 +2,8 @@ package com.bookstore.controller;
 
 import com.bookstore.dto.BulkDiscountRuleDTO;
 import com.bookstore.service.BulkDiscountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +66,8 @@ public class BulkDiscountController {
     /**
      * Create a new bulk discount rule (Admin only)
      */
+    @Operation(summary = "Create bulk discount rule")
+    @ApiResponse(responseCode = "201", description = "Bulk discount rule created successfully")
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BulkDiscountRuleDTO> createRule(@Valid @RequestBody BulkDiscountRuleDTO ruleDTO) {

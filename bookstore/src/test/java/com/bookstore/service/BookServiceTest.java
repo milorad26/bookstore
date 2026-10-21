@@ -10,11 +10,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +30,9 @@ class BookServiceTest {
     @Mock
     private BookRepository bookRepository;
 
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private BookService bookService;
 
@@ -37,6 +42,17 @@ class BookServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(messageSource.getMessage(anyString(), any(Object[].class), any(Locale.class)))
+                .thenAnswer(invocation -> {
+                    String key = invocation.getArgument(0);
+                    Object[] args = invocation.getArgument(1);
+                    return switch (key) {
+                        case "book.notfound.id" -> "Book not found with id: " + args[0];
+                        case "book.isbn.exists" -> "Book with ISBN " + args[0] + " already exists";
+                        default -> key;
+                    };
+                });
+
         testBook1 = new Book();
         testBook1.setId(1L);
         testBook1.setTitle("Clean Code");
