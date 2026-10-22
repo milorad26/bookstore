@@ -101,6 +101,7 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
                 // The MFA challenge token is checked explicitly by the controller; it is not an access token.
                 .requestMatchers(HttpMethod.POST, "/api/mfa/verify").permitAll()
                 .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/api-docs/**",

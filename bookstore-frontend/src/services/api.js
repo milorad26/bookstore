@@ -15,6 +15,8 @@ const apiClient = axios.create({
 
 let refreshRequest = null
 
+const isPublicEndpoint = (url) => url?.includes('/auth/') || url?.includes('/contact')
+
 const refreshAccessToken = () => {
   if (!refreshRequest) {
     refreshRequest = axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
@@ -42,14 +44,15 @@ const refreshAccessToken = () => {
 // Add token and language to requests
 apiClient.interceptors.request.use(async (config) => {
   const authStore = useAuthStore()
+  const isPublic = isPublicEndpoint(config.url)
 
   if (authStore.token &&
-      !config.url?.includes('/auth/') &&
+      !isPublic &&
       isTokenExpired(authStore.token)) {
     await refreshAccessToken()
   }
 
-  if (authStore.token) {
+  if (authStore.token && !isPublic) {
     config.headers.Authorization = `Bearer ${authStore.token}`
   }
 
@@ -62,9 +65,9 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const isAuthEndpoint = error.config?.url?.includes('/auth/')
+    const isPublic = isPublicEndpoint(error.config?.url)
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !error.config?._retry) {
+    if (error.response?.status === 401 && !isPublic && !error.config?._retry) {
       error.config._retry = true
       try {
         const token = await refreshAccessToken()

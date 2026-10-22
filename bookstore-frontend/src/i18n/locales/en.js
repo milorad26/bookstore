@@ -19,7 +19,31 @@ export default {
     register: 'Register',
     profile: 'Profile',
     welcome: 'Welcome',
-    logout: 'Logout'
+    logout: 'Logout',
+    contact: 'Contact us'
+  },
+  footer: {
+    brand: 'Virtual Bookstore',
+    tagline: 'A little more wonder, one page at a time. Find your next favorite read with us.',
+    explore: 'Explore',
+    shopBooks: 'Browse books',
+    hereToHelp: 'Here to help',
+    contactCopy: 'Questions about a book or an order? We would love to hear from you.',
+    copyright: '© {year} Virtual Bookstore. All rights reserved.',
+    closingNote: 'Made for readers, wherever they are.'
+  },
+  contact: {
+    eyebrow: 'We are here to help',
+    title: 'Contact us',
+    intro: 'Send us a message and our team will get back to you as soon as possible.',
+    firstName: 'First name',
+    lastName: 'Last name',
+    email: 'Email address',
+    message: 'Message',
+    submit: 'Send message',
+    sending: 'Sending...',
+    success: 'Thank you for getting in touch. Your message has been sent.',
+    error: 'We could not send your message right now. Please try again later.'
   },
   shop: {
     byCategory: 'By Category',
@@ -633,6 +657,7 @@ export default {
   common: {
     save: 'Save',
     cancel: 'Cancel',
+    close: 'Close',
     delete: 'Delete',
     edit: 'Edit',
     view: 'View',

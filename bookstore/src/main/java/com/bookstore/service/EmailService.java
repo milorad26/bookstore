@@ -1,5 +1,6 @@
 package com.bookstore.service;
 
+import com.bookstore.dto.ContactRequest;
 import com.bookstore.model.Order;
 import com.bookstore.model.OrderItem;
 import jakarta.mail.MessagingException;
@@ -27,6 +28,39 @@ public class EmailService {
 
     @Value("${spring.mail.from}")
     private String fromEmail;
+
+    @Value("${app.contact.email}")
+    private String contactEmail;
+
+    public void sendContactMessage(ContactRequest request) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(contactEmail);
+            helper.setReplyTo(request.getEmail());
+            helper.setSubject("Website contact message");
+            helper.setText(
+                    "Message from " + request.getFirstName() + " " + request.getLastName()
+                            + " <" + request.getEmail() + ">:\n\n" + request.getMessage(),
+                    buildContactMessageHtml(request));
+            mailSender.send(message);
+            log.info("Contact message delivered to the store mailbox");
+        } catch (MessagingException e) {
+            throw new MailSendException("Failed to prepare contact message", e);
+        }
+    }
+
+    private String buildContactMessageHtml(ContactRequest request) {
+        return "<!DOCTYPE html><html><body style='font-family:Arial,sans-serif;color:#333'>"
+                + "<h2>Website contact message</h2>"
+                + "<p><strong>Name:</strong> " + escapeHtml(request.getFirstName()) + " "
+                + escapeHtml(request.getLastName()) + "</p>"
+                + "<p><strong>Email:</strong> " + escapeHtml(request.getEmail()) + "</p>"
+                + "<p><strong>Message:</strong></p><p>"
+                + escapeHtml(request.getMessage()).replaceAll("\\r\\n|\\r|\\n", "<br>")
+                + "</p></body></html>";
+    }
 
     public void sendOrderConfirmationEmail(Order order) {
         try {

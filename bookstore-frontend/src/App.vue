@@ -40,6 +40,11 @@
             <li class="nav-item" v-if="authStore.isAuthenticated">
               <button @click="logout" class="btn btn-outline-light nav-link">{{ t('nav.logout') }}</button>
             </li>
+            <li class="nav-item">
+              <button type="button" class="btn btn-link nav-link" @click="showContactModal = true">
+                {{ t('nav.contact') }}
+              </button>
+            </li>
             <!-- Language Switcher -->
             <li class="nav-item">
               <LanguageSwitcher />
@@ -48,22 +53,30 @@
         </div>
       </div>
     </nav>
-    
-    <router-view />
+
+    <main class="app-content">
+      <router-view />
+    </main>
+    <BookstoreFooter @contact="showContactModal = true" />
+    <ContactModal :show="showContactModal" @close="showContactModal = false" />
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuthStore } from './stores/authStore'
 import { useCartStore } from './stores/cartStore'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import BookstoreFooter from './components/BookstoreFooter.vue'
+import ContactModal from './components/ContactModal.vue'
 
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const router = useRouter()
 const { t } = useI18n()
+const showContactModal = ref(false)
 
 const logout = () => {
   authStore.logout()
@@ -75,5 +88,15 @@ const logout = () => {
 <style>
 body {
   background-color: #f5f5f5;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-content {
+  flex: 1;
 }
 </style>

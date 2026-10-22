@@ -19,7 +19,31 @@ export default {
     register: 'Registracija',
     profile: 'Profil',
     welcome: 'Dobrodošli',
-    logout: 'Odjava'
+    logout: 'Odjava',
+    contact: 'Kontakt'
+  },
+  footer: {
+    brand: 'Virtuelna knjižara',
+    tagline: 'Otkrijte čaroliju, stranicu po stranicu. Pronađite svoju sledeću omiljenu knjigu.',
+    explore: 'Istražite',
+    shopBooks: 'Pregledajte knjige',
+    hereToHelp: 'Tu smo da pomognemo',
+    contactCopy: 'Imate pitanje o knjizi ili porudžbini? Javite nam se.',
+    copyright: '© {year} Virtuelna knjižara. Sva prava zadržana.',
+    closingNote: 'Za ljubitelje knjiga, gde god da su.'
+  },
+  contact: {
+    eyebrow: 'Tu smo da pomognemo',
+    title: 'Kontaktirajte nas',
+    intro: 'Pošaljite nam poruku, a naš tim će vam odgovoriti u najkraćem roku.',
+    firstName: 'Ime',
+    lastName: 'Prezime',
+    email: 'Imejl adresa',
+    message: 'Poruka',
+    submit: 'Pošalji poruku',
+    sending: 'Slanje...',
+    success: 'Hvala što ste nam se javili. Vaša poruka je poslata.',
+    error: 'Trenutno nije moguće poslati poruku. Pokušajte ponovo kasnije.'
   },
   shop: {
     byCategory: 'Po Kategorijama',
@@ -629,6 +653,7 @@ export default {
   common: {
     save: 'Sačuvaj',
     cancel: 'Otkaži',
+    close: 'Zatvori',
     delete: 'Obriši',
     edit: 'Izmeni',
     view: 'Prikaži',

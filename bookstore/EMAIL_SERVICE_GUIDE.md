@@ -38,6 +38,11 @@ spring:
     from: orders@bookstore.com
 ```
 
+### Contact form inbox
+The public website contact form sends messages through the same SMTP mail service as order and account emails. Configure its destination with `CONTACT_EMAIL` (defaults to `info@virtual-library.com`). The submitted email address is set as the reply-to address, while the configured `spring.mail.from` address remains the sender.
+
+The SMTP server must be configured and reachable for delivery. In local development, use a local SMTP catcher such as MailHog/smtp4dev; with production SMTP, set the provider host, port, credentials, and sender address as described above.
+
 ### Setup Options
 
 #### Option 1: Using Gmail (Recommended for Testing)
