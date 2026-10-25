@@ -12,7 +12,7 @@ export default defineConfig(({ command }) => ({
           tag: 'meta',
           attrs: {
             'http-equiv': 'Content-Security-Policy',
-            content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:8080 https: wss:; frame-src 'self' https://js.stripe.com"
+            content: "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' data: https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:8080 https: wss:; frame-src 'self' https://js.stripe.com https://challenges.cloudflare.com"
           },
           injectTo: 'head'
         }]

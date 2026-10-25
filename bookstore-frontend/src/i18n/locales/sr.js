@@ -45,6 +45,11 @@ export default {
     success: 'Hvala što ste nam se javili. Vaša poruka je poslata.',
     error: 'Trenutno nije moguće poslati poruku. Pokušajte ponovo kasnije.'
   },
+  captcha: {
+    complete: 'Molimo završite CAPTCHA proveru.',
+    retry: 'CAPTCHA provera nije uspela. Pokušajte ponovo.',
+    loadError: 'CAPTCHA nije mogla da se učita. Proverite internet vezu i pokušajte ponovo.'
+  },
   shop: {
     byCategory: 'Po Kategorijama',
     allBooks: 'Sve Knjige',

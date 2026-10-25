@@ -45,6 +45,11 @@ export default {
     success: 'Thank you for getting in touch. Your message has been sent.',
     error: 'We could not send your message right now. Please try again later.'
   },
+  captcha: {
+    complete: 'Please complete the CAPTCHA verification.',
+    retry: 'CAPTCHA verification failed. Please try again.',
+    loadError: 'CAPTCHA could not be loaded. Check your connection and try again.'
+  },
   shop: {
     byCategory: 'By Category',
     allBooks: 'All Books',

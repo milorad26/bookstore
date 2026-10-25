@@ -72,6 +72,14 @@
               required
             ></textarea>
           </div>
+          <div v-if="captchaSiteKey" class="col-12">
+            <TurnstileCaptcha
+              ref="captchaWidget"
+              :site-key="captchaSiteKey"
+              @verified="captchaToken = $event"
+              @expired="captchaToken = ''"
+            />
+          </div>
         </div>
 
         <p v-if="error" class="alert alert-danger mt-3 mb-0" role="alert">{{ error }}</p>
@@ -101,6 +109,7 @@
 import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { sendContactMessage } from '../services/contactService'
+import TurnstileCaptcha from './TurnstileCaptcha.vue'
 
 const props = defineProps({
   show: {
@@ -116,25 +125,35 @@ const form = reactive({ firstName: '', lastName: '', email: '', message: '' })
 const submitting = ref(false)
 const sent = ref(false)
 const error = ref('')
+const captchaToken = ref('')
+const captchaWidget = ref(null)
+const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 
 const reset = () => {
   Object.assign(form, { firstName: '', lastName: '', email: '', message: '' })
   submitting.value = false
   sent.value = false
   error.value = ''
+  captchaToken.value = ''
 }
 
 const submit = async () => {
   if (submitting.value) return
 
+  if (captchaSiteKey && !captchaToken.value) {
+    error.value = t('captcha.complete')
+    return
+  }
+
   submitting.value = true
   error.value = ''
   try {
-    await sendContactMessage({ ...form })
+    await sendContactMessage({ ...form, captchaToken: captchaToken.value })
     sent.value = true
     Object.assign(form, { firstName: '', lastName: '', email: '', message: '' })
   } catch {
     error.value = t('contact.error')
+    captchaWidget.value?.reset()
   } finally {
     submitting.value = false
   }

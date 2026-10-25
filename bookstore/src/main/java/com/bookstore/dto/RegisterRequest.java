@@ -34,4 +34,8 @@ public class RegisterRequest {
     private String phoneNumber;
 
     private String address;
+
+    @Size(max = 2048)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String captchaToken;
 }

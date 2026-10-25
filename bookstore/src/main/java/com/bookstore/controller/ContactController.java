@@ -2,6 +2,7 @@ package com.bookstore.controller;
 
 import com.bookstore.dto.ContactRequest;
 import com.bookstore.service.EmailService;
+import com.bookstore.service.TurnstileCaptchaService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,9 +26,11 @@ import java.util.Map;
 public class ContactController {
 
     private final EmailService emailService;
+    private final TurnstileCaptchaService captchaService;
 
     @PostMapping
     public ResponseEntity<Map<String, String>> sendMessage(@Valid @RequestBody ContactRequest request) {
+        captchaService.verify(request.getCaptchaToken());
         try {
             emailService.sendContactMessage(request);
             return ResponseEntity.ok(Map.of("message", "Your message has been sent."));

@@ -70,6 +70,13 @@ stripe:
   success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/orders}
   cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/checkout}
 
+# CAPTCHA is enabled outside the local profile. Configure the private secret on the backend
+# and VITE_TURNSTILE_SITE_KEY in the frontend build environment.
+captcha:
+  turnstile:
+    enabled: ${CAPTCHA_ENABLED:true}
+    secret-key: ${TURNSTILE_SECRET_KEY:}
+
 logging:
   level:
     com.bookstore: INFO

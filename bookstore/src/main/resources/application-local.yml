@@ -23,3 +23,8 @@ app:
 stripe:
   api-key: ${STRIPE_SECRET_KEY:}
   publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+
+captcha:
+  turnstile:
+    enabled: ${CAPTCHA_ENABLED:true}
+    secret-key: ${TURNSTILE_SECRET_KEY:1x0000000000000000000000000000000AA}

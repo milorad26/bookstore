@@ -97,6 +97,15 @@
                 :error="errors.address"
               />
 
+              <TurnstileCaptcha
+                v-if="captchaSiteKey"
+                ref="captchaWidget"
+                class="mb-3"
+                :site-key="captchaSiteKey"
+                @verified="captchaToken = $event"
+                @expired="captchaToken = ''"
+              />
+
               <button
                 type="submit"
                 class="btn btn-primary w-100 mb-3"
@@ -130,6 +139,7 @@ import { userService } from '../services/userService'
 import { validateField } from '../utils/validators'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
+import TurnstileCaptcha from '../components/TurnstileCaptcha.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -159,6 +169,9 @@ const isLoading = ref(false)
 const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
+const captchaSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+const captchaToken = ref('')
+const captchaWidget = ref(null)
 
 const validate = () => {
   let isValid = true
@@ -201,16 +214,22 @@ const handleRegister = async () => {
     return
   }
 
+  if (captchaSiteKey && !captchaToken.value) {
+    showError(t('captcha.complete'))
+    return
+  }
+
   isLoading.value = true
 
   try {
-    await authService.register(form.value)
+    await authService.register({ ...form.value, captchaToken: captchaToken.value })
 
     // Do NOT auto-login - redirect to login page
     showSuccess(t('messages.registerSuccess') + ' ' + t('messages.pleaseLogin'))
     setTimeout(() => router.push('/auth/login'), 1500)
   } catch (error) {
     showError(error.message || t('messages.registerFailed'))
+    captchaWidget.value?.reset()
     
     // Parse field-specific validation errors
     if (error.message.includes(':')) {

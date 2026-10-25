@@ -12,6 +12,7 @@ import com.bookstore.security.RefreshTokenCookieService;
 import com.bookstore.service.EmailService;
 import com.bookstore.service.LoginAttemptService;
 import com.bookstore.service.PasswordResetService;
+import com.bookstore.service.TurnstileCaptchaService;
 import com.bookstore.service.UserService;
 import com.bookstore.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +54,7 @@ public class AuthController {
     private final MessageSource messageSource;
     private final LoginAttemptService loginAttemptService;
     private final PasswordResetService passwordResetService;
+    private final TurnstileCaptchaService captchaService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -239,6 +241,7 @@ public class AuthController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        captchaService.verify(registerRequest.getCaptchaToken());
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setPassword(registerRequest.getPassword());

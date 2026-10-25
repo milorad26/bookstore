@@ -1,12 +1,14 @@
 package com.bookstore.controller;
 
 import com.bookstore.dto.ForgotPasswordRequest;
+import com.bookstore.dto.RegisterRequest;
 import com.bookstore.model.User;
 import com.bookstore.security.JwtUtil;
 import com.bookstore.security.RefreshTokenCookieService;
 import com.bookstore.service.EmailService;
 import com.bookstore.service.LoginAttemptService;
 import com.bookstore.service.PasswordResetService;
+import com.bookstore.service.TurnstileCaptchaService;
 import com.bookstore.service.UserService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.junit.jupiter.api.AfterEach;
@@ -17,11 +19,13 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailSendException;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class AuthControllerTest {
@@ -34,6 +38,7 @@ class AuthControllerTest {
     private MessageSource messageSource;
     private LoginAttemptService loginAttemptService;
     private PasswordResetService passwordResetService;
+    private TurnstileCaptchaService captchaService;
 
     private AuthController controller;
 
@@ -47,9 +52,10 @@ class AuthControllerTest {
         messageSource = mock(MessageSource.class);
         loginAttemptService = mock(LoginAttemptService.class);
         passwordResetService = mock(PasswordResetService.class);
+        captchaService = mock(TurnstileCaptchaService.class);
         controller = new AuthController(
                 userService, jwtUtil, refreshTokenCookieService, authenticationManager, emailService, messageSource,
-                loginAttemptService, passwordResetService);
+                loginAttemptService, passwordResetService, captchaService);
         ReflectionTestUtils.setField(controller, "frontendUrl", "https://bookstore.example");
         LocaleContextHolder.setLocale(java.util.Locale.ENGLISH);
     }
@@ -73,6 +79,18 @@ class AuthControllerTest {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("This username does not exist", response.getBody());
         verifyNoInteractions(passwordResetService, emailService);
+    }
+
+    @Test
+    void rejectsRegistrationWhenCaptchaVerificationFails() {
+        RegisterRequest request = new RegisterRequest();
+        request.setCaptchaToken("invalid-token");
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "CAPTCHA verification failed"))
+                .when(captchaService).verify("invalid-token");
+
+        assertThrows(ResponseStatusException.class, () -> controller.register(request));
+
+        verifyNoInteractions(userService, emailService, jwtUtil);
     }
 
     @Test
