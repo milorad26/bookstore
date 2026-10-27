@@ -206,11 +206,50 @@
       <h4 class="mt-3">{{ t('shop.noBooksFound') }}</h4>
       <p class="text-muted">{{ t('shop.adjustSearch') }}</p>
     </div>
+
+    <div
+      v-if="!isLoading && totalElements > 0"
+      class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4"
+      :aria-label="t('shop.pagination')"
+    >
+      <p class="text-muted mb-0" aria-live="polite">
+        {{ t('shop.showingBooks', { start: rangeStart, end: rangeEnd, total: totalElements }) }}
+      </p>
+      <nav :aria-label="t('shop.pagination')">
+        <ul class="pagination mb-0">
+          <li class="page-item" :class="{ disabled: currentPage === 0 }">
+            <button
+              class="page-link"
+              type="button"
+              :disabled="currentPage === 0"
+              @click="loadBooks(currentPage - 1)"
+            >
+              {{ t('shop.previousPage') }}
+            </button>
+          </li>
+          <li class="page-item disabled" aria-current="page">
+            <span class="page-link">
+              {{ t('shop.pageOf', { page: currentPage + 1, pages: totalPages }) }}
+            </span>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage + 1 >= totalPages }">
+            <button
+              class="page-link"
+              type="button"
+              :disabled="currentPage + 1 >= totalPages"
+              @click="loadBooks(currentPage + 1)"
+            >
+              {{ t('shop.nextPage') }}
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -227,8 +266,12 @@ const cartStore = useCartStore()
 const { t } = useI18n()
 
 const books = ref([])
-const allBooks = ref([])
 const booksByCategory = ref({})
+const searchResults = ref(null)
+const pageSize = ref(20)
+const currentPage = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const viewMode = ref('all') // 'all' or 'categories'
 const isLoading = ref(false)
 const isSearching = ref(false)
@@ -239,31 +282,36 @@ const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
 
-const applySearch = () => {
-  const title = searchTitle.value.trim().toLocaleLowerCase()
-  const author = searchAuthor.value.trim().toLocaleLowerCase()
-  const isbn = searchIsbn.value.trim().toLocaleLowerCase()
+const rangeStart = computed(() => totalElements.value === 0 ? 0 : currentPage.value * pageSize.value + 1)
+const rangeEnd = computed(() => Math.min((currentPage.value + 1) * pageSize.value, totalElements.value))
 
-  if (title || author || isbn) {
-    viewMode.value = 'all'
-    books.value = allBooks.value.filter(book =>
-      (!title || (book.title || '').toLocaleLowerCase().includes(title)) &&
-      (!author || (book.author || '').toLocaleLowerCase().includes(author)) &&
-      (!isbn || String(book.isbn || '').toLocaleLowerCase().includes(isbn))
-    )
-  } else {
-    books.value = allBooks.value
-  }
-}
+const groupBooksByCategory = (catalogBooks) => catalogBooks.reduce((groups, book) => {
+  const category = book.category || 'General'
+  if (!groups[category]) groups[category] = []
+  groups[category].push(book)
+  return groups
+}, {})
 
-watch([searchTitle, searchAuthor, searchIsbn], applySearch)
-
-const loadBooks = async () => {
+const loadBooks = async (page = 0) => {
   isLoading.value = true
   try {
-    allBooks.value = await bookService.getAllBooks()
-    applySearch()
-    booksByCategory.value = await bookService.getBooksByCategory()
+    if (searchResults.value !== null) {
+      totalElements.value = searchResults.value.length
+      totalPages.value = Math.ceil(totalElements.value / pageSize.value)
+      currentPage.value = Math.min(page, Math.max(totalPages.value - 1, 0))
+      books.value = searchResults.value.slice(
+        currentPage.value * pageSize.value,
+        (currentPage.value + 1) * pageSize.value
+      )
+    } else {
+      const result = await bookService.getCatalogPage(page + 1)
+      pageSize.value = result.size
+      books.value = result.content
+      currentPage.value = result.page - 1
+      totalElements.value = result.totalElements
+      totalPages.value = result.totalPages
+    }
+    booksByCategory.value = groupBooksByCategory(books.value)
     
   } catch (error) {
     showError(localizedError(error, t, 'errors.loadBooks'))
@@ -284,7 +332,30 @@ const searchBooks = async (type) => {
     return
   }
 
-  applySearch()
+  viewMode.value = 'all'
+  isSearching.value = true
+  try {
+    const activeFilters = [
+      searchTitle.value.trim() ? bookService.searchByTitle(searchTitle.value.trim()) : null,
+      searchAuthor.value.trim() ? bookService.searchByAuthor(searchAuthor.value.trim()) : null,
+      searchIsbn.value.trim() ? bookService.searchByIsbn(searchIsbn.value.trim()) : null
+    ].filter(Boolean)
+    const resultSets = await Promise.all(activeFilters.map(request =>
+      request.catch(error => {
+        if (error.status === 404) return []
+        throw error
+      })
+    ))
+    const matchingIds = resultSets.slice(1).map(results => new Set(results.map(book => book.id)))
+    searchResults.value = resultSets[0].filter(book =>
+      matchingIds.every(ids => ids.has(book.id))
+    )
+    await loadBooks(0)
+  } catch (error) {
+    showError(localizedError(error, t, 'errors.loadBooks'))
+  } finally {
+    isSearching.value = false
+  }
 }
 
 const resetSearch = () => {
@@ -292,8 +363,9 @@ const resetSearch = () => {
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
+  searchResults.value = null
   viewMode.value = 'all' // Reset to All Books view
-  applySearch()
+  loadBooks(0)
 }
 
 const formatPrice = (price) => {
@@ -361,7 +433,7 @@ const addToCart = (book) => {
 }
 
 onMounted(() => {
-  loadBooks()
+  loadBooks(0)
 })
 </script>
 

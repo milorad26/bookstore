@@ -22,6 +22,8 @@ bookstore-frontend/.DS_Store
 # Root level
 package-lock.json
 node_modules/
+/.vscode/
+/bookstore/.env*
 
 # OS
 .DS_Store

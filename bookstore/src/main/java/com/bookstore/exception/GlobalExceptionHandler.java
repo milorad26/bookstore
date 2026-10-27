@@ -1,6 +1,7 @@
 package com.bookstore.exception;
 
 import com.bookstore.dto.ErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
@@ -40,6 +41,20 @@ public class GlobalExceptionHandler {
             HttpStatus.BAD_REQUEST.value(),
             message,
             messageSource.getMessage("validation.failed", null, locale)
+        );
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolations(ConstraintViolationException ex) {
+        Locale locale = LocaleContextHolder.getLocale();
+        String message = ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.joining(", "));
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message,
+                messageSource.getMessage("validation.failed", null, locale)
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -138,6 +153,17 @@ public ResponseEntity<ErrorResponse> handleTypeMismatch(
             HttpStatus.NOT_FOUND.value(),
             ex.getMessage(),
             messageSource.getMessage("error.notfound", null, locale)
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(CatalogPageNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCatalogPageNotFound(CatalogPageNotFoundException ex) {
+        Locale locale = LocaleContextHolder.getLocale();
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                messageSource.getMessage("error.notfound", null, locale)
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }

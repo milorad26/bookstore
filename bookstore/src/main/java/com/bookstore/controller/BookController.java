@@ -1,12 +1,15 @@
 package com.bookstore.controller;
 
 import com.bookstore.dto.BookDTO;
+import com.bookstore.dto.BookPageDTO;
 import com.bookstore.service.BookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -15,11 +18,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.Locale;
 
 @RestController
+@Validated
 @RequestMapping("/api/books")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
@@ -37,6 +42,20 @@ public class BookController {
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAllBooks());
+    }
+
+    @Operation(summary = "Get a page of catalog books", description = "Page numbers start at 1. The default and maximum page size are configured by CATALOG_PAGE_SIZE (default 20). The total page count is calculated from the current catalog; the final page may contain fewer books.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Catalog page retrieved"),
+        @ApiResponse(responseCode = "400", description = "Invalid page number or page size"),
+        @ApiResponse(responseCode = "404", description = "Requested page does not exist")
+    })
+    @GetMapping("/page")
+    public ResponseEntity<BookPageDTO> getCatalogPage(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "Optional; defaults to configured CATALOG_PAGE_SIZE; values above that limit are rejected")
+            @RequestParam(required = false) @Min(1) Integer size) {
+        return ResponseEntity.ok(bookService.getCatalogPage(page, size));
     }
 
     @Operation(summary = "Get low-stock books", description = "Retrieve books at or below the configured inventory alert threshold")

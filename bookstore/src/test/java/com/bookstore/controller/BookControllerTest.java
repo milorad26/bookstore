@@ -1,6 +1,8 @@
 package com.bookstore.controller;
 
 import com.bookstore.dto.BookDTO;
+import com.bookstore.dto.BookPageDTO;
+import com.bookstore.exception.CatalogPageNotFoundException;
 import com.bookstore.exception.ResourceNotFoundException;
 import com.bookstore.security.CustomUserDetailsService;
 import com.bookstore.security.JwtUtil;
@@ -84,6 +86,46 @@ class BookControllerTest {
                 .andExpect(jsonPath("$[1].title", is("The Pragmatic Programmer")));
 
         verify(bookService).getAllBooks();
+    }
+
+    @Test
+    void getCatalogPage_shouldApplyDefaultsAndReturnPageMetadata() throws Exception {
+        when(bookService.getCatalogPage(1, null))
+                .thenReturn(new BookPageDTO(List.of(testBookDTO1), 1, 20, 1, 1));
+
+        mockMvc.perform(get("/api/books/page"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page", is(1)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalElements", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+
+        verify(bookService).getCatalogPage(1, null);
+    }
+
+    @Test
+    void getCatalogPage_shouldRejectOutOfRangeParameters() throws Exception {
+        mockMvc.perform(get("/api/books/page").param("page", "0"))
+                .andExpect(status().isBadRequest());
+        when(bookService.getCatalogPage(1, 45))
+                .thenThrow(new IllegalArgumentException("Page size must be between 1 and the configured maximum of 20 books"));
+        mockMvc.perform(get("/api/books/page").param("size", "45"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("configured maximum of 20 books")));
+
+        verify(bookService).getCatalogPage(1, 45);
+    }
+
+    @Test
+    void getCatalogPage_shouldReturnNotFoundForUnavailablePage() throws Exception {
+        when(bookService.getCatalogPage(5, null))
+                .thenThrow(new CatalogPageNotFoundException("Catalog page 5 does not exist. Available pages: 4"));
+
+        mockMvc.perform(get("/api/books/page").param("page", "5"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", is(404)))
+                .andExpect(jsonPath("$.message", containsString("Available pages: 4")));
     }
 
     @Test

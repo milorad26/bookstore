@@ -58,6 +58,9 @@ app:
 inventory:
   low-stock-threshold: ${INVENTORY_LOW_STOCK_THRESHOLD:10}
 
+catalog:
+  page-size: ${CATALOG_PAGE_SIZE:20}
+
 # JWT Configuration
 jwt:
   secret: ${JWT_SECRET}

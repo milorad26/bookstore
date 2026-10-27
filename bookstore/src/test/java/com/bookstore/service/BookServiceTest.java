@@ -2,6 +2,7 @@ package com.bookstore.service;
 
 import com.bookstore.dto.BookDTO;
 import com.bookstore.exception.ResourceNotFoundException;
+import com.bookstore.exception.CatalogPageNotFoundException;
 import com.bookstore.model.Book;
 import com.bookstore.repository.BookRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +12,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -42,6 +47,7 @@ class BookServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(bookService, "catalogPageSize", 20);
         lenient().when(messageSource.getMessage(anyString(), any(Object[].class), any(Locale.class)))
                 .thenAnswer(invocation -> {
                     String key = invocation.getArgument(0);
@@ -93,6 +99,99 @@ class BookServiceTest {
         assertThat(result.get(0).getTitle()).isEqualTo("Clean Code");
         assertThat(result.get(1).getTitle()).isEqualTo("The Pragmatic Programmer");
         verify(bookRepository).findAll();
+    }
+
+    @Test
+    void getCatalogPage_shouldUseOneBasedPageAndReturnPagedDtos() {
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 20), 21));
+
+        var result = bookService.getCatalogPage(1, 20);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Clean Code");
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(20);
+        assertThat(result.getTotalElements()).isEqualTo(21);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        verify(bookRepository).findAll(
+                argThat((Pageable pageable) -> pageable.getPageNumber() == 0
+                        && pageable.getPageSize() == 20
+                        && pageable.getSort().getOrderFor("title") != null
+                        && pageable.getSort().getOrderFor("id") != null));
+    }
+
+    @Test
+    void getCatalogPage_shouldRejectInvalidPageAndSize() {
+        assertThatThrownBy(() -> bookService.getCatalogPage(0, 20))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> bookService.getCatalogPage(1, 45))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(bookRepository);
+    }
+
+    @Test
+    void getCatalogPage_shouldUseConfiguredDefaultAndMaximumSize() {
+        ReflectionTestUtils.setField(bookService, "catalogPageSize", 40);
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 40), 1));
+
+        var result = bookService.getCatalogPage(1, null);
+
+        assertThat(result.getSize()).isEqualTo(40);
+        verify(bookRepository).findAll(argThat((Pageable pageable) -> pageable.getPageSize() == 40));
+    }
+
+    @Test
+    void getCatalogPage_shouldCalculateTotalPagesFromCurrentCatalogSize() {
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(5, 20), 120));
+
+        var result = bookService.getCatalogPage(6, 20);
+
+        assertThat(result.getPage()).isEqualTo(6);
+        assertThat(result.getSize()).isEqualTo(20);
+        assertThat(result.getTotalElements()).isEqualTo(120);
+        assertThat(result.getTotalPages()).isEqualTo(6);
+    }
+
+    @Test
+    void getCatalogPage_shouldAllowShortFinalPage() {
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1, testBook2, createBook(3L, "Refactoring")),
+                        PageRequest.of(3, 20), 63));
+
+        var result = bookService.getCatalogPage(4, 20);
+
+        assertThat(result.getContent()).hasSize(3);
+        assertThat(result.getPage()).isEqualTo(4);
+        assertThat(result.getTotalPages()).isEqualTo(4);
+    }
+
+    @Test
+    void getCatalogPage_shouldThrowDedicatedExceptionForMissingPageOrEmptyCatalog() {
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(4, 20), 62));
+
+        assertThatThrownBy(() -> bookService.getCatalogPage(5, 20))
+                .isInstanceOf(CatalogPageNotFoundException.class)
+                .hasMessageContaining("Available pages: 4");
+
+        when(bookRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+        assertThatThrownBy(() -> bookService.getCatalogPage(1, 20))
+                .isInstanceOf(CatalogPageNotFoundException.class);
+    }
+
+    private Book createBook(Long id, String title) {
+        Book book = new Book();
+        book.setId(id);
+        book.setTitle(title);
+        book.setAuthor("Test Author");
+        book.setIsbn("test-isbn-" + id);
+        book.setPrice(new BigDecimal("19.99"));
+        book.setStockQuantity(1);
+        return book;
     }
 
     @Test

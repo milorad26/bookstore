@@ -1,17 +1,23 @@
 package com.bookstore.service;
 
 import com.bookstore.dto.BookDTO;
+import com.bookstore.dto.BookPageDTO;
+import com.bookstore.exception.CatalogPageNotFoundException;
 import com.bookstore.model.Book;
 import com.bookstore.repository.BookRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Locale;
 import com.bookstore.exception.ResourceNotFoundException;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +26,39 @@ public class BookService {
     private final BookRepository bookRepository;
     private final MessageSource messageSource;
 
+    @Value("${catalog.page-size}")
+    private int catalogPageSize;
+
     public List<BookDTO> getAllBooks() {
         return bookRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .toList();
+    }
+
+    public BookPageDTO getCatalogPage(int page, Integer requestedSize) {
+        if (page < 1) {
+            throw new IllegalArgumentException("Page number must be at least 1");
+        }
+        int size = requestedSize == null ? catalogPageSize : requestedSize;
+        if (size < 1 || size > catalogPageSize) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and the configured maximum of "
+                            + catalogPageSize + " books");
+        }
+
+        Page<Book> bookPage = bookRepository.findAll(
+                PageRequest.of(page - 1, size, Sort.by("title").ascending().and(Sort.by("id").ascending())));
+        if (bookPage.isEmpty() || page > bookPage.getTotalPages()) {
+            throw new CatalogPageNotFoundException(
+                    "Catalog page " + page + " does not exist. Available pages: " + bookPage.getTotalPages());
+        }
+
+        return new BookPageDTO(
+                bookPage.getContent().stream().map(this::convertToDTO).toList(),
+                page,
+                bookPage.getSize(),
+                bookPage.getTotalElements(),
+                bookPage.getTotalPages());
     }
 
     public List<BookDTO> getLowStockBooks(int threshold) {

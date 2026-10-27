@@ -2,6 +2,15 @@ import apiClient from './api'
 import { sanitizeErrorMessage } from '../utils/errorHandler'
 
 export const bookService = {
+  getCatalogPage: async (page = 1) => {
+    try {
+      const response = await apiClient.get('/books/page', { params: { page } })
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   getAllBooks: async () => {
     try {
       const response = await apiClient.get('/books')

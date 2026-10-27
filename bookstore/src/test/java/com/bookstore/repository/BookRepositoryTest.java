@@ -8,6 +8,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -156,6 +158,17 @@ class BookRepositoryTest {
 
         // Then
         assertThat(books).hasSize(3);
+    }
+
+    @Test
+    void findAll_shouldPageInStableTitleOrder() {
+        var page = bookRepository.findAll(
+                PageRequest.of(0, 1, Sort.by("title").ascending().and(Sort.by("id").ascending())));
+
+        assertThat(page.getContent()).hasSize(1);
+        assertThat(page.getContent().get(0).getTitle()).isEqualTo("Clean Code");
+        assertThat(page.getTotalElements()).isEqualTo(3);
+        assertThat(page.getTotalPages()).isEqualTo(3);
     }
 
     @Test
