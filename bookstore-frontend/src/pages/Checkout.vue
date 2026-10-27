@@ -168,24 +168,24 @@
             
             <div class="d-flex justify-content-between mb-2">
               <span>{{ t('checkout.summary.delivery') }}:</span>
-              <span class="text-primary">${{ formatPrice(cartStore.deliveryFee) }}</span>
+              <span class="text-primary">${{ formatPrice(displayDeliveryFee) }}</span>
             </div>
 
-            <div v-if="bulkDiscountInfo?.discountAmount > 0" class="d-flex justify-content-between mb-2 text-info">
+            <div v-if="displayBulkDiscount > 0" class="d-flex justify-content-between mb-2 text-info">
               <span>{{ t('checkout.summary.bulkDiscount') }}:</span>
-              <span>-${{ formatPrice(bulkDiscountInfo.discountAmount) }}</span>
+              <span>-${{ formatPrice(displayBulkDiscount) }}</span>
             </div>
 
-            <div v-if="selectedCoupon" class="d-flex justify-content-between mb-3 text-success">
+            <div v-if="displayCouponDiscount > 0" class="d-flex justify-content-between mb-3 text-success">
               <span>{{ t('checkout.summary.discount') }}:</span>
-              <span>-${{ formatPrice(selectedCoupon.value) }}</span>
+              <span>-${{ formatPrice(displayCouponDiscount) }}</span>
             </div>
             
             <hr class="mb-3">
             
             <div class="d-flex justify-content-between mb-0">
               <strong class="h5">{{ t('checkout.summary.total') }}:</strong>
-              <strong class="text-primary h4 mb-0">${{ formatPrice(finalTotal) }}</strong>
+              <strong class="text-primary h4 mb-0">${{ formatPrice(displayTotal) }}</strong>
             </div>
           </div>
         </div>
@@ -223,6 +223,7 @@ const alertMessage = ref('')
 const alertType = ref('info')
 const activeDiscountRules = ref([])
 const bulkDiscountInfo = ref(null)
+const serverCalculatedOrder = ref(null)
 
 // Load active bulk discount rules
 onMounted(async () => {
@@ -252,9 +253,14 @@ watch(
   () => cartStore.cartItems,
   () => {
     calculateBulkDiscount()
+    serverCalculatedOrder.value = null
   },
   { immediate: true, deep: true }
 )
+
+watch(selectedCoupon, () => {
+  serverCalculatedOrder.value = null
+})
 
 const finalTotal = computed(() => {
   let total = cartStore.totalAmount
@@ -276,6 +282,22 @@ const finalTotal = computed(() => {
   
   return total
 })
+
+const displayTotal = computed(() => serverCalculatedOrder.value
+  ? Number(serverCalculatedOrder.value.totalAmount)
+  : finalTotal.value)
+
+const displayDeliveryFee = computed(() => serverCalculatedOrder.value
+  ? Number(serverCalculatedOrder.value.deliveryFee)
+  : cartStore.deliveryFee)
+
+const displayBulkDiscount = computed(() => serverCalculatedOrder.value
+  ? Number(serverCalculatedOrder.value.bulkDiscountAmount || 0)
+  : Number(bulkDiscountInfo.value?.discountAmount || 0))
+
+const displayCouponDiscount = computed(() => serverCalculatedOrder.value
+  ? Number(serverCalculatedOrder.value.discountAmount || 0)
+  : Number(selectedCoupon.value?.value || 0))
 
 const formatPrice = (price) => {
   return parseFloat(price).toFixed(2)
@@ -328,11 +350,11 @@ const submitOrder = async () => {
         ? shippingAddress.value.trim() 
         : billingAddress.value.trim(),
       orderNotes: orderNotes.value.trim() || null,
-      deliveryFee: cartStore.deliveryFee,
       couponCode: selectedCoupon.value ? selectedCoupon.value.code : null
     }
 
     const createdOrder = await orderService.createOrder(orderData)
+    serverCalculatedOrder.value = createdOrder
 
     // Step 2: Create Stripe checkout session
     const paymentData = await paymentService.createCheckoutSession(createdOrder.id)

@@ -85,7 +85,7 @@ public class EmailService {
         } catch (MessagingException e) {
             log.error("Failed to send order confirmation email to {} for order #{}: {}", 
                     order.getUser().getEmail(), order.getId(), e.getMessage());
-            // Don't throw exception - email failure shouldn't break order confirmation
+            throw new MailSendException("Failed to prepare order confirmation email", e);
         }
     }
 

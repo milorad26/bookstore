@@ -19,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +41,9 @@ public class PaymentService {
     @Value("${stripe.cancel-url}")
     private String cancelUrl;
 
+    @Value("${app.checkout.reservation-minutes:30}")
+    private long reservationMinutes;
+
     private final OrderRepository orderRepository;
     private final CouponService couponService;
     private final EmailService emailService;
@@ -55,7 +60,7 @@ public class PaymentService {
         }
 
         // Fetch order from database
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 
         if (order.getStatus() != com.bookstore.model.OrderStatus.PENDING
@@ -65,26 +70,42 @@ public class PaymentService {
         if (order.getPaymentIntentId() != null) {
             throw new IllegalStateException("Order already has a successful payment");
         }
-        
-        // Confirm the order if it's still PENDING (this sends the confirmation email)
+
+        LocalDateTime now = LocalDateTime.now();
+        if (order.getReservationExpiresAt() != null && !order.getReservationExpiresAt().isAfter(now)) {
+            throw new IllegalStateException("The inventory reservation for this order has expired. Please submit the order again.");
+        }
+        if (order.getStatus() == com.bookstore.model.OrderStatus.CONFIRMED
+                && order.getReservationExpiresAt() == null
+                && order.getCheckoutSessionId() == null) {
+            throw new IllegalStateException(
+                    "This legacy order may have an active Stripe session. Wait for it to expire before creating another payment session.");
+        }
+
+        if (reservationMinutes < 30 || reservationMinutes > 1440) {
+            throw new IllegalStateException("Checkout reservation duration must be between 30 and 1440 minutes.");
+        }
+
+        if (order.getCheckoutSessionId() != null) {
+            Session existingSession = Session.retrieve(order.getCheckoutSessionId());
+            if ("open".equals(existingSession.getStatus())) {
+                return new PaymentSessionResponse(
+                        existingSession.getId(), existingSession.getUrl(), stripePublishableKey);
+            }
+            if ("complete".equals(existingSession.getStatus())) {
+                throw new IllegalStateException("The existing checkout session has already been completed.");
+            }
+        }
+
+        // Confirm the order without sending a confirmation email before payment.
         if (order.getStatus() == com.bookstore.model.OrderStatus.PENDING) {
             log.info("Confirming order {} before creating payment session", orderId);
             order.setStatus(com.bookstore.model.OrderStatus.CONFIRMED);
-            order = orderRepository.save(order);
-            
-            // Send order confirmation email (non-blocking - don't fail if email service is down)
-            try {
-                emailService.sendOrderConfirmationEmail(order);
-                order.setConfirmationEmailSent(true);
-                orderRepository.save(order);
-                log.info("Order {} confirmed and email sent", orderId);
-            } catch (Exception e) {
-                log.error("Failed to send order confirmation email for order {}: {}", orderId, e.getMessage());
-                log.warn("Order {} confirmed but email not sent - will retry automatically", orderId);
-                order.setConfirmationEmailSent(false);
-                orderRepository.save(order);
-            }
         }
+
+        LocalDateTime expiresAt = now.plusMinutes(reservationMinutes);
+        order.setReservationExpiresAt(expiresAt);
+        orderRepository.save(order);
 
         // Build line items from order
         List<SessionCreateParams.LineItem> lineItems = new ArrayList<>();
@@ -189,6 +210,7 @@ public class PaymentService {
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setClientReferenceId(orderId.toString())
+                .setExpiresAt(expiresAt.atZone(ZoneId.systemDefault()).toEpochSecond())
                 .setSuccessUrl(successUrl + "?session_id={CHECKOUT_SESSION_ID}&order_id=" + orderId)
                 .setCancelUrl(cancelUrl)
                 .addAllLineItem(lineItems)
@@ -196,8 +218,12 @@ public class PaymentService {
                 .build();
 
         Session session = Session.create(params, RequestOptions.builder()
-                .setIdempotencyKey("checkout-session-order-" + orderId)
+                .setIdempotencyKey("checkout-session-order-" + orderId + "-"
+                        + expiresAt.atZone(ZoneId.systemDefault()).toEpochSecond())
                 .build());
+
+        order.setCheckoutSessionId(session.getId());
+        orderRepository.save(order);
 
         log.info("Created Stripe Checkout Session: {} for Order ID: {}", session.getId(), orderId);
 
@@ -254,6 +280,10 @@ public class PaymentService {
 
         Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found with ID: " + orderId));
+        if (order.getCheckoutSessionId() != null
+                && !order.getCheckoutSessionId().equals(session.getId())) {
+            throw new IllegalArgumentException("Stripe session does not match the active checkout session for this order");
+        }
         validateSessionAmount(session, order);
         String paymentIntentId = session.getPaymentIntent();
         if (order.getPaymentIntentId() != null || order.getStatus() == com.bookstore.model.OrderStatus.PAID) {
@@ -262,6 +292,7 @@ public class PaymentService {
             }
             // The browser can return repeatedly; processing remains idempotent.
             couponService.generateCouponForOrder(order);
+            sendConfirmationEmail(order);
             return;
         }
         if (order.getStatus() != com.bookstore.model.OrderStatus.CONFIRMED) {
@@ -270,10 +301,26 @@ public class PaymentService {
 
         order.setPaymentIntentId(paymentIntentId);
         order.setStatus(com.bookstore.model.OrderStatus.PAID);
+        order.setReservationExpiresAt(null);
         order.setUpdatedAt(java.time.LocalDateTime.now());
         Order savedOrder = orderRepository.save(order);
         couponService.generateCouponForOrder(savedOrder);
+        sendConfirmationEmail(savedOrder);
         log.info("Payment confirmed for order {} using Stripe payment intent {}", orderId, paymentIntentId);
+    }
+
+    private void sendConfirmationEmail(Order order) {
+        if (Boolean.TRUE.equals(order.getConfirmationEmailSent())) {
+            return;
+        }
+        try {
+            emailService.sendOrderConfirmationEmail(order);
+            order.setConfirmationEmailSent(true);
+            orderRepository.save(order);
+        } catch (Exception e) {
+            log.error("Payment succeeded for order {}, but the confirmation email failed and will be retried: {}",
+                    order.getId(), e.getMessage());
+        }
     }
 
     private boolean isPaymentSuccessful(Session session) {

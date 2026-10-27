@@ -1,17 +1,17 @@
 # Email Service Setup Guide
 
 ## Overview
-The email service has been implemented to send **bilingual (English & Serbian)** order confirmation emails automatically when an order is confirmed. The system sends a beautifully formatted HTML email with complete order details to the customer in both languages.
+The email service sends **bilingual (English & Serbian)** order confirmation emails only after Stripe confirms payment. The email contains the order details in both languages.
 
 ## Features
 - ✅ **Bilingual emails** in English (🇬🇧) and Serbian (🇷🇸)
-- ✅ Automatic email sending when order status changes to CONFIRMED
+- ✅ Automatic email sending after a verified payment changes the order to PAID
 - ✅ Professional HTML formatting with separate sections for each language
 - ✅ Uses Spring MessageSource for internationalization (i18n)
 - ✅ Includes order number, items, quantities, prices, and total amount
 - ✅ Sender email: orders@bookstore.com
 - ✅ Subject format: "Your order - {order_id} / Vaša porudžbina - {order_id}"
-- ✅ Graceful error handling (email failures don't break order confirmation)
+- ✅ Failed emails are retried for paid orders without changing payment status
 
 ## Configuration
 
@@ -121,12 +121,10 @@ The confirmation email includes **both English and Serbian** versions:
 The email displays both languages in clearly separated sections with visual language indicators (🇬🇧 ENGLISH / 🇷🇸 SRPSKI).
 
 ## How It Works
-1. When an order is confirmed via the `confirmOrder()` method in OrderService
-2. After successfully saving the order with CONFIRMED status
-3. The `EmailService.sendOrderConfirmationEmail()` is automatically called
-4. An HTML email is generated with all order details
-5. The email is sent to the user's email address (from User entity)
-6. If email sending fails, an error is logged but the order confirmation still succeeds
+1. The customer creates an order and starts Stripe Checkout.
+2. The order remains unpaid while the customer is on Stripe Checkout; no confirmation email is sent yet.
+3. After Stripe verifies payment, the order is marked PAID and `EmailService.sendOrderConfirmationEmail()` sends the receipt.
+4. If sending fails, the paid order remains successful and `EmailRetryScheduler` retries the email.
 
 ## Testing the Email Service
 
@@ -136,10 +134,8 @@ Make sure the user placing the order has a valid email address in the database:
 UPDATE users SET email = 'test@example.com' WHERE id = 1;
 ```
 
-### 2. Create and Confirm an Order
-Use the API endpoints:
-1. POST `/api/orders` - Create an order
-2. POST `/api/orders/{orderId}/confirm` - Confirm the order (triggers email)
+### 2. Complete a Test Checkout
+Create an order and complete the Stripe Checkout flow using Stripe test credentials. Merely creating or confirming an unpaid order does not send an order confirmation email.
 
 ### 3. Check Logs
 The application logs will show:
@@ -159,7 +155,8 @@ The application logs will show:
 - Umessages_en.properties` - Added English email messages
 - `messages_sr.properties` - Added Serbian email messages (with proper Unicode encoding)
 - `EmailService.java` - New service for sending bilingual emails
-- `OrderService.java` - Integrated email sending on order confirmation
+- `PaymentService.java` - Sends confirmation emails after verified payment
+- `EmailRetryScheduler.java` - Retries failed confirmation emails for paid orders
 
 ## Internationalization (i18n)
 The email service leverages Spring's MessageSource to provide bilingual content:
@@ -186,7 +183,8 @@ Use Mailhog or smtp4dev for local development to see emails without actually sen
 - `pom.xml` - Added spring-boot-starter-mail dependency
 - `application.yml` - Added mail configuration
 - `EmailService.java` - New service for sending emails
-- `OrderService.java` - Integrated email sending on order confirmation
+- `PaymentService.java` - Sends confirmation emails after verified payment
+- `EmailRetryScheduler.java` - Retries failed confirmation emails for paid orders
 
 ## Future Enhancements
 Potential improvements:

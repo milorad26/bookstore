@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Locale;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -108,6 +110,15 @@ class OrderServiceTest {
         testOrder.setTotalAmount(new BigDecimal("42.99"));
         testOrder.setShippingAddress("123 Test St");
         testOrder.setOrderItems(new ArrayList<>());
+
+        ReflectionTestUtils.setField(orderService, "checkoutDeliveryFee", new BigDecimal("4.00"));
+        ReflectionTestUtils.setField(orderService, "reservationMinutes", 30L);
+        lenient().when(bookRepository.findByIdForUpdate(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            if (testBook1.getId().equals(id)) return Optional.of(testBook1);
+            if (testBook2.getId().equals(id)) return Optional.of(testBook2);
+            return Optional.empty();
+        });
     }
 
     @Test
@@ -195,6 +206,7 @@ class OrderServiceTest {
         itemRequest.setAuthor("Robert C. Martin");
         itemRequest.setQuantity(2);
         request.setOrderItems(Arrays.asList(itemRequest));
+        request.setDeliveryFee(new BigDecimal("999.99"));
 
         Order savedOrder = new Order();
         savedOrder.setId(1L);
@@ -204,10 +216,10 @@ class OrderServiceTest {
         savedOrder.setShippingAddress("123 Test St");
         savedOrder.setOrderItems(new ArrayList<>());
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
         when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
                 .thenReturn(new ArrayList<>()); // No existing pending orders
-        when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
+        when(bookRepository.findByTitleAndAuthorForUpdate("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
@@ -218,11 +230,14 @@ class OrderServiceTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(1L);
-        verify(userRepository).findById(1L);
+        verify(userRepository).findByIdForUpdate(1L);
         verify(orderRepository).findByUserIdAndStatus(1L, OrderStatus.PENDING);
-        verify(bookRepository).findByTitleAndAuthor("Clean Code", "Robert C. Martin");
+        verify(bookRepository).findByTitleAndAuthorForUpdate("Clean Code", "Robert C. Martin");
         verify(bookRepository).save(any(Book.class));
-        verify(orderRepository).save(any(Order.class));
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertThat(orderCaptor.getValue().getTotalAmount()).isEqualByComparingTo("89.98");
+        assertThat(orderCaptor.getValue().getReservationExpiresAt()).isNotNull();
     }
 
     @Test
@@ -232,13 +247,13 @@ class OrderServiceTest {
         request.setUserId(999L);
         request.setOrderItems(Arrays.asList(new CreateOrderItemRequest()));
 
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+        when(userRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
                 .isInstanceOf(ResourceNotFoundException.class);
         
-        verify(userRepository).findById(999L);
+        verify(userRepository).findByIdForUpdate(999L);
         verify(orderRepository, never()).save(any());
     }
 
@@ -249,7 +264,7 @@ class OrderServiceTest {
         request.setUserId(1L);
         request.setOrderItems(new ArrayList<>());
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
 
         // When & Then
         assertThatThrownBy(() -> orderService.createOrder(request))
@@ -283,10 +298,10 @@ class OrderServiceTest {
         savedOrder.setStatus(OrderStatus.PENDING);
         savedOrder.setOrderItems(new ArrayList<>());
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
         when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
                 .thenReturn(Arrays.asList(existingPendingOrder));
-        when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
+        when(bookRepository.findByTitleAndAuthorForUpdate("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
@@ -314,10 +329,10 @@ class OrderServiceTest {
         itemRequest.setQuantity(100); // More than available stock
         request.setOrderItems(Arrays.asList(itemRequest));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
         when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
                 .thenReturn(new ArrayList<>());
-        when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
+        when(bookRepository.findByTitleAndAuthorForUpdate("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
 
         // When & Then
@@ -339,10 +354,10 @@ class OrderServiceTest {
         itemRequest.setQuantity(1);
         request.setOrderItems(Arrays.asList(itemRequest));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
         when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
                 .thenReturn(new ArrayList<>());
-        when(bookRepository.findByTitleAndAuthor("Non Existent Book", "Unknown Author"))
+        when(bookRepository.findByTitleAndAuthorForUpdate("Non Existent Book", "Unknown Author"))
                 .thenReturn(Optional.empty());
 
         // When & Then
@@ -355,7 +370,7 @@ class OrderServiceTest {
     @Test
     void testConfirmOrder_ShouldUpdateStatusToConfirmed() {
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         
         OrderItem orderItem = new OrderItem();
         orderItem.setBook(testBook1);
@@ -375,22 +390,46 @@ class OrderServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        verify(orderRepository).findById(1L);
-        verify(orderRepository, times(2)).save(any(Order.class));
+        verify(orderRepository).findByIdForUpdate(1L);
+        verify(orderRepository).save(any(Order.class));
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void testExpireUnpaidOrders_CancelsOrderAndRestoresReservedStock() {
+        testOrder.setStatus(OrderStatus.CONFIRMED);
+        testOrder.setReservationExpiresAt(LocalDateTime.now().minusMinutes(1));
+        testBook1.setStockQuantity(8);
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(testOrder);
+        orderItem.setBook(testBook1);
+        orderItem.setQuantity(2);
+        testOrder.setOrderItems(new ArrayList<>(List.of(orderItem)));
+
+        when(orderRepository.findExpiredUnpaidOrderIds(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(testOrder.getId()));
+        when(orderRepository.findByIdForUpdate(testOrder.getId())).thenReturn(Optional.of(testOrder));
+
+        int expiredCount = orderService.expireUnpaidOrders();
+
+        assertThat(expiredCount).isEqualTo(1);
+        assertThat(testOrder.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(testBook1.getStockQuantity()).isEqualTo(10);
+        verify(orderRepository).save(testOrder);
     }
 
     @Test
     void testConfirmOrder_AlreadyConfirmed_ShouldReturnOrder() {
         // Given
         testOrder.setStatus(OrderStatus.CONFIRMED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When
         OrderDTO result = orderService.confirmOrder(1L);
 
         // Then
         assertThat(result).isNotNull();
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
         verify(bookRepository, never()).save(any());
         verify(orderRepository, never()).save(any());
     }
@@ -399,7 +438,7 @@ class OrderServiceTest {
     void testConfirmOrder_NotPending_ShouldThrowException() {
         // Given
         testOrder.setStatus(OrderStatus.SHIPPED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThatThrownBy(() -> orderService.confirmOrder(1L))
@@ -411,7 +450,7 @@ class OrderServiceTest {
     @Test
     void testUpdateOrderStatus_ShouldUpdateStatus() {
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         
         Order updatedOrder = new Order();
         updatedOrder.setId(1L);
@@ -425,7 +464,7 @@ class OrderServiceTest {
 
         // Then
         assertThat(result).isNotNull();
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
         verify(orderRepository).save(any(Order.class));
     }
 
@@ -433,7 +472,7 @@ class OrderServiceTest {
     void testUpdateOrderStatus_InvalidTransition_ShouldThrowException() {
         // Given
         testOrder.setStatus(OrderStatus.DELIVERED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThatThrownBy(() -> orderService.updateOrderStatus(1L, OrderStatus.PENDING))
@@ -453,7 +492,7 @@ class OrderServiceTest {
         orderItem.setPrice(testBook1.getPrice());
         testOrder.getOrderItems().add(orderItem);
         
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
         
         Order cancelledOrder = new Order();
@@ -475,7 +514,7 @@ class OrderServiceTest {
     @Test
     void testCancelOrder_ShouldUpdateStatusToCancelled() {
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         
         Order cancelledOrder = new Order();
         cancelledOrder.setId(1L);
@@ -488,7 +527,7 @@ class OrderServiceTest {
         orderService.cancelOrder(1L);
 
         // Then
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
         verify(orderRepository).save(any(Order.class));
     }
 
@@ -496,14 +535,14 @@ class OrderServiceTest {
     void testDeleteOrder_WithPendingOrder_ShouldDelete() {
         // Given
         testOrder.setStatus(OrderStatus.PENDING);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         doNothing().when(orderRepository).deleteById(1L);
 
         // When
         orderService.deleteOrder(1L);
 
         // Then
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
         verify(orderRepository).deleteById(1L);
     }
 
@@ -511,14 +550,14 @@ class OrderServiceTest {
     void testDeleteOrder_WithCancelledOrder_ShouldDelete() {
         // Given
         testOrder.setStatus(OrderStatus.CANCELLED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         doNothing().when(orderRepository).deleteById(1L);
 
         // When
         orderService.deleteOrder(1L);
 
         // Then
-        verify(orderRepository).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
         verify(orderRepository).deleteById(1L);
     }
 
@@ -526,7 +565,7 @@ class OrderServiceTest {
     void testDeleteOrder_WithConfirmedOrder_ShouldThrowException() {
         // Given
         testOrder.setStatus(OrderStatus.CONFIRMED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThatThrownBy(() -> orderService.deleteOrder(1L))
@@ -538,7 +577,7 @@ class OrderServiceTest {
     @Test
     void testDeleteOrder_WithNonExistentOrder_ShouldThrowException() {
         // Given
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> orderService.deleteOrder(999L))
@@ -568,10 +607,10 @@ class OrderServiceTest {
         savedOrder.setStatus(OrderStatus.PENDING);
         savedOrder.setOrderItems(new ArrayList<>());
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testUser));
         when(orderRepository.findByUserIdAndStatus(1L, OrderStatus.PENDING))
                 .thenReturn(new ArrayList<>());
-        when(bookRepository.findByTitleAndAuthor("Clean Code", "Robert C. Martin"))
+        when(bookRepository.findByTitleAndAuthorForUpdate("Clean Code", "Robert C. Martin"))
                 .thenReturn(Optional.of(testBook1));
         when(bookRepository.save(any(Book.class))).thenReturn(testBook1);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
@@ -600,7 +639,7 @@ class OrderServiceTest {
         
 
         
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         
         Refund mockRefund = mock(Refund.class);
         when(paymentService.refundPayment("pi_test_12345")).thenReturn(mockRefund);
@@ -627,7 +666,7 @@ class OrderServiceTest {
     void testRefundOrder_NotDelivered_ShouldThrowException() throws StripeException {
         // Given
         testOrder.setStatus(OrderStatus.CONFIRMED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThatThrownBy(() -> orderService.refundOrder(1L))
@@ -642,7 +681,7 @@ class OrderServiceTest {
         // Given
         testOrder.setStatus(OrderStatus.DELIVERED);
         testOrder.setPaymentIntentId(null); // No payment intent
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // When & Then
         assertThatThrownBy(() -> orderService.refundOrder(1L))
@@ -657,7 +696,7 @@ class OrderServiceTest {
         // Given
         testOrder.setStatus(OrderStatus.DELIVERED);
         testOrder.setPaymentIntentId("pi_test_12345");
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         
         when(paymentService.refundPayment("pi_test_12345"))
                 .thenThrow(new StripeException("Refund failed", "request_id", "code", 400) {});
@@ -685,7 +724,7 @@ class OrderServiceTest {
         
         int initialStock = testBook1.getStockQuantity();
         
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         Refund mockRefund = mock(Refund.class);
         when(paymentService.refundPayment("pi_test_12345")).thenReturn(mockRefund);
         
@@ -711,6 +750,7 @@ class OrderServiceTest {
     void testDeliverOrder_ShouldUpdateStatusToDelivered() {
         // Given
         testOrder.setStatus(OrderStatus.PAID);
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
         
         Order deliveredOrder = new Order();
@@ -727,13 +767,15 @@ class OrderServiceTest {
         assertThat(result).isNotNull();
         assertThat(testOrder.getDeliveryEmailSent()).isTrue();
         verify(emailService).sendDeliveryEmail(testOrder);
-        verify(orderRepository, times(2)).findById(1L);
+        verify(orderRepository).findByIdForUpdate(1L);
+        verify(orderRepository).findById(1L);
         verify(orderRepository, times(2)).save(any(Order.class));
     }
 
     @Test
     void testDeliverOrder_ShouldLeaveDeliveryEmailUnsentWhenSendingFails() {
         testOrder.setStatus(OrderStatus.PAID);
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
         when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
         doThrow(new IllegalStateException("Mail server unavailable"))
                 .when(emailService).sendDeliveryEmail(testOrder);

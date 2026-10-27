@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +22,15 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     List<Book> findByTitleContainingIgnoreCase(String title);
 
     Optional<Book> findByTitleAndAuthor(String title, String author);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Book b where b.title = :title and b.author = :author")
+    Optional<Book> findByTitleAndAuthorForUpdate(@Param("title") String title,
+                                                 @Param("author") String author);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from Book b where b.id = :id")
+    Optional<Book> findByIdForUpdate(@Param("id") Long id);
 
     boolean existsByIsbn(String isbn);
 

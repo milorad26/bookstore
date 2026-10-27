@@ -23,6 +23,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.id = :orderId")
     Optional<Order> findByIdForUpdate(@Param("orderId") Long orderId);
 
+    @Query("SELECT o.id FROM Order o WHERE (o.reservationExpiresAt <= :now "
+            + "OR (o.reservationExpiresAt IS NULL AND o.orderDate <= :legacyCutoff)) "
+            + "AND o.status IN (com.bookstore.model.OrderStatus.PENDING, com.bookstore.model.OrderStatus.CONFIRMED) "
+            + "AND o.paymentIntentId IS NULL")
+    List<Long> findExpiredUnpaidOrderIds(@Param("now") LocalDateTime now,
+                                         @Param("legacyCutoff") LocalDateTime legacyCutoff);
+
     @EntityGraph(attributePaths = {"orderItems", "orderItems.book"})
     @Query("SELECT DISTINCT o FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate < :endDateExclusive AND o.status IN :statuses")
     List<Order> findSalesOrdersForReport(@Param("startDate") LocalDateTime startDate,
@@ -54,10 +61,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           @Param("status") OrderStatus status,
                           @Param("updatedAt") LocalDateTime updatedAt);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.confirmationEmailSent = false AND (o.status = 'CONFIRMED' OR o.status = 'PAID')")
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.confirmationEmailSent = false AND o.status = 'PAID'")
     long countOrdersNeedingConfirmationEmail();
 
-    @Query("SELECT o FROM Order o WHERE o.confirmationEmailSent = false AND (o.status = 'CONFIRMED' OR o.status = 'PAID') ORDER BY o.orderDate DESC")
+    @Query("SELECT o FROM Order o WHERE o.confirmationEmailSent = false AND o.status = 'PAID' ORDER BY o.orderDate DESC")
     List<Order> findOrdersNeedingConfirmationEmail();
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED'")

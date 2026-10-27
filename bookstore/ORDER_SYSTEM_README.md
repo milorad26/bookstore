@@ -9,8 +9,8 @@ The Order system has been successfully implemented with the following features:
 1. **Order Entity** - Main order with user relationship
 2. **OrderItem Entity** - Individual items within an order (many-to-many with books)
 3. **OrderStatus Enum** - Order lifecycle management
-4. **Stock Management** - Automatic quantity deduction after purchase
-5. **Business Rules** - One pending order per user at a time
+4. **Stock Management** - Inventory reserved at checkout and released on cancellation or expiry
+5. **Business Rules** - One active unpaid order per user at a time
 
 ### Entities
 
@@ -20,6 +20,8 @@ The Order system has been successfully implemented with the following features:
 - `order_date` - When the order was created
 - `total_amount` - Calculated total
 - `status` - Current order status
+- `reservation_expires_at` - Expiry time for the unpaid inventory reservation
+- `checkout_session_id` - Active Stripe Checkout Session for retry-safe redirects
 - `shipping_address` & `billing_address` - Delivery information
 - `order_notes` - Optional notes
 - `order_items` - List of items in the order (OneToMany)
@@ -47,7 +49,7 @@ PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED
 - `GET /api/orders/user/{userId}/pending` - Get user's pending order
 - `GET /api/orders/status/{status}` - Get orders by status
 - `POST /api/orders` - Create new order
-- `PUT /api/orders/{id}/confirm` - Confirm order (deducts stock)
+- `PUT /api/orders/confirm/{id}` - Admin confirmation for a pending order
 - `PUT /api/orders/{id}/status?status={status}` - Update order status
 - `PUT /api/orders/{id}/cancel` - Cancel order
 - `DELETE /api/orders/{id}` - Delete order (pending/cancelled only)
@@ -62,12 +64,18 @@ PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED
 ## Key Features
 
 ### 1. Stock Management
-- Stock is checked before creating orders
-- Stock is deducted when orders are confirmed
-- Stock is restored when confirmed orders are cancelled
+- Stock is checked and reserved when an order is created, using database locks to prevent overselling.
+- Unpaid reservations expire after `CHECKOUT_RESERVATION_MINUTES` (default: 30); expired orders are cancelled and stock is released.
+- Cancelling or deleting a pending order also releases its reserved stock.
+- Delivery fees are calculated by the backend using `CHECKOUT_DELIVERY_FEE` (default: 4.00); client-supplied fees are ignored.
 
-### 2. Business Rules
-- One user can only have one pending order at a time
+### 2. Payment and confirmation email
+- The order is confirmed when Stripe Checkout is created, but remains unpaid.
+- The bilingual order confirmation email is sent only after Stripe payment is verified.
+- Failed confirmation emails are retried for paid orders.
+
+### 3. Business Rules
+- One user can only have one active unpaid order at a time
 - Orders follow a specific status transition workflow
 - Historical pricing is preserved in order items
 

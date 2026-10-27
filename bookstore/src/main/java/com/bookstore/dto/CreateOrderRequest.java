@@ -2,7 +2,6 @@ package com.bookstore.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,6 +25,6 @@ public class CreateOrderRequest {
     private String orderNotes;
     private String couponCode; // Optional coupon code to apply
     
-    @NotNull(message = "Delivery fee is required")
+    @Deprecated
     private BigDecimal deliveryFee = BigDecimal.ZERO;
 }

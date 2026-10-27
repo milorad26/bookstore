@@ -9,6 +9,7 @@ import com.bookstore.repository.*;
 import com.stripe.exception.StripeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
@@ -16,8 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +38,12 @@ public class OrderService {
     private final EmailService emailService;
     private final CouponService couponService;
     private final BulkDiscountService bulkDiscountService;
+
+    @Value("${app.checkout.delivery-fee:4.00}")
+    private BigDecimal checkoutDeliveryFee;
+
+    @Value("${app.checkout.reservation-minutes:30}")
+    private long reservationMinutes;
 
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
@@ -63,7 +75,7 @@ public class OrderService {
     public OrderDTO createOrder(CreateOrderRequest request) {
         Locale locale = LocaleContextHolder.getLocale();
         // Validate user exists
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findByIdForUpdate(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("user.notfound.id", new Object[]{request.getUserId()}, locale)));
 
@@ -85,9 +97,29 @@ public class OrderService {
             existingOrder = existingConfirmedOrders.get(0);
             log.info("Found existing CONFIRMED order {} for user {}, will update it", existingOrder.getId(), request.getUserId());
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (existingOrder != null && isReservationExpired(existingOrder, now)) {
+            restoreStock(existingOrder);
+            releaseCouponReservation(existingOrder);
+            existingOrder.setStatus(OrderStatus.CANCELLED);
+            orderRepository.save(existingOrder);
+            existingOrder = null;
+        }
         
         // If an existing order was found, update it instead of creating a new one
         if (existingOrder != null) {
+            if (isLegacyCheckoutSessionActive(existingOrder, now)) {
+                throw new IllegalStateException(
+                        "A legacy payment session may still be active for this order. Wait for it to expire before starting another checkout.");
+            }
+            if (existingOrder.getCheckoutSessionId() != null) {
+                if (matchesOrderRequest(existingOrder, request, itemRequests)) {
+                    return convertToDTO(existingOrder);
+                }
+                throw new IllegalStateException(
+                        "A payment session is already active for this order. Complete or wait for it to expire before changing the order.");
+            }
             return updateExistingOrder(existingOrder, request, itemRequests);
         }
 
@@ -101,14 +133,15 @@ public class OrderService {
         order.setBillingAddress(request.getBillingAddress());
         order.setOrderNotes(request.getOrderNotes());
         order.setStatus(OrderStatus.PENDING);
+        order.setReservationExpiresAt(LocalDateTime.now().plusMinutes(reservationMinutes));
 
         // Process order items and validate stock
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        for (CreateOrderItemRequest itemRequest : itemRequests) {
+        for (CreateOrderItemRequest itemRequest : itemsInLockOrder(itemRequests)) {
             // Find the book by title and author
-            Book book = findBookByTitleAndAuthor(itemRequest.getTitle(), itemRequest.getAuthor());
+            Book book = findBookByTitleAndAuthorForUpdate(itemRequest.getTitle(), itemRequest.getAuthor());
 
             // Check stock availability
             if (book.getStockQuantity() < itemRequest.getQuantity()) {
@@ -133,7 +166,7 @@ public class OrderService {
         }
 
         order.setOrderItems(orderItems);
-        order.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
+        order.setTotalAmount(totalAmount.add(getCheckoutDeliveryFee()));
 
         // Apply bulk discount based on total quantity
         bulkDiscountService.applyBulkDiscountToOrder(order);
@@ -201,9 +234,9 @@ public class OrderService {
         List<OrderItem> newOrderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
         
-        for (CreateOrderItemRequest itemRequest : itemRequests) {
+        for (CreateOrderItemRequest itemRequest : itemsInLockOrder(itemRequests)) {
             // Find the book by title and author
-            Book book = findBookByTitleAndAuthor(itemRequest.getTitle(), itemRequest.getAuthor());
+            Book book = findBookByTitleAndAuthorForUpdate(itemRequest.getTitle(), itemRequest.getAuthor());
             
             // Check stock availability
             if (book.getStockQuantity() < itemRequest.getQuantity()) {
@@ -228,7 +261,8 @@ public class OrderService {
         }
         
         existingOrder.getOrderItems().addAll(newOrderItems);
-        existingOrder.setTotalAmount(totalAmount.add(request.getDeliveryFee()));
+        existingOrder.setTotalAmount(totalAmount.add(getCheckoutDeliveryFee()));
+        existingOrder.setReservationExpiresAt(LocalDateTime.now().plusMinutes(reservationMinutes));
         
         // Apply bulk discount based on total quantity
         bulkDiscountService.applyBulkDiscountToOrder(existingOrder);
@@ -260,7 +294,7 @@ public class OrderService {
     @Transactional
     public OrderDTO confirmOrder(Long orderId) {
         Locale locale = LocaleContextHolder.getLocale();
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
@@ -280,26 +314,37 @@ public class OrderService {
         order.setStatus(OrderStatus.CONFIRMED);
         Order updatedOrder = orderRepository.save(order);
 
-        // Send order confirmation email (non-blocking - don't fail if email service is down)
-        try {
-            emailService.sendOrderConfirmationEmail(updatedOrder);
-            updatedOrder.setConfirmationEmailSent(true);
-            orderRepository.save(updatedOrder);
-            log.info("Order confirmation email sent for order {}", updatedOrder.getId());
-        } catch (Exception e) {
-            log.error("Failed to send order confirmation email for order {}: {}", updatedOrder.getId(), e.getMessage());
-            log.warn("Order {} confirmed but email not sent - will retry automatically", updatedOrder.getId());
-            updatedOrder.setConfirmationEmailSent(false);
-            orderRepository.save(updatedOrder);
-        }
-
         return convertToDTO(updatedOrder);
+    }
+
+    @Transactional
+    public int expireUnpaidOrders() {
+        LocalDateTime now = LocalDateTime.now();
+        int expiredCount = 0;
+        for (Long orderId : orderRepository.findExpiredUnpaidOrderIds(now, now.minusHours(24))) {
+            Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
+            if (order == null
+                    || (order.getReservationExpiresAt() != null
+                        ? order.getReservationExpiresAt().isAfter(now)
+                        : order.getOrderDate().isAfter(now.minusHours(24)))
+                    || (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED)
+                    || order.getPaymentIntentId() != null) {
+                continue;
+            }
+
+            restoreStock(order);
+            releaseCouponReservation(order);
+            order.setStatus(OrderStatus.CANCELLED);
+            orderRepository.save(order);
+            expiredCount++;
+        }
+        return expiredCount;
     }
 
     @Transactional
     public OrderDTO updateOrderStatus(Long orderId, OrderStatus newStatus) {
         Locale locale = LocaleContextHolder.getLocale();
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
@@ -317,6 +362,9 @@ public class OrderService {
             (currentStatus == OrderStatus.PENDING || currentStatus == OrderStatus.PAID || 
              currentStatus == OrderStatus.CONFIRMED)) {
             restoreStock(order);
+            if (currentStatus == OrderStatus.PENDING || currentStatus == OrderStatus.CONFIRMED) {
+                releaseCouponReservation(order);
+            }
         }
 
         order.setStatus(newStatus);
@@ -350,7 +398,7 @@ public class OrderService {
     @Transactional
     public OrderDTO refundOrder(Long orderId) {
         Locale locale = LocaleContextHolder.getLocale();
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("order.notfound.id", new Object[]{orderId}, locale)));
 
@@ -384,7 +432,7 @@ public class OrderService {
     @Transactional
     public void deleteOrder(Long id) {
         Locale locale = LocaleContextHolder.getLocale();
-        Order order = orderRepository.findById(id)
+        Order order = orderRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("order.notfound.id", new Object[]{id}, locale)));
 
@@ -392,6 +440,11 @@ public class OrderService {
         if (order.getStatus() != OrderStatus.CANCELLED && order.getStatus() != OrderStatus.PENDING) {
             throw new IllegalStateException(
                 messageSource.getMessage("order.delete.invalid", null, locale));
+        }
+
+        if (order.getStatus() == OrderStatus.PENDING) {
+            restoreStock(order);
+            releaseCouponReservation(order);
         }
 
         orderRepository.deleteById(id);
@@ -410,11 +463,95 @@ public class OrderService {
     }
 
     private void restoreStock(Order order) {
-        for (OrderItem orderItem : order.getOrderItems()) {
-            Book book = orderItem.getBook();
+        List<OrderItem> itemsInLockOrder = order.getOrderItems().stream()
+                .sorted(Comparator.comparing((OrderItem item) -> item.getBook().getTitle())
+                        .thenComparing(item -> item.getBook().getAuthor()))
+                .toList();
+        for (OrderItem orderItem : itemsInLockOrder) {
+            Book book = bookRepository.findByIdForUpdate(orderItem.getBook().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Book not found while restoring stock for order " + order.getId()));
             book.setStockQuantity(book.getStockQuantity() + orderItem.getQuantity());
             bookRepository.save(book);
         }
+    }
+
+    private void releaseCouponReservation(Order order) {
+        Coupon coupon = order.getAppliedCoupon();
+        if (coupon == null || coupon.getUsedInOrder() == null
+                || !order.getId().equals(coupon.getUsedInOrder().getId())) {
+            return;
+        }
+        coupon.setUsed(false);
+        coupon.setUsedAt(null);
+        coupon.setUsedInOrder(null);
+        couponService.saveCoupon(coupon);
+        order.setAppliedCoupon(null);
+        order.setDiscountAmount(BigDecimal.ZERO);
+    }
+
+    private List<CreateOrderItemRequest> itemsInLockOrder(List<CreateOrderItemRequest> items) {
+        return items.stream()
+                .sorted(Comparator.comparing(
+                                (CreateOrderItemRequest item) -> item.getTitle() == null ? "" : item.getTitle())
+                        .thenComparing(item -> item.getAuthor() == null ? "" : item.getAuthor()))
+                .toList();
+    }
+
+    private boolean matchesOrderRequest(Order order,
+                                        CreateOrderRequest request,
+                                        List<CreateOrderItemRequest> itemRequests) {
+        if (!Objects.equals(order.getShippingAddress(), request.getShippingAddress())
+                || !Objects.equals(order.getBillingAddress(), request.getBillingAddress())
+                || !Objects.equals(order.getOrderNotes(), request.getOrderNotes())) {
+            return false;
+        }
+
+        String appliedCouponCode = order.getAppliedCoupon() == null
+                ? null
+                : order.getAppliedCoupon().getCode();
+        if (!Objects.equals(appliedCouponCode, request.getCouponCode())) {
+            return false;
+        }
+
+        Map<List<String>, Integer> requestedQuantities = new HashMap<>();
+        for (CreateOrderItemRequest item : itemRequests) {
+            requestedQuantities.merge(List.of(item.getTitle(), item.getAuthor()), item.getQuantity(), Integer::sum);
+        }
+
+        Map<List<String>, Integer> orderedQuantities = new HashMap<>();
+        for (OrderItem item : order.getOrderItems()) {
+            orderedQuantities.merge(
+                    List.of(item.getBook().getTitle(), item.getBook().getAuthor()),
+                    item.getQuantity(),
+                    Integer::sum);
+        }
+        return requestedQuantities.equals(orderedQuantities);
+    }
+
+    private boolean isReservationExpired(Order order, LocalDateTime now) {
+        if (order.getReservationExpiresAt() != null) {
+            return !order.getReservationExpiresAt().isAfter(now);
+        }
+        return order.getOrderDate() != null && !order.getOrderDate().isAfter(now.minusHours(24));
+    }
+
+    private boolean isLegacyCheckoutSessionActive(Order order, LocalDateTime now) {
+        return order.getStatus() == OrderStatus.CONFIRMED
+                && order.getReservationExpiresAt() == null
+                && order.getCheckoutSessionId() == null
+                && order.getOrderDate() != null
+                && order.getOrderDate().isAfter(now.minusHours(24));
+    }
+
+    private BigDecimal getCheckoutDeliveryFee() {
+        if (checkoutDeliveryFee == null || checkoutDeliveryFee.signum() < 0) {
+            throw new IllegalStateException("Checkout delivery fee must be configured as a non-negative amount.");
+        }
+        if (reservationMinutes < 30 || reservationMinutes > 1440) {
+            throw new IllegalStateException("Checkout reservation duration must be between 30 and 1440 minutes.");
+        }
+        return checkoutDeliveryFee;
     }
 
     private OrderDTO convertToDTO(Order order) {
@@ -423,6 +560,12 @@ public class OrderService {
         dto.setUserId(order.getUser().getId());
         dto.setOrderDate(order.getOrderDate());
         dto.setTotalAmount(order.getTotalAmount());
+        BigDecimal itemSubtotal = order.getOrderItems().stream()
+                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal discounts = (order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO)
+                .add(order.getBulkDiscountAmount() != null ? order.getBulkDiscountAmount() : BigDecimal.ZERO);
+        dto.setDeliveryFee(order.getTotalAmount().add(discounts).subtract(itemSubtotal));
         dto.setStatus(order.getStatus());
         dto.setShippingAddress(order.getShippingAddress());
         dto.setBillingAddress(order.getBillingAddress());
@@ -455,7 +598,7 @@ public class OrderService {
     }
 
 
-    private Book findBookByTitleAndAuthor(String title, String author) {
+    private Book findBookByTitleAndAuthorForUpdate(String title, String author) {
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("Book title cannot be empty");
         }
@@ -463,7 +606,7 @@ public class OrderService {
             throw new IllegalArgumentException("Book author cannot be empty");
         }
 
-        return bookRepository.findByTitleAndAuthor(title.trim(), author.trim())
+        return bookRepository.findByTitleAndAuthorForUpdate(title.trim(), author.trim())
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Book not found with title: '" + title + "' and author: '" + author + "'. " +
                                 "Please verify the book information and try again."));

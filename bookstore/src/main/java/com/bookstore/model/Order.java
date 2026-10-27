@@ -50,6 +50,12 @@ public class Order {
     @Column(name = "payment_intent_id", length = 255)
     private String paymentIntentId;
 
+    @Column(name = "checkout_session_id", length = 255)
+    private String checkoutSessionId;
+
+    @Column(name = "reservation_expires_at")
+    private LocalDateTime reservationExpiresAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applied_coupon_id")
     private Coupon appliedCoupon;

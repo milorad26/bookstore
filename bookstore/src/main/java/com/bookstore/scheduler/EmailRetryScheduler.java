@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Scheduled task to automatically retry sending order confirmation emails
+ * Scheduled task to automatically retry sending paid-order confirmation emails
  * Runs periodically to check for orders where email sending failed
  */
 @Component
@@ -24,8 +24,7 @@ public class EmailRetryScheduler {
     private final EmailService emailService;
 
     /**
-     * Runs every 1 minute to retry sending confirmation emails for orders
-     * where the initial email attempt failed
+     * Runs every 1 minute to retry sending confirmation emails for paid orders.
      */
     @Scheduled(fixedRate = 60000) // 1 minute = 60,000 milliseconds
     @Transactional

@@ -59,6 +59,7 @@ class PaymentServiceTest {
         ReflectionTestUtils.setField(paymentService, "stripePublishableKey", "pk_test_dummy");
         ReflectionTestUtils.setField(paymentService, "successUrl", "http://localhost:5173/orders");
         ReflectionTestUtils.setField(paymentService, "cancelUrl", "http://localhost:5173/checkout");
+        ReflectionTestUtils.setField(paymentService, "reservationMinutes", 30L);
 
         // Setup test user
         testUser = new User();
@@ -81,6 +82,7 @@ class PaymentServiceTest {
         testOrder.setStatus(OrderStatus.CONFIRMED);
         testOrder.setTotalAmount(new BigDecimal("85.98"));
         testOrder.setOrderDate(LocalDateTime.now());
+        testOrder.setReservationExpiresAt(LocalDateTime.now().plusMinutes(30));
         testOrder.setOrderItems(new ArrayList<>());
 
         // Add order item
@@ -96,7 +98,7 @@ class PaymentServiceTest {
     @Test
     void testCreateCheckoutSession_ShouldReturnSessionResponse() throws StripeException {
         // Given
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
 
         // Mock Stripe Session
         Session mockSession = mock(Session.class);
@@ -116,22 +118,47 @@ class PaymentServiceTest {
             assertThat(response.getSessionUrl()).isEqualTo("https://checkout.stripe.com/pay/cs_test_12345");
             assertThat(response.getPublicKey()).isEqualTo("pk_test_dummy");
 
-            verify(orderRepository).findById(1L);
+            verify(orderRepository).findByIdForUpdate(1L);
+            verifyNoInteractions(emailService);
             sessionMock.verify(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class), any(RequestOptions.class)));
+        }
+    }
+
+    @Test
+    void testCreateCheckoutSession_ReusesAnOpenStripeSession() throws StripeException {
+        testOrder.setCheckoutSessionId("cs_existing");
+        testOrder.setReservationExpiresAt(LocalDateTime.now().plusMinutes(20));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(testOrder));
+
+        Session existingSession = mock(Session.class);
+        when(existingSession.getId()).thenReturn("cs_existing");
+        when(existingSession.getStatus()).thenReturn("open");
+        when(existingSession.getUrl()).thenReturn("https://checkout.stripe.com/pay/cs_existing");
+
+        try (MockedStatic<Session> sessionMock = mockStatic(Session.class)) {
+            sessionMock.when(() -> Session.retrieve("cs_existing")).thenReturn(existingSession);
+
+            PaymentSessionResponse response = paymentService.createCheckoutSession(1L);
+
+            assertThat(response.getSessionId()).isEqualTo("cs_existing");
+            assertThat(response.getSessionUrl()).isEqualTo("https://checkout.stripe.com/pay/cs_existing");
+            sessionMock.verify(
+                    () -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class), any(RequestOptions.class)),
+                    never());
         }
     }
 
     @Test
     void testCreateCheckoutSession_WithNonExistentOrder_ShouldThrowException() {
         // Given
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(999L)).thenReturn(Optional.empty());
 
         // When & Then
         assertThatThrownBy(() -> paymentService.createCheckoutSession(999L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Order not found with ID: 999");
 
-        verify(orderRepository).findById(999L);
+        verify(orderRepository).findByIdForUpdate(999L);
     }
 
     @Test
@@ -176,10 +203,11 @@ class PaymentServiceTest {
 
             // Then
             verify(orderRepository).findByIdForUpdate(1L);
-            verify(orderRepository).save(argThat(order -> 
-                order.getStatus() == OrderStatus.PAID && 
+            verify(orderRepository, times(2)).save(argThat(order ->
+                order.getStatus() == OrderStatus.PAID &&
                 order.getPaymentIntentId().equals(paymentIntentId)
             ));
+            verify(emailService).sendOrderConfirmationEmail(testOrder);
         }
     }
 
@@ -221,7 +249,7 @@ class PaymentServiceTest {
             paymentService.handlePaymentSuccess(sessionId);
             paymentService.handlePaymentSuccess(sessionId);
 
-            verify(orderRepository, never()).save(any());
+            verify(orderRepository).save(testOrder);
             verify(couponService, times(2)).generateCouponForOrder(testOrder);
         }
     }
