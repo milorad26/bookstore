@@ -1,9 +1,15 @@
+import path from 'node:path'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ command }) => ({
   plugins: [
     vue(),
+    VueI18nPlugin({
+      include: [path.resolve('src/i18n/locales/*.js')],
+      runtimeOnly: true
+    }),
     {
       name: 'production-content-security-policy',
       transformIndexHtml() {
@@ -19,6 +25,9 @@ export default defineConfig(({ command }) => ({
       }
     }
   ],
+  define: {
+    __INTLIFY_JIT_COMPILATION__: true
+  },
   server: {
     port: 5173,
     proxy: {
