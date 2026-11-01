@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,8 +19,4 @@ public class UserProfileDTO {
     private String address;
     private Boolean enabled;
     private UserType userType;
-    
-    // Permission-related fields
-    private List<String> permissions;
-    private List<String> availableEndpoints;
 }

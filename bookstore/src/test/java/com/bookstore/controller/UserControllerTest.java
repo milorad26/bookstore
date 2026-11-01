@@ -81,6 +81,17 @@ class UserControllerTest {
     }
 
     @Test
+    void testGetCurrentUser_ExcludesPermissionsAndEndpointCatalog() throws Exception {
+        mockMvc.perform(get("/api/users/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)))
+                .andExpect(jsonPath("$.username", is("johndoe")))
+                .andExpect(jsonPath("$.userType", is("ADMIN")))
+                .andExpect(jsonPath("$.permissions").doesNotExist())
+                .andExpect(jsonPath("$.availableEndpoints").doesNotExist());
+    }
+
+    @Test
     void testUpdateUser_Success() throws Exception {
         // Given
         User updatedUser = new User();
