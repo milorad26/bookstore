@@ -553,9 +553,7 @@ const profile = ref({
   email: '',
   phoneNumber: '',
   address: '',
-  userType: '',
-  permissions: [],
-  availableEndpoints: []
+  userType: ''
 })
 
 const editMode = ref(false)
