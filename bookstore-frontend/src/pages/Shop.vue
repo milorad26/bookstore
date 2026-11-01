@@ -48,6 +48,7 @@
                     type="text"
                     class="form-control"
                     :placeholder="t('shop.searchByTitle')"
+                    @input="scheduleSearch('title')"
                     @keyup.enter="searchBooks('title')"
                   />
                   <button
@@ -55,7 +56,7 @@
                     @click="searchBooks('title')"
                     :disabled="isSearching"
                   >
-                    <span v-if="isSearching" class="spinner-border spinner-border-sm me-2"></span>
+                    <span v-if="isSearching && activeSearch === 'title'" class="spinner-border spinner-border-sm me-2"></span>
                     <i class="bi bi-search"></i>
                   </button>
                 </div>
@@ -67,6 +68,7 @@
                     type="text"
                     class="form-control"
                     :placeholder="t('shop.searchByAuthor')"
+                    @input="scheduleSearch('author')"
                     @keyup.enter="searchBooks('author')"
                   />
                   <button
@@ -74,7 +76,7 @@
                     @click="searchBooks('author')"
                     :disabled="isSearching"
                   >
-                    <span v-if="isSearching" class="spinner-border spinner-border-sm me-2"></span>
+                    <span v-if="isSearching && activeSearch === 'author'" class="spinner-border spinner-border-sm me-2"></span>
                     <i class="bi bi-search"></i>
                   </button>
                 </div>
@@ -86,6 +88,7 @@
                     type="text"
                     class="form-control"
                     :placeholder="t('shop.searchByIsbn')"
+                    @input="scheduleSearch('isbn')"
                     @keyup.enter="searchBooks('isbn')"
                   />
                   <button
@@ -93,7 +96,7 @@
                     @click="searchBooks('isbn')"
                     :disabled="isSearching"
                   >
-                    <span v-if="isSearching" class="spinner-border spinner-border-sm me-2"></span>
+                    <span v-if="isSearching && activeSearch === 'isbn'" class="spinner-border spinner-border-sm me-2"></span>
                     <i class="bi bi-search"></i>
                   </button>
                 </div>
@@ -249,7 +252,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -275,12 +278,16 @@ const totalPages = ref(0)
 const viewMode = ref('all') // 'all' or 'categories'
 const isLoading = ref(false)
 const isSearching = ref(false)
+const activeSearch = ref('')
 const searchTitle = ref('')
 const searchAuthor = ref('')
 const searchIsbn = ref('')
 const showAlert = ref(false)
 const alertMessage = ref('')
 const alertType = ref('info')
+let searchDebounceTimer
+let searchRequestId = 0
+let loadRequestId = 0
 
 const rangeStart = computed(() => totalElements.value === 0 ? 0 : currentPage.value * pageSize.value + 1)
 const rangeEnd = computed(() => Math.min((currentPage.value + 1) * pageSize.value, totalElements.value))
@@ -293,6 +300,7 @@ const groupBooksByCategory = (catalogBooks) => catalogBooks.reduce((groups, book
 }, {})
 
 const loadBooks = async (page = 0) => {
+  const requestId = ++loadRequestId
   isLoading.value = true
   try {
     if (searchResults.value !== null) {
@@ -305,6 +313,7 @@ const loadBooks = async (page = 0) => {
       )
     } else {
       const result = await bookService.getCatalogPage(page + 1)
+      if (requestId !== loadRequestId) return
       pageSize.value = result.size
       books.value = result.content
       currentPage.value = result.page - 1
@@ -314,55 +323,75 @@ const loadBooks = async (page = 0) => {
     booksByCategory.value = groupBooksByCategory(books.value)
     
   } catch (error) {
-    showError(localizedError(error, t, 'errors.loadBooks'))
+    if (requestId === loadRequestId) {
+      showError(localizedError(error, t, 'errors.loadBooks'))
+    }
   } finally {
-    isLoading.value = false
+    if (requestId === loadRequestId) isLoading.value = false
   }
 }
 
+const scheduleSearch = (type) => {
+  clearTimeout(searchDebounceTimer)
+  searchRequestId++
+  isSearching.value = false
+  activeSearch.value = type
+  searchDebounceTimer = setTimeout(() => searchBooks(type), 250)
+}
+
 const searchBooks = async (type) => {
-  showAlert.value = false // Clear previous alerts
-  const query = type === 'title' ? searchTitle.value.trim()
-    : type === 'author' ? searchAuthor.value.trim()
-      : searchIsbn.value.trim()
-  if (!query) {
-    const messageKey = type === 'title' ? 'messages.enterTitle'
-      : type === 'author' ? 'messages.enterAuthor' : 'messages.enterIsbn'
-    showError(t(messageKey))
+  clearTimeout(searchDebounceTimer)
+  const requestId = ++searchRequestId
+  showAlert.value = false
+  viewMode.value = 'all'
+  activeSearch.value = type
+  const activeFilters = [
+    { query: searchTitle.value.trim(), search: bookService.searchByTitle },
+    { query: searchAuthor.value.trim(), search: bookService.searchByAuthor },
+    { query: searchIsbn.value.trim(), search: bookService.searchByIsbn }
+  ].filter(filter => filter.query)
+
+  if (!activeFilters.length) {
+    isSearching.value = false
+    activeSearch.value = ''
+    searchResults.value = null
+    await loadBooks(0)
     return
   }
 
-  viewMode.value = 'all'
   isSearching.value = true
   try {
-    const activeFilters = [
-      searchTitle.value.trim() ? bookService.searchByTitle(searchTitle.value.trim()) : null,
-      searchAuthor.value.trim() ? bookService.searchByAuthor(searchAuthor.value.trim()) : null,
-      searchIsbn.value.trim() ? bookService.searchByIsbn(searchIsbn.value.trim()) : null
-    ].filter(Boolean)
-    const resultSets = await Promise.all(activeFilters.map(request =>
-      request.catch(error => {
+    const resultSets = await Promise.all(activeFilters.map(({ query, search }) =>
+      search(query).catch(error => {
         if (error.status === 404) return []
         throw error
       })
     ))
+    if (requestId !== searchRequestId) return
+
     const matchingIds = resultSets.slice(1).map(results => new Set(results.map(book => book.id)))
     searchResults.value = resultSets[0].filter(book =>
       matchingIds.every(ids => ids.has(book.id))
     )
     await loadBooks(0)
   } catch (error) {
-    showError(localizedError(error, t, 'errors.loadBooks'))
+    if (requestId === searchRequestId) {
+      showError(localizedError(error, t, 'errors.loadBooks'))
+    }
   } finally {
-    isSearching.value = false
+    if (requestId === searchRequestId) isSearching.value = false
   }
 }
 
 const resetSearch = () => {
-  showAlert.value = false // Clear any alerts
+  clearTimeout(searchDebounceTimer)
+  searchRequestId++
+  isSearching.value = false
+  showAlert.value = false
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
+  activeSearch.value = ''
   searchResults.value = null
   viewMode.value = 'all' // Reset to All Books view
   loadBooks(0)
@@ -434,6 +463,12 @@ const addToCart = (book) => {
 
 onMounted(() => {
   loadBooks(0)
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(searchDebounceTimer)
+  searchRequestId++
+  loadRequestId++
 })
 </script>
 
