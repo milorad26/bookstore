@@ -11,6 +11,17 @@ export const bookService = {
     }
   },
 
+  getManagementPage: async (page = 1, filters = {}) => {
+    try {
+      const response = await apiClient.get('/books/management/page', {
+        params: { page, ...filters }
+      })
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   getAllBooks: async () => {
     try {
       const response = await apiClient.get('/books')

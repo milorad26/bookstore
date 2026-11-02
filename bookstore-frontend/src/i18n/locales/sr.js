@@ -77,6 +77,16 @@ export default {
     inStock: 'Na Stanju',
     outOfStock: 'Rasprodato'
   },
+  management: {
+    pagination: {
+      label: 'Straničenje upravljačke liste',
+      showingBooks: 'Prikazano {start}–{end} od {total} knjiga',
+      showingOrders: 'Prikazano {start}–{end} od {total} porudžbina',
+      pageOf: 'Stranica {page} od {pages}',
+      previous: 'Prethodna',
+      next: 'Sledeća'
+    }
+  },
   cart: {
     title: 'Korpa za Kupovinu',
     empty: 'Vaša korpa je prazna',

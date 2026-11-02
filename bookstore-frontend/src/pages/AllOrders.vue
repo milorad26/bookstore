@@ -34,13 +34,13 @@
                       inputmode="numeric"
                       class="form-control" 
                       :placeholder="t('orders.search.placeholder')"
-                      @input="searchOrder"
-                      @keyup.enter="searchOrder"
+                      @input="searchOrder()"
+                      @keyup.enter="searchOrder(true)"
                     />
                   </div>
                 </div>
                 <div class="col-md-2">
-                  <button @click="searchOrder" class="btn btn-primary w-100" :disabled="searching || !searchOrderId">
+                  <button @click="searchOrder(true)" class="btn btn-primary w-100" :disabled="searching || !searchOrderId">
                     <span v-if="searching" class="spinner-border spinner-border-sm me-2"></span>
                     <i v-else class="bi bi-search"></i>
                     {{ t('orders.search.button') }}
@@ -69,7 +69,7 @@
                 <p class="mt-3 text-muted">{{ t('orders.loadingOrders') }}</p>
               </div>
 
-              <div v-else-if="filteredOrders.length === 0" class="text-center py-5">
+              <div v-else-if="orders.length === 0" class="text-center py-5">
                 <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
                 <p class="mt-3 text-muted">{{ t('orders.noOrdersFound') }}</p>
               </div>
@@ -89,7 +89,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="order in filteredOrders" :key="order.id">
+                    <tr v-for="order in orders" :key="order.id">
                       <td><strong>#{{ order.id }}</strong></td>
                       <td>{{ order.userId }}</td>
                       <td>{{ formatDate(order.orderDate) }}</td>
@@ -157,6 +157,45 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              <div
+                v-if="!loading && totalElements > 0"
+                class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4"
+                :aria-label="t('management.pagination.label')"
+              >
+                <p class="text-muted mb-0" aria-live="polite">
+                  {{ t('management.pagination.showingOrders', { start: rangeStart, end: rangeEnd, total: totalElements }) }}
+                </p>
+                <nav :aria-label="t('management.pagination.label')">
+                  <ul class="pagination mb-0">
+                    <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                      <button
+                        class="page-link"
+                        type="button"
+                        :disabled="currentPage === 1"
+                        @click="loadOrders(currentPage - 1)"
+                      >
+                        {{ t('management.pagination.previous') }}
+                      </button>
+                    </li>
+                    <li class="page-item disabled" aria-current="page">
+                      <span class="page-link">
+                        {{ t('management.pagination.pageOf', { page: currentPage, pages: totalPages }) }}
+                      </span>
+                    </li>
+                    <li class="page-item" :class="{ disabled: currentPage >= totalPages }">
+                      <button
+                        class="page-link"
+                        type="button"
+                        :disabled="currentPage >= totalPages"
+                        @click="loadOrders(currentPage + 1)"
+                      >
+                        {{ t('management.pagination.next') }}
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
               </div>
             </div>
           </div>
@@ -300,7 +339,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -313,11 +352,12 @@ const authStore = useAuthStore()
 const { t } = useI18n()
 
 const orders = ref([])
-const filteredOrders = computed(() => {
-  const prefix = searchOrderId.value.trim()
-  if (!prefix) return orders.value
-  return orders.value.filter(order => String(order.id).startsWith(prefix))
-})
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalElements = ref(0)
+const totalPages = ref(0)
+const rangeStart = computed(() => totalElements.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1)
+const rangeEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalElements.value))
 const loading = ref(false)
 const deleting = ref(false)
 const searching = ref(false)
@@ -328,6 +368,8 @@ const orderToDelete = ref(null)
 const searchOrderId = ref('')
 const isSearchActive = ref(false)
 const lastSearchTerm = ref('')
+let searchDebounceTimer
+let orderRequestId = 0
 
 // Check if user is admin or super user
 const isAdmin = computed(() => {
@@ -350,32 +392,54 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadOrders = async () => {
+const loadOrders = async (page = 1, requestId = ++orderRequestId) => {
   loading.value = true
   try {
-    // Always load ALL orders for admin view
-    const data = await orderService.getAllOrders()
-    orders.value = data
-    isSearchActive.value = false
-    lastSearchTerm.value = ''
+    const result = await orderService.getManagementPage(page, searchOrderId.value.trim())
+    if (requestId === orderRequestId) {
+      orders.value = result.content
+      currentPage.value = result.page
+      pageSize.value = result.size
+      totalElements.value = result.totalElements
+      totalPages.value = result.totalPages
+      isSearchActive.value = Boolean(searchOrderId.value.trim())
+      lastSearchTerm.value = searchOrderId.value.trim()
+    }
   } catch (error) {
-    showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
+    if (requestId === orderRequestId) {
+      orders.value = []
+      showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
+    }
   } finally {
-    loading.value = false
+    if (requestId === orderRequestId) {
+      loading.value = false
+      searching.value = false
+    }
   }
 }
 
-const searchOrder = async () => {
+const searchOrder = (immediate = false) => {
+  clearTimeout(searchDebounceTimer)
+  const requestId = ++orderRequestId
   const prefix = searchOrderId.value.trim()
   isSearchActive.value = Boolean(prefix)
   lastSearchTerm.value = prefix
+  searching.value = true
+  if (immediate) {
+    loadOrders(1, requestId)
+  } else {
+    searchDebounceTimer = setTimeout(() => loadOrders(1, requestId), 250)
+  }
 }
 
 const clearSearch = async () => {
+  clearTimeout(searchDebounceTimer)
+  const requestId = ++orderRequestId
   searchOrderId.value = ''
   isSearchActive.value = false
   lastSearchTerm.value = ''
-  await loadOrders()
+  searching.value = false
+  await loadOrders(1, requestId)
 }
 
 const viewOrder = (order) => {
@@ -389,7 +453,7 @@ const confirmOrderAction = async (order) => {
   try {
     await orderService.confirmOrder(order.id)
     showAlert('success', `Order #${order.id} confirmed successfully`)
-    await loadOrders()
+    await loadOrders(currentPage.value)
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.confirmOrder'))
   }
@@ -401,7 +465,7 @@ const cancelOrderAction = async (order) => {
   try {
     await orderService.cancelOrder(order.id)
     showAlert('success', `Order #${order.id} cancelled successfully`)
-    await loadOrders()
+    await loadOrders(currentPage.value)
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.cancelOrder'))
   }
@@ -413,7 +477,7 @@ const deliverOrderAction = async (order) => {
   try {
     await orderService.deliverOrder(order.id)
     showAlert('success', `Order #${order.id} marked as delivered successfully`)
-    await loadOrders()
+    await loadOrders(currentPage.value)
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.deliverOrder'))
   }
@@ -425,7 +489,7 @@ const refundOrderAction = async (order) => {
   try {
     await orderService.refundOrder(order.id)
     showAlert('success', `Order #${order.id} refunded successfully`)
-    await loadOrders()
+    await loadOrders(currentPage.value)
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.refundOrder'))
   }
@@ -444,7 +508,10 @@ const deleteOrder = async () => {
     await orderService.deleteOrder(orderToDelete.value.id)
     showAlert('success', `Order #${orderToDelete.value.id} deleted successfully`)
     closeDeleteModal()
-    await loadOrders()
+    const pageAfterDelete = orders.value.length === 1 && currentPage.value > 1
+      ? currentPage.value - 1
+      : currentPage.value
+    await loadOrders(pageAfterDelete)
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.deleteOrder'))
   } finally {
@@ -547,7 +614,12 @@ onMounted(() => {
     setTimeout(() => router.push('/profile'), 2000)
     return
   }
-  loadOrders()
+  loadOrders(1)
+})
+
+onBeforeUnmount(() => {
+  clearTimeout(searchDebounceTimer)
+  orderRequestId++
 })
 </script>
 

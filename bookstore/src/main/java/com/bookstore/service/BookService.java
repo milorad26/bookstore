@@ -29,6 +29,9 @@ public class BookService {
     @Value("${catalog.page-size}")
     private int catalogPageSize;
 
+    @Value("${management.page-size:20}")
+    private int managementPageSize;
+
     public List<BookDTO> getAllBooks() {
         return bookRepository.findAll().stream()
                 .map(this::convertToDTO)
@@ -59,6 +62,44 @@ public class BookService {
                 bookPage.getSize(),
                 bookPage.getTotalElements(),
                 bookPage.getTotalPages());
+    }
+
+    public BookPageDTO getManagementPage(int page, Integer requestedSize,
+                                         String title, String author, String isbn) {
+        if (page < 1) {
+            throw new IllegalArgumentException("Page number must be at least 1");
+        }
+        int size = requestedSize == null ? managementPageSize : requestedSize;
+        if (managementPageSize < 1) {
+            throw new IllegalStateException("Management page size must be configured as a positive number.");
+        }
+        if (size < 1 || size > managementPageSize) {
+            throw new IllegalArgumentException(
+                    "Management book page size must be between 1 and " + managementPageSize + " books.");
+        }
+
+        Sort sort = Sort.by("title").ascending().and(Sort.by("id").ascending());
+        Page<Book> bookPage = bookRepository.searchManagementBooks(
+                normalizeFilter(title),
+                normalizeFilter(author),
+                normalizeFilter(isbn),
+                PageRequest.of(page - 1, size, sort));
+        if (page > Math.max(bookPage.getTotalPages(), 1)) {
+            throw new IllegalArgumentException(
+                    "Management book page " + page + " does not exist. Available pages: "
+                            + bookPage.getTotalPages() + ".");
+        }
+
+        return new BookPageDTO(
+                bookPage.getContent().stream().map(this::convertToDTO).toList(),
+                page,
+                size,
+                bookPage.getTotalElements(),
+                bookPage.getTotalPages());
+    }
+
+    private String normalizeFilter(String filter) {
+        return filter == null || filter.isBlank() ? null : filter.trim();
     }
 
     public List<BookDTO> getLowStockBooks(int threshold) {

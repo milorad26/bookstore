@@ -9,8 +9,11 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +44,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatus(OrderStatus status);
 
     List<Order> findByUserIdAndStatus(Long userId, OrderStatus status);
+
+    @Query("SELECT o.id FROM Order o ORDER BY o.orderDate DESC, o.id DESC")
+    Page<Long> findAllOrderIds(Pageable pageable);
+
+    @Query(value = "SELECT id FROM orders WHERE CAST(id AS VARCHAR) LIKE CONCAT(:idPrefix, '%') "
+            + "ORDER BY order_date DESC, id DESC",
+            countQuery = "SELECT COUNT(*) FROM orders WHERE CAST(id AS VARCHAR) LIKE CONCAT(:idPrefix, '%')",
+            nativeQuery = true)
+    Page<Long> findOrderIdsByIdPrefix(@Param("idPrefix") String idPrefix, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.book", "appliedCoupon"})
+    @Query("SELECT DISTINCT o FROM Order o WHERE o.id IN :orderIds")
+    List<Order> findAllWithDetailsByIdIn(@Param("orderIds") Collection<Long> orderIds);
 
     @Query("SELECT o FROM Order o WHERE o.user.id = :userId ORDER BY o.orderDate DESC")
     List<Order> findByUserIdOrderByOrderDateDesc(@Param("userId") Long userId);

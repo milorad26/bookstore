@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -131,6 +132,15 @@ class OrderRepositoryTest {
         assertThat(saved.getCreatedAt()).isNotNull();
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(orderRepository.findById(saved.getId())).isPresent();
+    }
+
+    @Test
+    void findOrderIdsByIdPrefix_shouldReturnPagedMatchingIds() {
+        var result = orderRepository.findOrderIdsByIdPrefix(
+                testOrder1.getId().toString(), PageRequest.of(0, 20));
+
+        assertThat(result.getContent()).containsExactly(testOrder1.getId());
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     @Test

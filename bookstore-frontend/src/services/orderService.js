@@ -12,6 +12,18 @@ export const orderService = {
     }
   },
 
+  // Get a page of orders for the management list (admin/super_user only)
+  getManagementPage: async (page = 1, idPrefix = '') => {
+    try {
+      const response = await apiClient.get('/orders/management/page', {
+        params: { page, idPrefix: idPrefix || undefined }
+      })
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   // Get my orders (authenticated user)
   getMyOrders: async () => {
     try {

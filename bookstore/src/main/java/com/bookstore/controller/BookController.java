@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,25 @@ public class BookController {
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAllBooks());
+    }
+
+    @Operation(summary = "Get a page of books for inventory management",
+            description = "Page numbers start at 1. If size is omitted, the configured management page size is used (default 20). Smaller sizes are allowed; requests above the configured size or beyond the available pages are rejected.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Management book page retrieved"),
+        @ApiResponse(responseCode = "400", description = "Invalid page, page size, or page beyond the available range")
+    })
+    @GetMapping("/management/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BookPageDTO> getManagementPage(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "Optional. Omit to use MANAGEMENT_PAGE_SIZE (default 20); allowed range is 1 through the configured value.",
+                    schema = @Schema(minimum = "1"))
+            @RequestParam(required = false) @Min(1) Integer size,
+            @Parameter(hidden = true) @RequestParam(required = false) String title,
+            @Parameter(hidden = true) @RequestParam(required = false) String author,
+            @Parameter(hidden = true) @RequestParam(required = false) String isbn) {
+        return ResponseEntity.ok(bookService.getManagementPage(page, size, title, author, isbn));
     }
 
     @Operation(summary = "Get a page of catalog books", description = "Page numbers start at 1. The default and maximum page size are configured by CATALOG_PAGE_SIZE (default 20). The total page count is calculated from the current catalog; the final page may contain fewer books.")

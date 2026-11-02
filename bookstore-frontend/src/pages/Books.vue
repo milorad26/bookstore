@@ -37,7 +37,6 @@
             </div>
           </div>
 
-          <!-- Search Books -->
           <div class="card shadow-sm mb-3">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-3">
@@ -49,27 +48,27 @@
               <div class="row g-3">
                 <div class="col-md-4">
                   <div class="input-group">
-                    <input v-model="searchTitle" type="text" class="form-control" :placeholder="t('shop.searchByTitle')" @input="searchBooks('title')" @keyup.enter="searchBooks('title')" />
-                    <button class="btn btn-outline-primary" @click="searchBooks('title')" :disabled="isSearching || !searchTitle.trim()">
-                      <span v-if="isSearching && activeSearch === 'title'" class="spinner-border spinner-border-sm"></span>
+                    <input v-model="searchTitle" type="text" class="form-control" :placeholder="t('shop.searchByTitle')" @input="searchBooks('title')" @keyup.enter="searchBooks('title', true)" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('title', true)" :disabled="loading || !searchTitle.trim()">
+                      <span v-if="loading && activeSearch === 'title'" class="spinner-border spinner-border-sm"></span>
                       <i v-else class="bi bi-search"></i>
                     </button>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="input-group">
-                    <input v-model="searchAuthor" type="text" class="form-control" :placeholder="t('shop.searchByAuthor')" @input="searchBooks('author')" @keyup.enter="searchBooks('author')" />
-                    <button class="btn btn-outline-primary" @click="searchBooks('author')" :disabled="isSearching || !searchAuthor.trim()">
-                      <span v-if="isSearching && activeSearch === 'author'" class="spinner-border spinner-border-sm"></span>
+                    <input v-model="searchAuthor" type="text" class="form-control" :placeholder="t('shop.searchByAuthor')" @input="searchBooks('author')" @keyup.enter="searchBooks('author', true)" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('author', true)" :disabled="loading || !searchAuthor.trim()">
+                      <span v-if="loading && activeSearch === 'author'" class="spinner-border spinner-border-sm"></span>
                       <i v-else class="bi bi-search"></i>
                     </button>
                   </div>
                 </div>
                 <div class="col-md-4">
                   <div class="input-group">
-                    <input v-model="searchIsbn" type="text" class="form-control" :placeholder="t('shop.searchByIsbn')" @input="searchBooks('isbn')" @keyup.enter="searchBooks('isbn')" />
-                    <button class="btn btn-outline-primary" @click="searchBooks('isbn')" :disabled="isSearching || !searchIsbn.trim()">
-                      <span v-if="isSearching && activeSearch === 'isbn'" class="spinner-border spinner-border-sm"></span>
+                    <input v-model="searchIsbn" type="text" class="form-control" :placeholder="t('shop.searchByIsbn')" @input="searchBooks('isbn')" @keyup.enter="searchBooks('isbn', true)" />
+                    <button class="btn btn-outline-primary" @click="searchBooks('isbn', true)" :disabled="loading || !searchIsbn.trim()">
+                      <span v-if="loading && activeSearch === 'isbn'" class="spinner-border spinner-border-sm"></span>
                       <i v-else class="bi bi-search"></i>
                     </button>
                   </div>
@@ -156,6 +155,45 @@
                 </table>
               </div>
             </div>
+          </div>
+
+          <div
+            v-if="!loading && totalElements > 0"
+            class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4"
+            :aria-label="t('management.pagination.label')"
+          >
+            <p class="text-muted mb-0" aria-live="polite">
+              {{ t('management.pagination.showingBooks', { start: rangeStart, end: rangeEnd, total: totalElements }) }}
+            </p>
+            <nav :aria-label="t('management.pagination.label')">
+              <ul class="pagination mb-0">
+                <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                  <button
+                    class="page-link"
+                    type="button"
+                    :disabled="currentPage === 1"
+                    @click="loadBooks(currentPage - 1)"
+                  >
+                    {{ t('management.pagination.previous') }}
+                  </button>
+                </li>
+                <li class="page-item disabled" aria-current="page">
+                  <span class="page-link">
+                    {{ t('management.pagination.pageOf', { page: currentPage, pages: totalPages }) }}
+                  </span>
+                </li>
+                <li class="page-item" :class="{ disabled: currentPage >= totalPages }">
+                  <button
+                    class="page-link"
+                    type="button"
+                    :disabled="currentPage >= totalPages"
+                    @click="loadBooks(currentPage + 1)"
+                  >
+                    {{ t('management.pagination.next') }}
+                  </button>
+                </li>
+              </ul>
+            </nav>
           </div>
         </div>
       </div>
@@ -355,7 +393,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -367,16 +405,21 @@ const router = useRouter()
 const { t } = useI18n()
 
 const books = ref([])
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const lowStockBooks = ref([])
 const loadingAlerts = ref(false)
 const loading = ref(false)
-const isSearching = ref(false)
 const activeSearch = ref('')
 const searchTitle = ref('')
 const searchAuthor = ref('')
 const searchIsbn = ref('')
-let searchDebounceTimer
+const rangeStart = computed(() => totalElements.value === 0 ? 0 : (currentPage.value - 1) * pageSize.value + 1)
+const rangeEnd = computed(() => Math.min(currentPage.value * pageSize.value, totalElements.value))
 let searchRequestId = 0
+let searchDebounceTimer
 const saving = ref(false)
 const deleting = ref(false)
 const showModal = ref(false)
@@ -412,16 +455,33 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadBooks = async () => {
-  const requestId = searchRequestId
+const loadBooks = async (page = 1, requestId = ++searchRequestId) => {
   loading.value = true
   try {
-    const data = await bookService.getAllBooks()
-    if (requestId === searchRequestId) books.value = data
+    const filters = activeSearch.value === 'title' && searchTitle.value.trim()
+      ? { title: searchTitle.value.trim() }
+      : activeSearch.value === 'author' && searchAuthor.value.trim()
+        ? { author: searchAuthor.value.trim() }
+        : activeSearch.value === 'isbn' && searchIsbn.value.trim()
+          ? { isbn: searchIsbn.value.trim() }
+          : {}
+    const result = await bookService.getManagementPage(page, filters)
+    if (requestId === searchRequestId) {
+      books.value = result.content
+      currentPage.value = result.page
+      pageSize.value = result.size
+      totalElements.value = result.totalElements
+      totalPages.value = result.totalPages
+    }
   } catch (error) {
-    showAlert('danger', localizedError(error, t, 'errors.loadBooks'))
+    if (requestId === searchRequestId) {
+      books.value = []
+      showAlert('danger', localizedError(error, t, 'errors.loadBooks'))
+    }
   } finally {
-    if (requestId === searchRequestId) loading.value = false
+    if (requestId === searchRequestId) {
+      loading.value = false
+    }
   }
 }
 
@@ -437,52 +497,32 @@ const loadInventoryAlerts = async () => {
   }
 }
 
-const searchBooks = (type) => {
+const searchBooks = (type, immediate = false) => {
   clearTimeout(searchDebounceTimer)
+  activeSearch.value = type
   const requestId = ++searchRequestId
-  const searchValues = {
-    title: searchTitle.value.trim(),
-    author: searchAuthor.value.trim(),
-    isbn: searchIsbn.value.trim()
-  }
-  if (!searchValues[type]) {
-    isSearching.value = false
-    loadBooks()
+  const query = type === 'title' ? searchTitle.value.trim()
+    : type === 'author' ? searchAuthor.value.trim()
+      : searchIsbn.value.trim()
+  if (!query) {
+    activeSearch.value = ''
+    loadBooks(1, requestId)
     return
   }
-
-  activeSearch.value = type
-  isSearching.value = true
-  searchDebounceTimer = setTimeout(async () => {
-    try {
-      let results
-      if (type === 'title') results = await bookService.searchByTitle(searchValues.title)
-      else if (type === 'author') results = await bookService.searchByAuthor(searchValues.author)
-      else results = await bookService.searchByIsbn(searchValues.isbn)
-      if (requestId === searchRequestId) books.value = results
-    } catch (error) {
-      if (requestId === searchRequestId) {
-        books.value = []
-        if (error.status !== 404) showAlert('danger', localizedError(error, t, 'errors.searchBooks'))
-      }
-    } finally {
-      if (requestId === searchRequestId) {
-        isSearching.value = false
-        activeSearch.value = ''
-      }
-    }
-  }, 250)
+  if (immediate) {
+    loadBooks(1, requestId)
+  } else {
+    searchDebounceTimer = setTimeout(() => loadBooks(1, requestId), 250)
+  }
 }
 
-const resetSearch = async () => {
+const resetSearch = () => {
   clearTimeout(searchDebounceTimer)
-  searchRequestId++
-  isSearching.value = false
   activeSearch.value = ''
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
-  await loadBooks()
+  loadBooks(1)
 }
 
 const showCreateModal = () => {
@@ -537,7 +577,7 @@ const saveBook = async () => {
       showAlert('success', 'Book created successfully!')
     }
     closeModal()
-    await loadBooks()
+    await loadBooks(1)
     await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.saveBook'))
@@ -559,7 +599,7 @@ const deleteBook = async () => {
     await bookService.deleteBook(bookToDelete.value.id)
     showAlert('success', 'Book deleted successfully!')
     closeDeleteModal()
-    await loadBooks()
+    await loadBooks(1)
     await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.deleteBook'))
@@ -620,9 +660,12 @@ const goBack = () => {
 }
 
 onMounted(() => {
-  loadBooks()
+  loadBooks(1)
   loadInventoryAlerts()
 })
+
+onBeforeUnmount(() => clearTimeout(searchDebounceTimer))
+
 </script>
 
 <style scoped>

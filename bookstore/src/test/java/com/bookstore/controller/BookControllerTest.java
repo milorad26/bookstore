@@ -89,6 +89,42 @@ class BookControllerTest {
     }
 
     @Test
+    void getManagementPage_shouldReturnPageMetadataAndAcceptHiddenSearchFilter() throws Exception {
+        when(bookService.getManagementPage(1, null, "Martin", null, null))
+                .thenReturn(new BookPageDTO(List.of(testBookDTO1), 1, 20, 1, 1));
+
+        mockMvc.perform(get("/api/books/management/page")
+                        .param("page", "1")
+                        .param("title", "Martin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page", is(1)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalElements", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+
+        verify(bookService).getManagementPage(1, null, "Martin", null, null);
+    }
+
+    @Test
+    void getManagementPage_shouldRejectNonPositivePageSize() throws Exception {
+        mockMvc.perform(get("/api/books/management/page").param("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bookService);
+    }
+
+    @Test
+    void getManagementPage_shouldReturnBadRequestForOversizedPageSize() throws Exception {
+        when(bookService.getManagementPage(1, 21, null, null, null))
+                .thenThrow(new IllegalArgumentException("Management book page size must be between 1 and 20 books."));
+
+        mockMvc.perform(get("/api/books/management/page").param("size", "21"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("between 1 and 20")));
+    }
+
+    @Test
     void getCatalogPage_shouldApplyDefaultsAndReturnPageMetadata() throws Exception {
         when(bookService.getCatalogPage(1, null))
                 .thenReturn(new BookPageDTO(List.of(testBookDTO1), 1, 20, 1, 1));

@@ -114,6 +114,7 @@ public class SecurityConfig {
                 
                 // Books endpoints - Role-based access control
                 // Public GET endpoints - no authentication required for browsing
+                .requestMatchers(HttpMethod.GET, "/api/books/management/**").hasRole(ROLE_ADMIN)
                 .requestMatchers(HttpMethod.GET, "/api/books/isbn/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books/search/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/books/low-stock").hasAnyRole(ROLE_ADMIN, ROLE_SUPER_USER)
@@ -156,6 +157,8 @@ public class SecurityConfig {
                 // Orders endpoints - Role-based access control
                 // /me endpoint for regular users to access own orders
                 .requestMatchers(HttpMethod.GET, "/api/orders/me").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/orders/management/**")
+                        .hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 // Only SUPER_USER and ADMIN can list all orders
                 .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole(ROLE_SUPER_USER, ROLE_ADMIN)
                 // Only SUPER_USER and ADMIN can view orders by user ID

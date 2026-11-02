@@ -77,6 +77,16 @@ export default {
     inStock: 'In Stock',
     outOfStock: 'Out of Stock'
   },
+  management: {
+    pagination: {
+      label: 'Management list pagination',
+      showingBooks: 'Showing {start}–{end} of {total} books',
+      showingOrders: 'Showing {start}–{end} of {total} orders',
+      pageOf: 'Page {page} of {pages}',
+      previous: 'Previous',
+      next: 'Next'
+    }
+  },
   cart: {
     title: 'Shopping Cart',
     empty: 'Your cart is empty',

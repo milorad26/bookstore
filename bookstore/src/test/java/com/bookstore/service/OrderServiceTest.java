@@ -15,6 +15,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -66,6 +69,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(orderService, "managementPageSize", 20);
         // Setup mock for MessageSource - return a default error message
         lenient().when(messageSource.getMessage(anyString(), any(), any(Locale.class)))
             .thenAnswer(invocation -> {
@@ -134,6 +138,52 @@ class OrderServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getId()).isEqualTo(1L);
         verify(orderRepository).findAll();
+    }
+
+    @Test
+    void getManagementPage_shouldFilterOrderIdsAndRejectPageBeyondAvailableRange() {
+        when(orderRepository.findOrderIdsByIdPrefix(eq("1"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 20), 41));
+
+        assertThatThrownBy(() -> orderService.getManagementPage(4, 20, " 1 "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Available pages: 3");
+
+        verify(orderRepository).findOrderIdsByIdPrefix(eq("1"), any(Pageable.class));
+        verify(orderRepository, never()).findAll();
+    }
+
+    @Test
+    void getManagementPage_shouldAllowSmallerPageSize() {
+        when(orderRepository.findAllOrderIds(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 11));
+
+        var result = orderService.getManagementPage(1, 10, null);
+
+        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        verify(orderRepository).findAllOrderIds(argThat(pageable ->
+                pageable.getPageNumber() == 0 && pageable.getPageSize() == 10));
+    }
+
+    @Test
+    void getManagementPage_shouldRejectPageSizesAboveConfiguredMaximum() {
+        assertThatThrownBy(() -> orderService.getManagementPage(1, 45, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("between 1 and 20");
+        verifyNoInteractions(orderRepository);
+    }
+
+    @Test
+    void getManagementPage_shouldUseConfiguredDefaultAndMaximum() {
+        ReflectionTestUtils.setField(orderService, "managementPageSize", 30);
+        when(orderRepository.findAllOrderIds(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 30), 1));
+
+        var result = orderService.getManagementPage(1, null, null);
+
+        assertThat(result.getSize()).isEqualTo(30);
+        verify(orderRepository).findAllOrderIds(argThat(pageable -> pageable.getPageSize() == 30));
     }
 
     @Test
@@ -206,7 +256,7 @@ class OrderServiceTest {
         itemRequest.setAuthor("Robert C. Martin");
         itemRequest.setQuantity(2);
         request.setOrderItems(Arrays.asList(itemRequest));
-        request.setDeliveryFee(new BigDecimal("999.99"));
+        ReflectionTestUtils.setField(request, "deliveryFee", new BigDecimal("999.99"));
 
         Order savedOrder = new Order();
         savedOrder.setId(1L);

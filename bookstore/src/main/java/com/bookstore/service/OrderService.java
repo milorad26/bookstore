@@ -14,6 +14,9 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -45,10 +48,53 @@ public class OrderService {
     @Value("${app.checkout.reservation-minutes:30}")
     private long reservationMinutes;
 
+    @Value("${management.page-size:20}")
+    private int managementPageSize;
+
     public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll().stream()
                 .map(this::convertToDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderPageDTO getManagementPage(int page, Integer requestedSize, String idPrefix) {
+        if (page < 1) {
+            throw new IllegalArgumentException("Page number must be at least 1");
+        }
+        int size = requestedSize == null ? managementPageSize : requestedSize;
+        if (managementPageSize < 1) {
+            throw new IllegalStateException("Management page size must be configured as a positive number.");
+        }
+        if (size < 1 || size > managementPageSize) {
+            throw new IllegalArgumentException(
+                    "Management order page size must be between 1 and " + managementPageSize + " orders.");
+        }
+
+        String normalizedPrefix = idPrefix == null || idPrefix.isBlank() ? null : idPrefix.trim();
+        Pageable pageable = PageRequest.of(page - 1, size);
+        Page<Long> orderIds = normalizedPrefix == null
+                ? orderRepository.findAllOrderIds(pageable)
+                : orderRepository.findOrderIdsByIdPrefix(normalizedPrefix, pageable);
+        if (page > Math.max(orderIds.getTotalPages(), 1)) {
+            throw new IllegalArgumentException(
+                    "Management order page " + page + " does not exist. Available pages: "
+                            + orderIds.getTotalPages() + ".");
+        }
+        List<OrderDTO> content;
+        if (orderIds.isEmpty()) {
+            content = List.of();
+        } else {
+            Map<Long, Order> ordersById = orderRepository
+                    .findAllWithDetailsByIdIn(orderIds.getContent()).stream()
+                    .collect(java.util.stream.Collectors.toMap(Order::getId, order -> order));
+            content = orderIds.getContent().stream()
+                    .map(ordersById::get)
+                    .map(this::convertToDTO)
+                    .toList();
+        }
+
+        return new OrderPageDTO(content, page, size, orderIds.getTotalElements(), orderIds.getTotalPages());
     }
 
     public OrderDTO getOrderById(Long id) {

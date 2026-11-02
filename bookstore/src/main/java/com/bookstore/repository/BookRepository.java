@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import jakarta.persistence.LockModeType;
 
 import java.util.List;
@@ -20,6 +22,17 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     List<Book> findByAuthorContainingIgnoreCase(String author);
 
     List<Book> findByTitleContainingIgnoreCase(String title);
+
+    @Query("""
+            select b from Book b
+            where (:title is null or lower(b.title) like lower(concat('%', :title, '%')))
+              and (:author is null or lower(b.author) like lower(concat('%', :author, '%')))
+              and (:isbn is null or lower(b.isbn) like lower(concat('%', :isbn, '%')))
+            """)
+    Page<Book> searchManagementBooks(@Param("title") String title,
+                                     @Param("author") String author,
+                                     @Param("isbn") String isbn,
+                                     Pageable pageable);
 
     Optional<Book> findByTitleAndAuthor(String title, String author);
 

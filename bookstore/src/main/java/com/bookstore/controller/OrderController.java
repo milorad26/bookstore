@@ -14,14 +14,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
@@ -63,6 +68,36 @@ public class OrderController {
         }
         
         return ResponseEntity.ok(orderService.getAllOrders());
+    }
+
+    @Operation(summary = "Get a page of orders for management",
+            description = "Page numbers start at 1. If size is omitted, the configured management page size is used (default 20). Smaller sizes are allowed; requests above the configured size or beyond the available pages are rejected. An order ID prefix can also be supplied.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Management order page retrieved"),
+        @ApiResponse(responseCode = "400", description = "Invalid page, page size, or page beyond the available range")
+    })
+    @GetMapping("/management/page")
+    public ResponseEntity<OrderPageDTO> getManagementPage(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "Optional. Omit to use MANAGEMENT_PAGE_SIZE (default 20); allowed range is 1 through the configured value.",
+                    schema = @Schema(minimum = "1"))
+            @RequestParam(required = false) @Min(1) Integer size,
+            @RequestParam(required = false) String idPrefix,
+            HttpServletRequest request) {
+        Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
+        if (currentUserId == null) {
+            throw new AccessDeniedException("Authentication required");
+        }
+
+        User currentUser = userService.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Current user not found with ID: " + currentUserId));
+        if (currentUser.getUserType() == UserType.USER) {
+            throw new AccessDeniedException(
+                    "Permission denied: Regular users cannot view the order management list.");
+        }
+
+        return ResponseEntity.ok(orderService.getManagementPage(page, size, idPrefix));
     }
 
     @Operation(summary = "Get order by ID", description = "Retrieve a specific order by its ID")
@@ -278,4 +313,3 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 }
-

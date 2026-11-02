@@ -27,6 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +50,8 @@ class BookServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(bookService, "catalogPageSize", 20);
+        ReflectionTestUtils.setField(bookService, "managementPageSize", 20);
+        ReflectionTestUtils.setField(bookService, "managementPageSize", 20);
         lenient().when(messageSource.getMessage(anyString(), any(Object[].class), any(Locale.class)))
                 .thenAnswer(invocation -> {
                     String key = invocation.getArgument(0);
@@ -181,6 +185,65 @@ class BookServiceTest {
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
         assertThatThrownBy(() -> bookService.getCatalogPage(1, 20))
                 .isInstanceOf(CatalogPageNotFoundException.class);
+    }
+
+    @Test
+    void getManagementPage_shouldRejectPageBeyondAvailableRange() {
+        when(bookRepository.searchManagementBooks(isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(4, 20), 61));
+
+        assertThatThrownBy(() -> bookService.getManagementPage(5, 20, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Available pages: 4");
+
+        verify(bookRepository).searchManagementBooks(isNull(), isNull(), isNull(), argThat((Pageable pageable) ->
+                pageable.getPageNumber() == 4 && pageable.getPageSize() == 20));
+    }
+
+    @Test
+    void getManagementPage_shouldAllowSmallerPageSize() {
+        when(bookRepository.searchManagementBooks(isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 10), 11));
+
+        var result = bookService.getManagementPage(1, 10, null, null, null);
+
+        assertThat(result.getSize()).isEqualTo(10);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        verify(bookRepository).searchManagementBooks(isNull(), isNull(), isNull(), argThat((Pageable pageable) ->
+                pageable.getPageNumber() == 0 && pageable.getPageSize() == 10));
+    }
+
+    @Test
+    void getManagementPage_shouldRejectPageSizesAboveConfiguredMaximum() {
+        assertThatThrownBy(() -> bookService.getManagementPage(1, 45, null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("between 1 and 20");
+        verifyNoInteractions(bookRepository);
+    }
+
+    @Test
+    void getManagementPage_shouldUseConfiguredDefaultAndMaximum() {
+        ReflectionTestUtils.setField(bookService, "managementPageSize", 30);
+        when(bookRepository.searchManagementBooks(isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 30), 1));
+
+        var result = bookService.getManagementPage(1, null, null, null, null);
+
+        assertThat(result.getSize()).isEqualTo(30);
+        verify(bookRepository).searchManagementBooks(isNull(), isNull(), isNull(),
+                argThat((Pageable pageable) -> pageable.getPageSize() == 30));
+    }
+
+    @Test
+    void getManagementPage_shouldApplySearchFilters() {
+        when(bookRepository.searchManagementBooks(eq("Clean Code"), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 20), 1));
+
+        var result = bookService.getManagementPage(1, null, " Clean Code ", null, null);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getTitle()).isEqualTo("Clean Code");
+        verify(bookRepository).searchManagementBooks(eq("Clean Code"), isNull(), isNull(), any(Pageable.class));
     }
 
     private Book createBook(Long id, String title) {

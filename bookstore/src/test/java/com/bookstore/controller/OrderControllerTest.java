@@ -148,6 +148,59 @@ class OrderControllerTest {
     }
 
     @Test
+    void getManagementPage_asAdmin_shouldReturnFilteredPageMetadata() throws Exception {
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getManagementPage(1, null, "12"))
+                .thenReturn(new OrderPageDTO(Arrays.asList(testOrderDTO), 1, 20, 1, 1));
+
+        mockMvc.perform(get("/api/orders/management/page").param("idPrefix", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page", is(1)))
+                .andExpect(jsonPath("$.size", is(20)))
+                .andExpect(jsonPath("$.totalElements", is(1)))
+                .andExpect(jsonPath("$.totalPages", is(1)));
+
+        verify(orderService).getManagementPage(1, null, "12");
+    }
+
+    @Test
+    void getManagementPage_shouldRejectNonPositivePageSize() throws Exception {
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+
+        mockMvc.perform(get("/api/orders/management/page").param("size", "0"))
+                .andExpect(status().isBadRequest());
+
+        verify(orderService, never()).getManagementPage(anyInt(), any(), any());
+    }
+
+    @Test
+    void getManagementPage_shouldReturnBadRequestForOversizedPageSize() throws Exception {
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getManagementPage(1, 21, null))
+                .thenThrow(new IllegalArgumentException("Management order page size must be between 1 and 20 orders."));
+
+        mockMvc.perform(get("/api/orders/management/page").param("size", "21"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("between 1 and 20")));
+    }
+
+    @Test
+    void getManagementPage_asRegularUser_shouldBeForbidden() throws Exception {
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
+        when(userService.findById(1L)).thenReturn(Optional.of(testUser));
+
+        mockMvc.perform(get("/api/orders/management/page"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code", is(403)));
+
+        verify(orderService, never()).getManagementPage(anyInt(), any(), any());
+    }
+
+    @Test
     void testGetAllOrders_AsRegularUser_ShouldReturn403() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
