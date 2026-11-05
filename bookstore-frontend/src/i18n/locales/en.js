@@ -8,7 +8,7 @@ export default {
     loadUsers: 'Could not load users.', saveUser: 'Could not save the user.', deleteUser: 'Could not delete the user.',
     loadOrders: 'Could not load orders.', confirmOrder: 'Could not confirm the order.', cancelOrder: 'Could not cancel the order.',
     deliverOrder: 'Could not update the order delivery status.', refundOrder: 'Could not refund the order.', deleteOrder: 'Could not delete the order.',
-    loadBooks: 'Could not load books.', searchBooks: 'Could not search books.', saveBook: 'Could not save the book.', deleteBook: 'Could not delete the book.',
+    loadBooks: 'Could not load books.', searchBooks: 'Could not search books.', saveBook: 'Could not save the book.', deleteBook: 'Could not delete the book.', restockAlerts: 'Could not update the restock notification.',
     createPayment: 'Could not start payment.', paymentNotConfigured: 'Payments are not configured. Set STRIPE_SECRET_KEY for the backend and restart it.',
     adminOnly: 'Administrator access is required.', unknown: 'An unexpected error occurred.'
   },
@@ -75,7 +75,11 @@ export default {
     author: 'Author',
     title: 'Title',
     inStock: 'In Stock',
-    outOfStock: 'Out of Stock'
+    outOfStock: 'Out of Stock',
+    notifyWhenAvailable: 'Notify me when available',
+    cancelRestockAlert: 'Cancel notification',
+    restockAlertAdded: 'We will email you when this book is back in stock.',
+    restockAlertRemoved: 'Restock notification cancelled.'
   },
   cart: {
     title: 'Shopping Cart',

@@ -138,8 +138,10 @@
         :key="category"
         :category="category"
         :books="categoryBooks"
+        :restock-alert-book-ids="restockAlertBookIds"
         @add-to-cart="addToCart"
         @view-reviews="viewReviews"
+        @toggle-restock-alert="toggleRestockAlert"
       />
     </div>
 
@@ -190,6 +192,15 @@
               :disabled="Number(book.stockQuantity) <= 0"
             >
               <i class="bi bi-cart-plus"></i> {{ t('shop.addToCart') }}
+            </button>
+
+            <button
+              v-if="Number(book.stockQuantity) <= 0"
+              class="btn btn-outline-primary w-100 mt-2"
+              @click="toggleRestockAlert(book)"
+            >
+              <i class="bi bi-bell"></i>
+              {{ restockAlertBookIds.has(book.id) ? t('shop.cancelRestockAlert') : t('shop.notifyWhenAvailable') }}
             </button>
             
             <button
@@ -270,6 +281,7 @@ const { t } = useI18n()
 
 const books = ref([])
 const booksByCategory = ref({})
+const restockAlertBookIds = ref(new Set())
 const searchResults = ref(null)
 const pageSize = ref(20)
 const currentPage = ref(0)
@@ -461,8 +473,42 @@ const addToCart = (book) => {
   showSuccess(`"${book.title}" ${t('messages.addedToCart')}`)
 }
 
+const loadRestockAlerts = async () => {
+  if (!authStore.isAuthenticated) return
+  try {
+    restockAlertBookIds.value = new Set(await bookService.getRestockAlertBookIds())
+  } catch (error) {
+    showError(localizedError(error, t, 'errors.restockAlerts'))
+  }
+}
+
+const toggleRestockAlert = async (book) => {
+  if (!authStore.isAuthenticated) {
+    showError(t('messages.loginRequired'))
+    router.push('/auth/login')
+    return
+  }
+
+  try {
+    if (restockAlertBookIds.value.has(book.id)) {
+      await bookService.removeRestockAlert(book.id)
+      const updatedIds = new Set(restockAlertBookIds.value)
+      updatedIds.delete(book.id)
+      restockAlertBookIds.value = updatedIds
+      showInfo(t('shop.restockAlertRemoved'))
+    } else {
+      await bookService.addRestockAlert(book.id)
+      restockAlertBookIds.value = new Set([...restockAlertBookIds.value, book.id])
+      showSuccess(t('shop.restockAlertAdded'))
+    }
+  } catch (error) {
+    showError(localizedError(error, t, 'errors.restockAlerts'))
+  }
+}
+
 onMounted(() => {
   loadBooks(0)
+  loadRestockAlerts()
 })
 
 onBeforeUnmount(() => {

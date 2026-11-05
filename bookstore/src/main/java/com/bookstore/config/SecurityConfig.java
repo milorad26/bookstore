@@ -132,7 +132,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/my-reviews").authenticated()
-                
+
+                // Customers manage only their own out-of-stock notifications.
+                .requestMatchers("/api/restock-alerts/**").authenticated()
+
                 // Users endpoints - Role-based access control
                 // /me endpoint for regular users to access own profile
                 .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
