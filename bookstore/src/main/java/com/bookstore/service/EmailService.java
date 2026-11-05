@@ -1,6 +1,7 @@
 package com.bookstore.service;
 
 import com.bookstore.dto.ContactRequest;
+import com.bookstore.model.Book;
 import com.bookstore.model.Order;
 import com.bookstore.model.OrderItem;
 import jakarta.mail.MessagingException;
@@ -117,6 +118,22 @@ public class EmailService {
             log.info("Delivery email sent to {} for order #{}", order.getUser().getEmail(), order.getId());
         } catch (MessagingException e) {
             throw new IllegalStateException("Failed to send delivery email for order " + order.getId(), e);
+        }
+    }
+
+    public void sendRestockAlertEmail(String email, Book book) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(email);
+            helper.setSubject("Back in stock / Ponovo dostupno: " + book.getTitle());
+            helper.setText("Good news! \"" + book.getTitle() + "\" is back in stock.\n\n"
+                    + "Dobra vest! Knjiga \"" + book.getTitle() + "\" je ponovo dostupna.");
+            mailSender.send(message);
+            log.info("Restock notification sent for book {} to {}", book.getId(), email);
+        } catch (MessagingException e) {
+            throw new MailSendException("Failed to prepare restock notification for book " + book.getId(), e);
         }
     }
 

@@ -74,9 +74,18 @@
             <button
               class="btn btn-sm btn-primary w-100 mb-2"
               @click="$emit('add-to-cart', book)"
-              :disabled="book.stockQuantity === 0"
+              :disabled="Number(book.stockQuantity) <= 0"
             >
               <i class="bi bi-cart-plus"></i> {{ $t('shop.addToCart') }}
+            </button>
+
+            <button
+              v-if="Number(book.stockQuantity) <= 0"
+              class="btn btn-sm btn-outline-primary w-100 mb-2"
+              @click="$emit('toggle-restock-alert', book)"
+            >
+              <i class="bi bi-bell"></i>
+              {{ restockAlertBookIds.has(book.id) ? $t('shop.cancelRestockAlert') : $t('shop.notifyWhenAvailable') }}
             </button>
             
             <button
@@ -113,10 +122,14 @@ const props = defineProps({
   books: {
     type: Array,
     required: true
+  },
+  restockAlertBookIds: {
+    type: Set,
+    default: () => new Set()
   }
 })
 
-defineEmits(['add-to-cart', 'view-reviews'])
+defineEmits(['add-to-cart', 'view-reviews', 'toggle-restock-alert'])
 
 const modules = [Navigation, Pagination]
 

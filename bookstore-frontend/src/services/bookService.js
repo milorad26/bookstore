@@ -29,6 +29,31 @@ export const bookService = {
     }
   },
 
+  getRestockAlertBookIds: async () => {
+    try {
+      const response = await apiClient.get('/restock-alerts/mine')
+      return response.data
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
+  addRestockAlert: async (bookId) => {
+    try {
+      await apiClient.post(`/restock-alerts/books/${bookId}`)
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
+  removeRestockAlert: async (bookId) => {
+    try {
+      await apiClient.delete(`/restock-alerts/books/${bookId}`)
+    } catch (error) {
+      throw parseError(error)
+    }
+  },
+
   searchByIsbn: async (isbn) => {
     try {
       const response = await apiClient.get(`/books/isbn/${encodeURIComponent(isbn)}`)

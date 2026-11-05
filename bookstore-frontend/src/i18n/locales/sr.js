@@ -8,7 +8,7 @@ export default {
     loadUsers: 'Nije moguće učitati korisnike.', saveUser: 'Nije moguće sačuvati korisnika.', deleteUser: 'Nije moguće obrisati korisnika.',
     loadOrders: 'Nije moguće učitati porudžbine.', confirmOrder: 'Nije moguće potvrditi porudžbinu.', cancelOrder: 'Nije moguće otkazati porudžbinu.',
     deliverOrder: 'Nije moguće ažurirati status isporuke.', refundOrder: 'Nije moguće refundirati porudžbinu.', deleteOrder: 'Nije moguće obrisati porudžbinu.',
-    loadBooks: 'Nije moguće učitati knjige.', searchBooks: 'Nije moguće pretražiti knjige.', saveBook: 'Nije moguće sačuvati knjigu.', deleteBook: 'Nije moguće obrisati knjigu.',
+    loadBooks: 'Nije moguće učitati knjige.', searchBooks: 'Nije moguće pretražiti knjige.', saveBook: 'Nije moguće sačuvati knjigu.', deleteBook: 'Nije moguće obrisati knjigu.', restockAlerts: 'Nije moguće izmeniti obaveštenje o dostupnosti.',
     createPayment: 'Nije moguće pokrenuti plaćanje.', paymentNotConfigured: 'Plaćanje nije podešeno. Postavite STRIPE_SECRET_KEY za backend i ponovo ga pokrenite.',
     adminOnly: 'Potreban je administratorski pristup.', unknown: 'Došlo je do neočekivane greške.'
   },
@@ -75,7 +75,11 @@ export default {
     author: 'Autor',
     title: 'Naslov',
     inStock: 'Na Stanju',
-    outOfStock: 'Rasprodato'
+    outOfStock: 'Rasprodato',
+    notifyWhenAvailable: 'Obavesti me kada bude dostupna',
+    cancelRestockAlert: 'Otkaži obaveštenje',
+    restockAlertAdded: 'Poslaćemo vam imejl kada knjiga ponovo bude dostupna.',
+    restockAlertRemoved: 'Obaveštenje o dostupnosti je otkazano.'
   },
   cart: {
     title: 'Korpa za Kupovinu',

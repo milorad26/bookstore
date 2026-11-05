@@ -3,6 +3,7 @@ package com.bookstore.scheduler;
 import com.bookstore.model.Order;
 import com.bookstore.repository.OrderRepository;
 import com.bookstore.service.EmailService;
+import com.bookstore.service.RestockAlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,7 @@ public class EmailRetryScheduler {
 
     private final OrderRepository orderRepository;
     private final EmailService emailService;
+    private final RestockAlertService restockAlertService;
 
     /**
      * Runs every 1 minute to retry sending confirmation emails for paid orders.
@@ -93,5 +95,10 @@ public class EmailRetryScheduler {
         } catch (Exception e) {
             log.error("Error during delivery email retry: {}", e.getMessage(), e);
         }
+    }
+
+    @Scheduled(fixedRate = 60000)
+    public void sendRestockAlerts() {
+        restockAlertService.notifyForAvailableBooks();
     }
 }
