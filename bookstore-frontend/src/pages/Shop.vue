@@ -162,7 +162,7 @@
       <div v-for="book in books" :key="book.id" class="col-md-4 col-lg-3 mb-4">
         <div class="card h-100 shadow-sm book-card">
           <router-link
-            :to="{ name: 'BookDetails', params: { id: book.id } }"
+            :to="{ name: 'BookDetails', params: { id: book.id }, query: route.query.page ? { page: route.query.page } : {} }"
             class="book-cover-link"
             :aria-label="t('bookDetails.viewDetailsFor', { title: book.title })"
           >
@@ -176,7 +176,7 @@
           <div class="card-body d-flex flex-column">
             <h5 class="card-title text-truncate">
               <router-link
-                :to="{ name: 'BookDetails', params: { id: book.id } }"
+                :to="{ name: 'BookDetails', params: { id: book.id }, query: route.query.page ? { page: route.query.page } : {} }"
                 class="book-title-link"
               >{{ book.title }}</router-link>
             </h5>
@@ -287,7 +287,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
 import { bookService } from '../services/bookService'
@@ -298,6 +298,7 @@ import StarRating from '../components/StarRating.vue'
 import CategorySwiper from '../components/CategorySwiper.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const { t } = useI18n()
@@ -326,6 +327,21 @@ let loadRequestId = 0
 
 const rangeStart = computed(() => totalElements.value === 0 ? 0 : currentPage.value * pageSize.value + 1)
 const rangeEnd = computed(() => Math.min((currentPage.value + 1) * pageSize.value, totalElements.value))
+
+const getRequestedPage = () => {
+  const page = Number(route.query.page)
+  return Number.isInteger(page) && page > 0 ? page - 1 : 0
+}
+
+const syncPageToUrl = (page) => {
+  const query = { ...route.query }
+  if (page === 0) {
+    delete query.page
+  } else {
+    query.page = String(page + 1)
+  }
+  router.replace({ query })
+}
 
 const groupBooksByCategory = (catalogBooks) => catalogBooks.reduce((groups, book) => {
   const category = book.category || 'General'
@@ -378,6 +394,7 @@ const loadBooks = async (page = 0) => {
       totalPages.value = result.totalPages
     }
     booksByCategory.value = groupBooksByCategory(books.value)
+    syncPageToUrl(currentPage.value)
     
   } catch (error) {
     if (requestId === loadRequestId) {
@@ -552,7 +569,7 @@ const toggleRestockAlert = async (book) => {
 }
 
 onMounted(() => {
-  loadBooks(0)
+  loadBooks(getRequestedPage())
   loadRestockAlerts()
 })
 
