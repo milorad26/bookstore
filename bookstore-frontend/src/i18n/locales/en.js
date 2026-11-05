@@ -51,6 +51,9 @@ export default {
     loadError: 'CAPTCHA could not be loaded. Check your connection and try again.'
   },
   shop: {
+    heroEyebrow: 'A little more wonder, one page at a time',
+    heroTitle: 'Find your next favorite read',
+    heroSubtitle: 'Explore stories, discover new voices, and make room for a book you will remember.',
     byCategory: 'By Category',
     allBooks: 'All Books',
     searchBooks: 'Search Books',
@@ -80,6 +83,16 @@ export default {
     cancelRestockAlert: 'Cancel notification',
     restockAlertAdded: 'We will email you when this book is back in stock.',
     restockAlertRemoved: 'Restock notification cancelled.'
+  },
+  bookDetails: {
+    backToShop: 'Back to shop',
+    viewDetailsFor: 'View details for {title}',
+    byAuthor: 'by {author}',
+    beFirstToReview: 'Be the first to review this book',
+    bookInformation: 'Book information',
+    category: 'Category',
+    uncategorized: 'General',
+    noDescription: 'No description is available for this book.'
   },
   cart: {
     title: 'Shopping Cart',

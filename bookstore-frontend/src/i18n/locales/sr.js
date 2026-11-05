@@ -51,6 +51,9 @@ export default {
     loadError: 'CAPTCHA nije mogla da se učita. Proverite internet vezu i pokušajte ponovo.'
   },
   shop: {
+    heroEyebrow: 'Malo više čarolije, stranicu po stranicu',
+    heroTitle: 'Pronađite svoju sledeću omiljenu knjigu',
+    heroSubtitle: 'Istražite priče, otkrijte nove glasove i pronađite knjigu koju ćete pamtiti.',
     byCategory: 'Po Kategorijama',
     allBooks: 'Sve Knjige',
     searchBooks: 'Pretraži Knjige',
@@ -80,6 +83,16 @@ export default {
     cancelRestockAlert: 'Otkaži obaveštenje',
     restockAlertAdded: 'Poslaćemo vam imejl kada knjiga ponovo bude dostupna.',
     restockAlertRemoved: 'Obaveštenje o dostupnosti je otkazano.'
+  },
+  bookDetails: {
+    backToShop: 'Nazad u knjižaru',
+    viewDetailsFor: 'Prikaži detalje za knjigu {title}',
+    byAuthor: 'Autor: {author}',
+    beFirstToReview: 'Budite prvi koji će oceniti ovu knjigu',
+    bookInformation: 'Informacije o knjizi',
+    category: 'Kategorija',
+    uncategorized: 'Opšta kategorija',
+    noDescription: 'Opis za ovu knjigu nije dostupan.'
   },
   cart: {
     title: 'Korpa za Kupovinu',

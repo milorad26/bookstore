@@ -63,6 +63,12 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/books/:id',
+    name: 'BookDetails',
+    component: () => import('../pages/BookDetails.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/orders',
     name: 'Orders',
     component: () => import('../pages/Orders.vue'),
