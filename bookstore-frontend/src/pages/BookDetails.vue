@@ -1,6 +1,9 @@
 <template>
   <div class="book-details-page container py-5">
-    <router-link to="/" class="back-link">
+    <router-link
+      :to="{ name: 'Home', query: route.query.page ? { page: route.query.page } : {} }"
+      class="back-link"
+    >
       <i class="bi bi-arrow-left"></i> {{ t('bookDetails.backToShop') }}
     </router-link>
 
@@ -18,7 +21,7 @@
     </div>
 
     <div v-else-if="book" class="book-details-card">
-      <div class="row g-0">
+      <div class="row g-4 align-items-start">
         <div class="col-lg-5 book-cover-panel">
           <img
             :src="getBookCoverUrl(book.isbn)"
@@ -118,7 +121,10 @@
     <div v-else class="text-center py-5">
       <i class="bi bi-book" style="font-size: 3rem; color: #ccc;"></i>
       <h2 class="mt-3">{{ t('errors.notFound') }}</h2>
-      <router-link to="/" class="btn btn-primary mt-2">{{ t('bookDetails.backToShop') }}</router-link>
+      <router-link
+        :to="{ name: 'Home', query: route.query.page ? { page: route.query.page } : {} }"
+        class="btn btn-primary mt-2"
+      >{{ t('bookDetails.backToShop') }}</router-link>
     </div>
   </div>
 </template>
@@ -261,33 +267,38 @@ watch(bookId, loadBook, { immediate: true })
 }
 
 .book-details-card {
-  overflow: hidden;
-  border: 1px solid rgba(67, 39, 31, 0.08);
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 14px 40px rgba(67, 39, 31, 0.1);
+  overflow: visible;
 }
 
 .book-cover-panel {
   display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: 580px;
-  padding: 3rem;
+  overflow: hidden;
+  padding-right: 0;
+  padding-left: 0;
+  border: 1px solid rgba(67, 39, 31, 0.08);
+  border-radius: 24px;
   background: linear-gradient(145deg, #f8eee3, #f3e5dc);
+  box-shadow: 0 14px 40px rgba(67, 39, 31, 0.1);
 }
 
 .book-details-cover {
-  width: min(100%, 360px);
-  max-height: 500px;
-  border-radius: 12px;
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 23px;
   background: #fff;
   box-shadow: 0 20px 40px rgba(42, 30, 25, 0.2);
   object-fit: contain;
 }
 
 .book-details-content {
+  height: auto;
   padding: clamp(1.5rem, 4vw, 3.5rem);
+  border: 1px solid rgba(67, 39, 31, 0.08);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 14px 40px rgba(67, 39, 31, 0.1);
 }
 
 .category-label {
@@ -427,12 +438,8 @@ h1 {
 @media (max-width: 991px) {
   .book-cover-panel {
     min-height: 0;
-    padding: 2rem;
   }
 
-  .book-details-cover {
-    max-height: 380px;
-  }
 }
 
 @media (max-width: 575px) {
