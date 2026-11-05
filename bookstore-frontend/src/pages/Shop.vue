@@ -1,14 +1,26 @@
 <template>
   <div class="container-fluid py-5">
+    <section class="shop-hero mb-4">
+      <div class="shop-hero-copy">
+        <span class="shop-eyebrow">
+          <i class="bi bi-book-half"></i>
+          {{ t('shop.heroEyebrow') }}
+        </span>
+        <h1>{{ t('shop.heroTitle') }}</h1>
+        <p>{{ t('shop.heroSubtitle') }}</p>
+      </div>
+      <i class="bi bi-book-half shop-hero-art" aria-hidden="true"></i>
+    </section>
+
     <!-- View Toggle -->
     <div class="row mb-4">
       <div class="col-12">
-        <div class="btn-group" role="group">
+        <div class="btn-group shop-view-toggle" role="group">
           <button 
             type="button" 
             class="btn btn-outline-primary"
             :class="{ active: viewMode === 'all' }"
-            @click="viewMode = 'all'"
+            @click="setViewMode('all')"
           >
             <i class="bi bi-grid"></i> {{ t('shop.allBooks') || 'All Books' }}
           </button>
@@ -16,7 +28,7 @@
             type="button" 
             class="btn btn-outline-primary"
             :class="{ active: viewMode === 'categories' }"
-            @click="viewMode = 'categories'"
+            @click="setViewMode('categories')"
           >
             <i class="bi bi-collection"></i> {{ t('shop.byCategory') || 'By Category' }}
           </button>
@@ -149,14 +161,25 @@
     <div v-else-if="viewMode === 'all' && books.length > 0" class="row">
       <div v-for="book in books" :key="book.id" class="col-md-4 col-lg-3 mb-4">
         <div class="card h-100 shadow-sm book-card">
-          <img 
-            :src="getBookCoverUrl(book.isbn)" 
-            :alt="book.title"
-            class="card-img-top book-cover"
-            @error="handleImageError"
-          />
+          <router-link
+            :to="{ name: 'BookDetails', params: { id: book.id } }"
+            class="book-cover-link"
+            :aria-label="t('bookDetails.viewDetailsFor', { title: book.title })"
+          >
+            <img
+              :src="getBookCoverUrl(book.isbn)"
+              :alt="book.title"
+              class="card-img-top book-cover"
+              @error="handleImageError"
+            />
+          </router-link>
           <div class="card-body d-flex flex-column">
-            <h5 class="card-title text-truncate">{{ book.title }}</h5>
+            <h5 class="card-title text-truncate">
+              <router-link
+                :to="{ name: 'BookDetails', params: { id: book.id } }"
+                class="book-title-link"
+              >{{ book.title }}</router-link>
+            </h5>
             <p class="card-text text-muted">
               <i class="bi bi-person"></i> {{ book.author }}
             </p>
@@ -222,7 +245,7 @@
     </div>
 
     <div
-      v-if="!isLoading && totalElements > 0"
+      v-if="viewMode === 'all' && !isLoading && totalElements > 0"
       class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4"
       :aria-label="t('shop.pagination')"
     >
@@ -310,6 +333,28 @@ const groupBooksByCategory = (catalogBooks) => catalogBooks.reduce((groups, book
   groups[category].push(book)
   return groups
 }, {})
+
+const setViewMode = async (mode) => {
+  viewMode.value = mode
+  if (mode === 'all') {
+    await loadBooks(currentPage.value)
+    return
+  }
+
+  const requestId = ++loadRequestId
+  isLoading.value = true
+  try {
+    const catalogBooks = searchResults.value ?? await bookService.getAllBooks()
+    if (requestId !== loadRequestId) return
+    booksByCategory.value = groupBooksByCategory(catalogBooks)
+  } catch (error) {
+    if (requestId === loadRequestId) {
+      showError(localizedError(error, t, 'errors.loadBooks'))
+    }
+  } finally {
+    if (requestId === loadRequestId) isLoading.value = false
+  }
+}
 
 const loadBooks = async (page = 0) => {
   const requestId = ++loadRequestId
@@ -519,41 +564,152 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.btn-group .btn {
-  padding: 0.75rem 1.5rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
+.shop-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 220px;
+  padding: clamp(2rem, 5vw, 4rem);
+  overflow: hidden;
+  border: 1px solid rgba(115, 36, 48, 0.08);
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 85% 20%, rgba(255, 255, 255, 0.85), transparent 34%),
+    linear-gradient(120deg, #f8eee3 0%, #f5e4d4 58%, #eed6c6 100%);
+  box-shadow: 0 12px 32px rgba(67, 39, 31, 0.08);
 }
 
-.btn-group .btn.active {
-  background-color: #0d6efd;
-  color: white;
-  border-color: #0d6efd;
+.shop-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 650px;
 }
 
-.btn-group .btn:not(.active):hover {
-  background-color: #e7f1ff;
+.shop-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  color: #842b3b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.shop-hero h1 {
+  margin: 0;
+  color: #332522;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.08;
+}
+
+.shop-hero p {
+  max-width: 520px;
+  margin: 0.9rem 0 0;
+  color: #6d5952;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.shop-hero-art {
+  position: absolute;
+  right: clamp(1.5rem, 8vw, 7rem);
+  color: rgba(132, 43, 59, 0.12);
+  font-size: clamp(7rem, 20vw, 14rem);
+  transform: rotate(-12deg);
+}
+
+.shop-view-toggle .btn {
+  padding: 0.7rem 1.35rem;
+  border-color: #842b3b;
+  border-radius: 999px !important;
+  color: #842b3b;
+  font-weight: 600;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.shop-view-toggle .btn + .btn {
+  margin-left: 0.5rem;
+}
+
+.shop-view-toggle .btn.active,
+.shop-view-toggle .btn:hover {
+  border-color: #842b3b;
+  background-color: #842b3b;
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(132, 43, 59, 0.18);
+}
+
+.shop-view-toggle .btn:not(.active):hover {
+  background-color: #f8eee3;
+  color: #842b3b;
+}
+
+.card.shadow-sm {
+  border: 1px solid rgba(67, 39, 31, 0.07);
+  border-radius: 18px;
 }
 
 .book-cover {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
+  width: auto;
+  max-width: calc(100% - 2rem);
+  height: 280px;
+  margin: 1rem auto 0;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(42, 30, 25, 0.2);
+  object-fit: contain;
   background-color: #f8f9fa;
 }
 
+.book-cover-link {
+  display: flex;
+  justify-content: center;
+}
+
+.book-cover-link .book-cover {
+  width: auto;
+}
+
+.book-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.book-title-link:hover {
+  color: #842b3b;
+}
+
 .book-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid rgba(67, 39, 31, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(67, 39, 31, 0.08) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .book-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(67, 39, 31, 0.14) !important;
 }
 
 .card-title {
-  color: #333;
+  color: #332522;
   font-weight: 600;
+}
+
+@media (max-width: 576px) {
+  .shop-hero {
+    min-height: 190px;
+    padding: 1.75rem 1.5rem;
+  }
+
+  .shop-hero-art {
+    right: -1rem;
+    opacity: 0.75;
+  }
 }
 </style>

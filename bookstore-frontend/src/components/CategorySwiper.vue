@@ -36,14 +36,25 @@
     >
       <swiper-slide v-for="book in books" :key="book.id">
         <div class="card h-100 shadow-sm book-card">
-          <img 
-            :src="getBookCoverUrl(book.isbn)" 
-            :alt="book.title"
-            class="card-img-top book-cover"
-            @error="handleImageError"
-          />
+          <router-link
+            :to="{ name: 'BookDetails', params: { id: book.id } }"
+            class="book-cover-link"
+            :aria-label="$t('bookDetails.viewDetailsFor', { title: book.title })"
+          >
+            <img
+              :src="getBookCoverUrl(book.isbn)"
+              :alt="book.title"
+              class="card-img-top book-cover"
+              @error="handleImageError"
+            />
+          </router-link>
           <div class="card-body d-flex flex-column">
-            <h6 class="card-title text-truncate" :title="book.title">{{ book.title }}</h6>
+            <h6 class="card-title text-truncate" :title="book.title">
+              <router-link
+                :to="{ name: 'BookDetails', params: { id: book.id } }"
+                class="book-title-link"
+              >{{ book.title }}</router-link>
+            </h6>
             <p class="card-text text-muted small mb-2">
               <i class="bi bi-person"></i> {{ book.author }}
             </p>
@@ -196,28 +207,48 @@ const getCategoryIcon = (category) => {
 
 .book-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: none;
-  border-radius: 12px;
+  border: 1px solid rgba(67, 39, 31, 0.08);
+  border-radius: 18px;
   overflow: hidden;
   height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 8px 24px rgba(67, 39, 31, 0.08) !important;
 }
 
 .book-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-5px);
+  box-shadow: 0 14px 30px rgba(67, 39, 31, 0.14) !important;
 }
 
 .book-cover {
-  width: 100%;
+  display: block;
+  width: auto;
+  max-width: calc(100% - 2rem);
   height: 250px;
   min-height: 250px;
   max-height: 250px;
-  object-fit: cover;
+  margin: 1rem auto 0;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(42, 30, 25, 0.2);
+  object-fit: contain;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   flex-shrink: 0;
+}
+
+.book-cover-link {
+  display: flex;
+  justify-content: center;
+}
+
+.book-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.book-title-link:hover {
+  color: #842b3b;
 }
 
 .card-body {
@@ -281,6 +312,7 @@ const getCategoryIcon = (category) => {
 :deep(.swiper-button-disabled) {
   opacity: 0.35;
   cursor: not-allowed;
+  pointer-events: auto;
 }
 
 /* Swiper pagination */
