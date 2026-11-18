@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -62,15 +64,27 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                           @Param("status") OrderStatus status,
                           @Param("updatedAt") LocalDateTime updatedAt);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.confirmationEmailSent = false AND o.status = 'PAID'")
-    long countOrdersNeedingConfirmationEmail();
+    @Query("SELECT o.id FROM Order o WHERE o.confirmationEmailSent = false AND o.status = 'PAID' ORDER BY o.orderDate ASC")
+    List<Long> findConfirmationEmailOrderIds(Pageable pageable);
 
-    @Query("SELECT o FROM Order o WHERE o.confirmationEmailSent = false AND o.status = 'PAID' ORDER BY o.orderDate DESC")
-    List<Order> findOrdersNeedingConfirmationEmail();
+    @Query("SELECT o.id FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED' ORDER BY o.orderDate ASC")
+    List<Long> findDeliveryEmailOrderIds(Pageable pageable);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED'")
-    long countOrdersNeedingDeliveryEmail();
+    @EntityGraph(attributePaths = {"user", "orderItems.book", "appliedCoupon"})
+    @Query("SELECT DISTINCT o FROM Order o WHERE o.id IN :orderIds")
+    List<Order> findConfirmationEmailOrdersByIdIn(@Param("orderIds") List<Long> orderIds);
 
-    @Query("SELECT o FROM Order o WHERE o.deliveryEmailSent = false AND o.status = 'DELIVERED' ORDER BY o.orderDate DESC")
-    List<Order> findOrdersNeedingDeliveryEmail();
+    @EntityGraph(attributePaths = {"user"})
+    @Query("SELECT o FROM Order o WHERE o.id IN :orderIds")
+    List<Order> findDeliveryEmailOrdersByIdIn(@Param("orderIds") List<Long> orderIds);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Order o SET o.confirmationEmailSent = true WHERE o.id IN :orderIds AND o.confirmationEmailSent = false")
+    int markConfirmationEmailsSent(@Param("orderIds") List<Long> orderIds);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Order o SET o.deliveryEmailSent = true WHERE o.id IN :orderIds AND o.deliveryEmailSent = false")
+    int markDeliveryEmailsSent(@Param("orderIds") List<Long> orderIds);
 }
