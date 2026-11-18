@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
@@ -219,6 +220,35 @@ class OrderRepositoryTest {
         assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems())).isTrue();
         assertThat(Hibernate.isInitialized(loadedOrder.getAppliedCoupon())).isTrue();
         assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems().get(0).getBook())).isTrue();
+    }
+
+    @Test
+    void testEmailRetryQueries_ShouldLimitCandidatesAndFetchEmailAssociations() {
+        testOrder1.setStatus(OrderStatus.PAID);
+        testOrder1.setOrderDate(LocalDateTime.now().minusDays(2));
+        testOrder2.setStatus(OrderStatus.PAID);
+        testOrder2.setOrderDate(LocalDateTime.now().minusDays(1));
+        testOrder3.setStatus(OrderStatus.DELIVERED);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Long> confirmationIds = orderRepository.findConfirmationEmailOrderIds(PageRequest.of(0, 1));
+        List<Long> deliveryIds = orderRepository.findDeliveryEmailOrderIds(PageRequest.of(0, 1));
+
+        assertThat(confirmationIds).containsExactly(testOrder1.getId());
+        assertThat(deliveryIds).containsExactly(testOrder3.getId());
+
+        List<Order> confirmationOrders = orderRepository.findConfirmationEmailOrdersByIdIn(confirmationIds);
+        Order confirmationOrder = confirmationOrders.get(0);
+        assertThat(Hibernate.isInitialized(confirmationOrder.getUser())).isTrue();
+        assertThat(Hibernate.isInitialized(confirmationOrder.getOrderItems())).isTrue();
+        assertThat(Hibernate.isInitialized(confirmationOrder.getAppliedCoupon())).isTrue();
+
+        assertThat(orderRepository.markConfirmationEmailsSent(confirmationIds)).isEqualTo(1);
+        assertThat(orderRepository.markDeliveryEmailsSent(deliveryIds)).isEqualTo(1);
+        entityManager.clear();
+        assertThat(orderRepository.findById(testOrder1.getId()).orElseThrow().getConfirmationEmailSent()).isTrue();
+        assertThat(orderRepository.findById(testOrder3.getId()).orElseThrow().getDeliveryEmailSent()).isTrue();
     }
 
     @Test
