@@ -3,9 +3,11 @@ import { sanitizeErrorMessage } from '../utils/errorHandler'
 
 export const orderService = {
   // Get all orders (admin/super_user only)
-  getAllOrders: async () => {
+  getAllOrders: async (page = 1, orderIdPrefix = '') => {
     try {
-      const response = await apiClient.get('/orders')
+      const params = { page }
+      if (orderIdPrefix.trim()) params.orderIdPrefix = orderIdPrefix.trim()
+      const response = await apiClient.get('/orders', { params })
       return response.data
     } catch (error) {
       throw parseError(error)
@@ -13,9 +15,9 @@ export const orderService = {
   },
 
   // Get my orders (authenticated user)
-  getMyOrders: async () => {
+  getMyOrders: async (page = 1) => {
     try {
-      const response = await apiClient.get('/orders/me')
+      const response = await apiClient.get('/orders/me', { params: { page } })
       return response.data
     } catch (error) {
       throw parseError(error)

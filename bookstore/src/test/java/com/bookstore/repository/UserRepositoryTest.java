@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Optional;
@@ -109,6 +110,15 @@ class UserRepositoryTest {
         } else {
             assertThat(found).isEmpty();
         }
+    }
+
+    @Test
+    void testFindByUsernameContainingIgnoreCase_ShouldReturnPageAndTotalCount() {
+        var result = userRepository.findByUsernameContainingIgnoreCase("TESTJ", PageRequest.of(0, 1));
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.getTotalPages()).isEqualTo(2);
     }
 
     @ParameterizedTest

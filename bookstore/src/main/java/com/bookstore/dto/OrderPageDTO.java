@@ -1,0 +1,18 @@
+package com.bookstore.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderPageDTO {
+    private List<OrderDTO> content;
+    private int page;
+    private int size;
+    private long totalElements;
+    private int totalPages;
+}

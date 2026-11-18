@@ -8,11 +8,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -24,6 +27,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MessageSource messageSource;
+
+    @Value("${users.page-size}")
+    private int usersPageSize;
 
     /**
      * Create a new user with encrypted password
@@ -200,8 +206,21 @@ public class UserService {
     /**
      * Get all users
      */
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public Page<User> getAllUsers(int page, Integer requestedSize, String username) {
+        if (page < 1) {
+            throw new IllegalArgumentException("Page number must be at least 1");
+        }
+        int size = requestedSize == null ? usersPageSize : requestedSize;
+        if (size < 1 || size > usersPageSize) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and the configured maximum of " + usersPageSize + " users");
+        }
+        PageRequest pageable = PageRequest.of(page - 1, size,
+                Sort.by(Sort.Order.asc("username"), Sort.Order.asc("id")));
+        String normalizedUsername = username == null ? "" : username.trim();
+        return normalizedUsername.isEmpty()
+                ? userRepository.findAll(pageable)
+                : userRepository.findByUsernameContainingIgnoreCase(normalizedUsername, pageable);
     }
 
     /**

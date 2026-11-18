@@ -34,7 +34,7 @@
                       inputmode="numeric"
                       class="form-control" 
                       :placeholder="t('orders.search.placeholder')"
-                      @input="searchOrder"
+                      @input="scheduleSearch"
                       @keyup.enter="searchOrder"
                     />
                   </div>
@@ -69,7 +69,7 @@
                 <p class="mt-3 text-muted">{{ t('orders.loadingOrders') }}</p>
               </div>
 
-              <div v-else-if="filteredOrders.length === 0" class="text-center py-5">
+              <div v-else-if="orders.length === 0" class="text-center py-5">
                 <i class="bi bi-cart-x" style="font-size: 3rem; color: #ccc;"></i>
                 <p class="mt-3 text-muted">{{ t('orders.noOrdersFound') }}</p>
               </div>
@@ -89,7 +89,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="order in filteredOrders" :key="order.id">
+                    <tr v-for="order in orders" :key="order.id">
                       <td><strong>#{{ order.id }}</strong></td>
                       <td>{{ order.userId }}</td>
                       <td>{{ formatDate(order.orderDate) }}</td>
@@ -158,6 +158,14 @@
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                :page="currentPage"
+                :size="pageSize"
+                :total-elements="totalElements"
+                :total-pages="totalPages"
+                :item-label="t('orders.title')"
+                @change="loadOrders"
+              />
             </div>
           </div>
         </div>
@@ -300,24 +308,24 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
 import { orderService } from '../services/orderService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
+import PaginationControls from '../components/PaginationControls.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { t } = useI18n()
 
 const orders = ref([])
-const filteredOrders = computed(() => {
-  const prefix = searchOrderId.value.trim()
-  if (!prefix) return orders.value
-  return orders.value.filter(order => String(order.id).startsWith(prefix))
-})
+const currentPage = ref(1)
+const pageSize = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const loading = ref(false)
 const deleting = ref(false)
 const searching = ref(false)
@@ -328,6 +336,8 @@ const orderToDelete = ref(null)
 const searchOrderId = ref('')
 const isSearchActive = ref(false)
 const lastSearchTerm = ref('')
+const activeSearchTerm = ref('')
+let searchTimer
 
 // Check if user is admin or super user
 const isAdmin = computed(() => {
@@ -350,14 +360,19 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadOrders = async () => {
+const loadOrders = async (page = currentPage.value, prefix = activeSearchTerm.value) => {
   loading.value = true
   try {
-    // Always load ALL orders for admin view
-    const data = await orderService.getAllOrders()
-    orders.value = data
-    isSearchActive.value = false
-    lastSearchTerm.value = ''
+    const data = await orderService.getAllOrders(page, prefix)
+    if (page > 1 && data.content.length === 0 && page > data.totalPages) {
+      await loadOrders(data.totalPages || 1, prefix)
+      return
+    }
+    orders.value = data.content
+    currentPage.value = data.page
+    pageSize.value = data.size
+    totalElements.value = data.totalElements
+    totalPages.value = data.totalPages
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
   } finally {
@@ -366,16 +381,31 @@ const loadOrders = async () => {
 }
 
 const searchOrder = async () => {
+  clearTimeout(searchTimer)
   const prefix = searchOrderId.value.trim()
+  activeSearchTerm.value = prefix
   isSearchActive.value = Boolean(prefix)
   lastSearchTerm.value = prefix
+  searching.value = true
+  try {
+    await loadOrders(1, prefix)
+  } finally {
+    searching.value = false
+  }
+}
+
+const scheduleSearch = () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(searchOrder, 350)
 }
 
 const clearSearch = async () => {
+  clearTimeout(searchTimer)
   searchOrderId.value = ''
+  activeSearchTerm.value = ''
   isSearchActive.value = false
   lastSearchTerm.value = ''
-  await loadOrders()
+  await loadOrders(1, '')
 }
 
 const viewOrder = (order) => {
@@ -549,6 +579,8 @@ onMounted(() => {
   }
   loadOrders()
 })
+
+onUnmounted(() => clearTimeout(searchTimer))
 </script>
 
 <style scoped>

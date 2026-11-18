@@ -39,7 +39,7 @@
                   </div>
                 </div>
                 <div class="col-md-2">
-                  <button @click="searchUser" class="btn btn-primary w-100" :disabled="!searchUsername.trim()">
+                  <button @click="searchUser" class="btn btn-primary w-100" :disabled="loading || !searchUsername.trim()">
                     <i class="bi bi-search"></i>
                     {{ t('users.search.button') }}
                   </button>
@@ -67,7 +67,7 @@
                 <p class="mt-3 text-muted">{{ t('users.loadingUsers') }}</p>
               </div>
 
-              <div v-else-if="filteredUsers.length === 0" class="text-center py-5">
+              <div v-else-if="users.length === 0" class="text-center py-5">
                 <i class="bi bi-people" style="font-size: 3rem; color: #ccc;"></i>
                 <p class="mt-3 text-muted">{{ t('users.noUsersFound') }}</p>
               </div>
@@ -87,7 +87,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="user in filteredUsers" :key="user.id">
+                    <tr v-for="user in users" :key="user.id">
                       <td>{{ user.id }}</td>
                       <td>
                         <strong>{{ user.username }}</strong>
@@ -133,6 +133,14 @@
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                :page="currentPage"
+                :size="pageSize"
+                :total-elements="totalElements"
+                :total-pages="totalPages"
+                :item-label="t('users.title')"
+                @change="loadUsers"
+              />
             </div>
           </div>
         </div>
@@ -355,7 +363,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -363,12 +371,17 @@ import { userService } from '../services/userService'
 import { useAuthStore } from '../stores/authStore'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
+import PaginationControls from '../components/PaginationControls.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const { t } = useI18n()
 
 const users = ref([])
+const currentPage = ref(1)
+const pageSize = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const loading = ref(false)
 const saving = ref(false)
 const deleting = ref(false)
@@ -382,12 +395,6 @@ const currentUserRole = ref(authStore.user?.userType || 'USER')
 const searchUsername = ref('')
 const isSearchActive = ref(false)
 const lastSearchTerm = ref('')
-const filteredUsers = computed(() => {
-  const usernameQuery = searchUsername.value.trim().toLowerCase()
-  if (!usernameQuery) return users.value
-  return users.value.filter(user => user.username?.toLowerCase().includes(usernameQuery))
-})
-
 const userForm = reactive({
   id: null,
   username: '',
@@ -416,11 +423,19 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadUsers = async () => {
+const loadUsers = async (page = currentPage.value, username = lastSearchTerm.value) => {
   loading.value = true
   try {
-    const data = await userService.getAllUsers()
-    users.value = data
+    const data = await userService.getAllUsers(page, username)
+    if (page > 1 && data.content.length === 0 && page > data.totalPages) {
+      await loadUsers(data.totalPages || 1, username)
+      return
+    }
+    users.value = data.content
+    currentPage.value = data.page
+    pageSize.value = data.size
+    totalElements.value = data.totalElements
+    totalPages.value = data.totalPages
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.loadUsers'))
   } finally {
@@ -428,16 +443,18 @@ const loadUsers = async () => {
   }
 }
 
-const searchUser = () => {
+const searchUser = async () => {
   const query = searchUsername.value.trim()
   isSearchActive.value = Boolean(query)
   lastSearchTerm.value = query
+  await loadUsers(1, query)
 }
 
-const clearSearch = () => {
+const clearSearch = async () => {
   searchUsername.value = ''
   isSearchActive.value = false
   lastSearchTerm.value = ''
+  await loadUsers(1, '')
 }
 
 const showCreateModal = () => {

@@ -192,6 +192,22 @@ class OrderRepositoryTest {
     }
 
     @Test
+    void testPagedOrderIdQueries_ShouldFilterAndCountOrders() {
+        var allOrdersPage = orderRepository.findAllOrderIds(PageRequest.of(0, 2));
+        var userOrdersPage = orderRepository.findOrderIdsByUserId(
+                testUser1.getId(), PageRequest.of(0, 1));
+        String orderIdPrefix = testOrder1.getId().toString();
+        var prefixedOrdersPage = orderRepository.findOrderIdsByIdPrefix(orderIdPrefix, PageRequest.of(0, 10));
+
+        assertThat(allOrdersPage.getContent()).hasSize(2);
+        assertThat(allOrdersPage.getTotalElements()).isEqualTo(3);
+        assertThat(userOrdersPage.getContent()).hasSize(1);
+        assertThat(userOrdersPage.getTotalElements()).isEqualTo(2);
+        assertThat(prefixedOrdersPage.getContent()).containsExactly(testOrder1.getId());
+        assertThat(prefixedOrdersPage.getTotalElements()).isEqualTo(1);
+    }
+
+    @Test
     void testFindByUserIdOrderByOrderDateDesc_ShouldFetchAssociationsUsedByOrderDto() {
         OrderItem orderItem = new OrderItem();
         orderItem.setOrder(testOrder1);
@@ -211,7 +227,7 @@ class OrderRepositoryTest {
         entityManager.flush();
         entityManager.clear();
 
-        List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDesc(testUser1.getId());
+        List<Order> orders = orderRepository.findOrderDetailsByIdIn(List.of(testOrder1.getId()));
         Order loadedOrder = orders.stream()
                 .filter(order -> order.getId().equals(testOrder1.getId()))
                 .findFirst()

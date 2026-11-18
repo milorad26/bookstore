@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,10 +49,16 @@ public class OrderService {
     @Value("${app.checkout.reservation-minutes:30}")
     private long reservationMinutes;
 
-    public List<OrderDTO> getAllOrders() {
-        return orderRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .toList();
+    @Value("${orders.page-size}")
+    private int ordersPageSize;
+
+    public OrderPageDTO getAllOrders(int page, Integer requestedSize, String idPrefix) {
+        PageRequest pageable = createOrdersPageRequest(page, requestedSize);
+        String normalizedPrefix = idPrefix == null ? null : idPrefix.trim();
+        Page<Long> orderIdPage = normalizedPrefix == null || normalizedPrefix.isEmpty()
+                ? orderRepository.findAllOrderIds(pageable)
+                : orderRepository.findOrderIdsByIdPrefix(normalizedPrefix, pageable);
+        return toOrderPage(orderIdPage);
     }
 
     public OrderDTO getOrderById(Long id) {
@@ -62,16 +69,45 @@ public class OrderService {
         return convertToDTO(order);
     }
 
-    public List<OrderDTO> getOrdersByUserId(Long userId) {
+    public OrderPageDTO getOrdersByUserId(Long userId, int page, Integer requestedSize) {
         Locale locale = LocaleContextHolder.getLocale();
         // Validate user exists first
         userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                     messageSource.getMessage("user.notfound.id", new Object[]{userId}, locale)));
 
-        return orderRepository.findByUserIdOrderByOrderDateDesc(userId).stream()
+        return toOrderPage(orderRepository.findOrderIdsByUserId(
+                userId, createOrdersPageRequest(page, requestedSize)));
+    }
+
+    private PageRequest createOrdersPageRequest(int page, Integer requestedSize) {
+        if (page < 1) {
+            throw new IllegalArgumentException("Page number must be at least 1");
+        }
+        int size = requestedSize == null ? ordersPageSize : requestedSize;
+        if (size < 1 || size > ordersPageSize) {
+            throw new IllegalArgumentException(
+                    "Page size must be between 1 and the configured maximum of " + ordersPageSize + " orders");
+        }
+        return PageRequest.of(page - 1, size);
+    }
+
+    private OrderPageDTO toOrderPage(Page<Long> orderIdPage) {
+        List<Long> orderIds = orderIdPage.getContent();
+        if (orderIds.isEmpty()) {
+            return new OrderPageDTO(List.of(), orderIdPage.getNumber() + 1, orderIdPage.getSize(),
+                    orderIdPage.getTotalElements(), orderIdPage.getTotalPages());
+        }
+        Map<Long, Order> ordersById = new HashMap<>();
+        orderRepository.findOrderDetailsByIdIn(orderIds)
+                .forEach(order -> ordersById.put(order.getId(), order));
+        List<OrderDTO> content = orderIds.stream()
+                .map(ordersById::get)
+                .filter(Objects::nonNull)
                 .map(this::convertToDTO)
                 .toList();
+        return new OrderPageDTO(content, orderIdPage.getNumber() + 1, orderIdPage.getSize(),
+                orderIdPage.getTotalElements(), orderIdPage.getTotalPages());
     }
 
     @Transactional

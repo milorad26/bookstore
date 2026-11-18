@@ -13,15 +13,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
+@Validated
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
@@ -32,22 +33,29 @@ public class OrderController {
     private final AuthenticationHelper authenticationHelper;
     private final UserService userService;
 
-    @Operation(summary = "Get my orders", description = "Retrieve all orders for the authenticated user")
+    @Operation(summary = "Get my orders", description = "Retrieve a page of orders for the authenticated user. Page size defaults to ORDERS_PAGE_SIZE (default 20).")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved user's orders")
     @GetMapping("/me")
-    public ResponseEntity<List<OrderDTO>> getMyOrders(HttpServletRequest request) {
+    public ResponseEntity<OrderPageDTO> getMyOrders(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(required = false) @Min(1) Integer size,
+            HttpServletRequest request) {
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
             throw new AccessDeniedException("Authentication required");
         }
         
-        return ResponseEntity.ok(orderService.getOrdersByUserId(currentUserId));
+        return ResponseEntity.ok(orderService.getOrdersByUserId(currentUserId, page, size));
     }
 
-    @Operation(summary = "Get all orders", description = "Retrieve a list of all orders in the system")
+    @Operation(summary = "Get all orders", description = "Retrieve a page of orders in the system. Page size defaults to ORDERS_PAGE_SIZE (default 20).")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of orders")
     @GetMapping
-    public ResponseEntity<List<OrderDTO>> getAllOrders(HttpServletRequest request) {
+    public ResponseEntity<OrderPageDTO> getAllOrders(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(required = false) @Min(1) Integer size,
+            @RequestParam(required = false) String orderIdPrefix,
+            HttpServletRequest request) {
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
             throw new AccessDeniedException("Authentication required");
@@ -62,7 +70,7 @@ public class OrderController {
                 "Permission denied: Regular users can only view their own orders via /api/orders/me");
         }
         
-        return ResponseEntity.ok(orderService.getAllOrders());
+        return ResponseEntity.ok(orderService.getAllOrders(page, size, orderIdPrefix));
     }
 
     @Operation(summary = "Get order by ID", description = "Retrieve a specific order by its ID")
@@ -90,14 +98,18 @@ public class OrderController {
         return ResponseEntity.ok(order);
     }
 
-    @Operation(summary = "Get orders by user ID", description = "Retrieve all orders for a specific user")
+    @Operation(summary = "Get orders by user ID", description = "Retrieve a page of orders for a specific user")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Orders found (may be empty list if user has no orders)"),
+        @ApiResponse(responseCode = "200", description = "Orders found (page content may be empty)"),
         @ApiResponse(responseCode = "404", description = "User not found"),
         @ApiResponse(responseCode = "403", description = "Access denied")
     })
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@PathVariable Long userId, HttpServletRequest request) {
+    public ResponseEntity<OrderPageDTO> getOrdersByUserId(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(required = false) @Min(1) Integer size,
+            HttpServletRequest request) {
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
             throw new AccessDeniedException("Authentication required");
@@ -112,7 +124,7 @@ public class OrderController {
                 "Permission denied: You are not allowed to view this order.");
         }
         
-        return ResponseEntity.ok(orderService.getOrdersByUserId(userId));
+        return ResponseEntity.ok(orderService.getOrdersByUserId(userId, page, size));
     }
 
     @Operation(summary = "Create a new order", description = "Create a new order with multiple items. userId is automatically set from JWT token.")
@@ -278,4 +290,3 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 }
-

@@ -25,7 +25,7 @@
           <div v-if="unpaidOrders.length > 0" class="alert alert-warning d-flex align-items-center mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.5rem;"></i>
             <div class="flex-grow-1">
-              <strong>You have {{ unpaidOrders.length }} unpaid order(s)</strong>
+              <strong>You have {{ unpaidOrders.length }} unpaid order(s) on this page</strong>
               <p class="mb-0">These orders are confirmed but payment was not completed. Click "Pay" to complete your payment.</p>
             </div>
           </div>
@@ -128,6 +128,14 @@
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                :page="currentPage"
+                :size="pageSize"
+                :total-elements="totalElements"
+                :total-pages="totalPages"
+                :item-label="t('orders.title')"
+                @change="loadOrders"
+              />
             </div>
           </div>
         </div>
@@ -324,6 +332,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useCartStore } from '../stores/cartStore'
 import Alert from '../components/Alert.vue'
 import FormField from '../components/FormField.vue'
+import PaginationControls from '../components/PaginationControls.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -332,6 +341,10 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 
 const orders = ref([])
+const currentPage = ref(1)
+const pageSize = ref(0)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const loading = ref(false)
 const deleting = ref(false)
 const showViewModal = ref(false)
@@ -365,12 +378,20 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadOrders = async () => {
+const loadOrders = async (page = currentPage.value) => {
   loading.value = true
   try {
     // Always load user's own orders via /me endpoint
-    const data = await orderService.getMyOrders()
-    orders.value = data
+    const data = await orderService.getMyOrders(page)
+    if (page > 1 && data.content.length === 0 && page > data.totalPages) {
+      await loadOrders(data.totalPages || 1)
+      return
+    }
+    orders.value = data.content
+    currentPage.value = data.page
+    pageSize.value = data.size
+    totalElements.value = data.totalElements
+    totalPages.value = data.totalPages
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.loadOrders'))
   } finally {
