@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderService {
+
+    private static final int EXPIRED_ORDER_BATCH_SIZE = 50;
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
@@ -320,11 +323,22 @@ public class OrderService {
     @Transactional
     public int expireUnpaidOrders() {
         LocalDateTime now = LocalDateTime.now();
+        List<Long> candidateOrderIds = orderRepository.findExpiredUnpaidOrderIds(
+                now, now.minusHours(24), PageRequest.of(0, EXPIRED_ORDER_BATCH_SIZE));
+        if (candidateOrderIds.isEmpty()) {
+            return 0;
+        }
+
+        List<Order> lockedOrders = orderRepository.findByIdInForUpdate(candidateOrderIds);
+        if (lockedOrders.isEmpty()) {
+            return 0;
+        }
+        List<Long> lockedOrderIds = lockedOrders.stream().map(Order::getId).toList();
+        List<Order> expiredOrders = orderRepository.findExpiredOrderDetailsByIdIn(lockedOrderIds);
+
         int expiredCount = 0;
-        for (Long orderId : orderRepository.findExpiredUnpaidOrderIds(now, now.minusHours(24))) {
-            Order order = orderRepository.findByIdForUpdate(orderId).orElse(null);
-            if (order == null
-                    || (order.getReservationExpiresAt() != null
+        for (Order order : expiredOrders) {
+            if ((order.getReservationExpiresAt() != null
                         ? order.getReservationExpiresAt().isAfter(now)
                         : order.getOrderDate().isAfter(now.minusHours(24)))
                     || (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED)

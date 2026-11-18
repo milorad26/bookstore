@@ -28,9 +28,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o.id FROM Order o WHERE (o.reservationExpiresAt <= :now "
             + "OR (o.reservationExpiresAt IS NULL AND o.orderDate <= :legacyCutoff)) "
             + "AND o.status IN (com.bookstore.model.OrderStatus.PENDING, com.bookstore.model.OrderStatus.CONFIRMED) "
-            + "AND o.paymentIntentId IS NULL")
+            + "AND o.paymentIntentId IS NULL ORDER BY o.orderDate ASC, o.id ASC")
     List<Long> findExpiredUnpaidOrderIds(@Param("now") LocalDateTime now,
-                                         @Param("legacyCutoff") LocalDateTime legacyCutoff);
+                                         @Param("legacyCutoff") LocalDateTime legacyCutoff,
+                                         Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id IN :orderIds ORDER BY o.id ASC")
+    List<Order> findByIdInForUpdate(@Param("orderIds") List<Long> orderIds);
+
+    @EntityGraph(attributePaths = {"orderItems.book", "appliedCoupon.usedInOrder"})
+    @Query("SELECT DISTINCT o FROM Order o WHERE o.id IN :orderIds ORDER BY o.id ASC")
+    List<Order> findExpiredOrderDetailsByIdIn(@Param("orderIds") List<Long> orderIds);
 
     @EntityGraph(attributePaths = {"orderItems", "orderItems.book"})
     @Query("SELECT DISTINCT o FROM Order o WHERE o.orderDate >= :startDate AND o.orderDate < :endDateExclusive AND o.status IN :statuses")

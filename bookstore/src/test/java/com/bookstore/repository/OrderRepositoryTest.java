@@ -252,6 +252,53 @@ class OrderRepositoryTest {
     }
 
     @Test
+    void testExpiredOrderBatch_ShouldBeBoundedLockedAndFetchRestorationData() {
+        LocalDateTime now = LocalDateTime.now();
+        testOrder1.setStatus(OrderStatus.PENDING);
+        testOrder1.setOrderDate(now.minusDays(3));
+        testOrder1.setReservationExpiresAt(now.minusMinutes(2));
+        testOrder2.setStatus(OrderStatus.CONFIRMED);
+        testOrder2.setOrderDate(now.minusDays(2));
+        testOrder2.setReservationExpiresAt(now.minusMinutes(1));
+        testOrder3.setStatus(OrderStatus.PENDING);
+        testOrder3.setReservationExpiresAt(now.minusMinutes(3));
+        testOrder3.setPaymentIntentId("payment-intent");
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(testOrder1);
+        orderItem.setBook(testBook1);
+        orderItem.setQuantity(2);
+        orderItem.setPrice(new BigDecimal("29.99"));
+        entityManager.persist(orderItem);
+
+        Coupon coupon = new Coupon();
+        coupon.setCode("EXPIRED-ORDER-COUPON");
+        coupon.setUser(testUser1);
+        coupon.setValue(new BigDecimal("5.00"));
+        coupon.setExpiryDate(now.plusDays(1));
+        coupon.setUsedInOrder(testOrder1);
+        entityManager.persist(coupon);
+        testOrder1.setAppliedCoupon(coupon);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Long> candidateIds = orderRepository.findExpiredUnpaidOrderIds(
+                now, now.minusHours(24), PageRequest.of(0, 1));
+        assertThat(candidateIds).containsExactly(testOrder1.getId());
+
+        List<Order> lockedOrders = orderRepository.findByIdInForUpdate(candidateIds);
+        assertThat(lockedOrders).extracting(Order::getId).containsExactly(testOrder1.getId());
+
+        List<Order> ordersWithRestorationData = orderRepository.findExpiredOrderDetailsByIdIn(
+                lockedOrders.stream().map(Order::getId).toList());
+        Order loadedOrder = ordersWithRestorationData.get(0);
+        assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems())).isTrue();
+        assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems().get(0).getBook())).isTrue();
+        assertThat(Hibernate.isInitialized(loadedOrder.getAppliedCoupon())).isTrue();
+        assertThat(Hibernate.isInitialized(loadedOrder.getAppliedCoupon().getUsedInOrder())).isTrue();
+    }
+
+    @Test
     void testFindByOrderDateBetween_ShouldReturnOrdersInRange() {
         // Given
         LocalDateTime start = LocalDateTime.now().minusDays(1);

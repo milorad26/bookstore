@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -406,15 +407,20 @@ class OrderServiceTest {
         orderItem.setQuantity(2);
         testOrder.setOrderItems(new ArrayList<>(List.of(orderItem)));
 
-        when(orderRepository.findExpiredUnpaidOrderIds(any(LocalDateTime.class), any(LocalDateTime.class)))
+        when(orderRepository.findExpiredUnpaidOrderIds(
+                any(LocalDateTime.class), any(LocalDateTime.class), any(Pageable.class)))
                 .thenReturn(List.of(testOrder.getId()));
-        when(orderRepository.findByIdForUpdate(testOrder.getId())).thenReturn(Optional.of(testOrder));
+        when(orderRepository.findByIdInForUpdate(List.of(testOrder.getId()))).thenReturn(List.of(testOrder));
+        when(orderRepository.findExpiredOrderDetailsByIdIn(List.of(testOrder.getId())))
+                .thenReturn(List.of(testOrder));
 
         int expiredCount = orderService.expireUnpaidOrders();
 
         assertThat(expiredCount).isEqualTo(1);
         assertThat(testOrder.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         assertThat(testBook1.getStockQuantity()).isEqualTo(10);
+        verify(orderRepository).findByIdInForUpdate(List.of(testOrder.getId()));
+        verify(orderRepository).findExpiredOrderDetailsByIdIn(List.of(testOrder.getId()));
         verify(orderRepository).save(testOrder);
     }
 
