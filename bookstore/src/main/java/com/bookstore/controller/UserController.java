@@ -4,6 +4,7 @@ import com.bookstore.dto.ChangePasswordRequest;
 import com.bookstore.dto.CreateUserRequest;
 import com.bookstore.dto.UpdateUserRequest;
 import com.bookstore.dto.UserDTO;
+import com.bookstore.dto.UserPageDTO;
 import com.bookstore.dto.UserProfileDTO;
 import com.bookstore.exception.AccessDeniedException;
 import com.bookstore.exception.ResourceNotFoundException;
@@ -18,6 +19,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -26,8 +28,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
 
 @RestController
+@Validated
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "API for managing users")
@@ -103,8 +107,12 @@ public class UserController {
     }
 
     @GetMapping
-    @Operation(summary = "Get all users", description = "Retrieves all users (passwords excluded) - SUPER_USER and ADMIN only")
-    public ResponseEntity<List<UserDTO>> getAllUsers(HttpServletRequest request) {
+    @Operation(summary = "Get users", description = "Retrieves a page of users (passwords excluded) - SUPER_USER and ADMIN only. Page size defaults to USERS_PAGE_SIZE (default 20).")
+    public ResponseEntity<UserPageDTO> getAllUsers(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(required = false) @Min(1) Integer size,
+            @RequestParam(required = false) String username,
+            HttpServletRequest request) {
         // Get the current user who is making the request from JWT
         Long currentUserId = authenticationHelper.getUserIdFromRequest(request);
         if (currentUserId == null) {
@@ -121,10 +129,12 @@ public class UserController {
                 "Permission denied: Regular users cannot view all users.");
         }
         
-        List<UserDTO> users = userService.getAllUsers().stream()
+        var usersPage = userService.getAllUsers(page, size, username);
+        List<UserDTO> users = usersPage.getContent().stream()
             .map(this::toDTO)
             .toList();
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(new UserPageDTO(users, usersPage.getNumber() + 1,
+                usersPage.getSize(), usersPage.getTotalElements(), usersPage.getTotalPages()));
     }
 
     @GetMapping("/{id}")

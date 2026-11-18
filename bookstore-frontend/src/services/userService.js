@@ -29,9 +29,11 @@ export const userService = {
     }
   },
 
-  getAllUsers: async () => {
+  getAllUsers: async (page = 1, username = '') => {
     try {
-      const response = await apiClient.get('/users')
+      const params = { page }
+      if (username.trim()) params.username = username.trim()
+      const response = await apiClient.get('/users', { params })
       return response.data
     } catch (error) {
       throw parseError(error)

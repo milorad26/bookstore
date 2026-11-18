@@ -105,17 +105,20 @@ class OrderControllerTest {
     void testGetMyOrders_ShouldReturnUserOrders() throws Exception {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(1L);
-        when(orderService.getOrdersByUserId(1L)).thenReturn(Arrays.asList(testOrderDTO));
+        when(orderService.getOrdersByUserId(1L, 1, null))
+                .thenReturn(new OrderPageDTO(Arrays.asList(testOrderDTO), 1, 20, 1, 1));
 
         // When & Then
         mockMvc.perform(get("/api/orders/me"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].id", is(1)))
-                .andExpect(jsonPath("$[0].userId", is(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].id", is(1)))
+                .andExpect(jsonPath("$.content[0].userId", is(1)))
+                .andExpect(jsonPath("$.page", is(1)))
+                .andExpect(jsonPath("$.totalElements", is(1)));
 
         verify(authenticationHelper).getUserIdFromRequest(any());
-        verify(orderService).getOrdersByUserId(1L);
+        verify(orderService).getOrdersByUserId(1L, 1, null);
     }
 
     @Test
@@ -129,7 +132,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.code", is(403)))
                 .andExpect(jsonPath("$.message", containsString("Authentication required")));
 
-        verify(orderService, never()).getOrdersByUserId(any());
+        verify(orderService, never()).getOrdersByUserId(anyLong(), anyInt(), any());
     }
 
     @Test
@@ -137,14 +140,35 @@ class OrderControllerTest {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
         when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
-        when(orderService.getAllOrders()).thenReturn(Arrays.asList(testOrderDTO));
+        when(orderService.getAllOrders(1, null, null))
+                .thenReturn(new OrderPageDTO(Arrays.asList(testOrderDTO), 1, 20, 1, 1));
 
         // When & Then
         mockMvc.perform(get("/api/orders"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.page", is(1)));
 
-        verify(orderService).getAllOrders();
+        verify(orderService).getAllOrders(1, null, null);
+    }
+
+    @Test
+    void testGetAllOrders_WithPaginationAndPrefix_ShouldForwardParameters() throws Exception {
+        when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
+        when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
+        when(orderService.getAllOrders(3, 10, "12"))
+                .thenReturn(new OrderPageDTO(Arrays.asList(testOrderDTO), 3, 10, 21, 3));
+
+        mockMvc.perform(get("/api/orders")
+                        .param("page", "3")
+                        .param("size", "10")
+                        .param("orderIdPrefix", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page", is(3)))
+                .andExpect(jsonPath("$.size", is(10)))
+                .andExpect(jsonPath("$.totalPages", is(3)));
+
+        verify(orderService).getAllOrders(3, 10, "12");
     }
 
     @Test
@@ -159,7 +183,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.code", is(403)))
                 .andExpect(jsonPath("$.message", containsString("Permission denied")));
 
-        verify(orderService, never()).getAllOrders();
+        verify(orderService, never()).getAllOrders(anyInt(), any(), any());
     }
 
     @Test
@@ -228,14 +252,15 @@ class OrderControllerTest {
         // Given
         when(authenticationHelper.getUserIdFromRequest(any())).thenReturn(2L);
         when(userService.findById(2L)).thenReturn(Optional.of(testAdmin));
-        when(orderService.getOrdersByUserId(1L)).thenReturn(Arrays.asList(testOrderDTO));
+        when(orderService.getOrdersByUserId(1L, 1, null))
+                .thenReturn(new OrderPageDTO(Arrays.asList(testOrderDTO), 1, 20, 1, 1));
 
         // When & Then
         mockMvc.perform(get("/api/orders/user/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)));
+                .andExpect(jsonPath("$.content", hasSize(1)));
 
-        verify(orderService).getOrdersByUserId(1L);
+        verify(orderService).getOrdersByUserId(1L, 1, null);
     }
 
     @Test
@@ -249,7 +274,7 @@ class OrderControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code", is(403)));
 
-        verify(orderService, never()).getOrdersByUserId(any());
+        verify(orderService, never()).getOrdersByUserId(anyLong(), anyInt(), any());
     }
 
     @Test

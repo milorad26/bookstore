@@ -16,10 +16,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.List;
 import java.util.Optional;
 
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -89,6 +92,27 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.userType", is("ADMIN")))
                 .andExpect(jsonPath("$.permissions").doesNotExist())
                 .andExpect(jsonPath("$.availableEndpoints").doesNotExist());
+    }
+
+    @Test
+    void testGetAllUsers_ReturnsPaginatedResponseAndForwardsFilters() throws Exception {
+        when(userService.getAllUsers(2, 10, "john"))
+                .thenReturn(new PageImpl<>(List.of(testUser), PageRequest.of(1, 10), 11));
+
+        mockMvc.perform(get("/api/users")
+                        .param("page", "2")
+                        .param("size", "10")
+                        .param("username", "john"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].username", is("johndoe")))
+                .andExpect(jsonPath("$.content[0].password").doesNotExist())
+                .andExpect(jsonPath("$.page", is(2)))
+                .andExpect(jsonPath("$.size", is(10)))
+                .andExpect(jsonPath("$.totalElements", is(11)))
+                .andExpect(jsonPath("$.totalPages", is(2)));
+
+        verify(userService).getAllUsers(2, 10, "john");
     }
 
     @Test

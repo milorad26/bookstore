@@ -16,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
@@ -114,6 +116,7 @@ class OrderServiceTest {
 
         ReflectionTestUtils.setField(orderService, "checkoutDeliveryFee", new BigDecimal("4.00"));
         ReflectionTestUtils.setField(orderService, "reservationMinutes", 30L);
+        ReflectionTestUtils.setField(orderService, "ordersPageSize", 20);
         lenient().when(bookRepository.findByIdForUpdate(anyLong())).thenAnswer(invocation -> {
             Long id = invocation.getArgument(0);
             if (testBook1.getId().equals(id)) return Optional.of(testBook1);
@@ -123,18 +126,20 @@ class OrderServiceTest {
     }
 
     @Test
-    void testGetAllOrders_ShouldReturnOrderDTOList() {
-        // Given
-        List<Order> orders = Arrays.asList(testOrder);
-        when(orderRepository.findAll()).thenReturn(orders);
+    void testGetAllOrders_ShouldReturnRequestedPage() {
+        when(orderRepository.findAllOrderIds(PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(1L), PageRequest.of(0, 20), 21));
+        when(orderRepository.findOrderDetailsByIdIn(List.of(1L))).thenReturn(List.of(testOrder));
 
-        // When
-        List<OrderDTO> result = orderService.getAllOrders();
+        OrderPageDTO result = orderService.getAllOrders(1, null, null);
 
-        // Then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getId()).isEqualTo(1L);
-        verify(orderRepository).findAll();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(20);
+        assertThat(result.getTotalElements()).isEqualTo(21);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+        verify(orderRepository).findAllOrderIds(PageRequest.of(0, 20));
     }
 
     @Test
@@ -168,17 +173,17 @@ class OrderServiceTest {
     void testGetOrdersByUserId_ShouldReturnUserOrders() {
         // Given
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-        when(orderRepository.findByUserIdOrderByOrderDateDesc(1L))
-                .thenReturn(Arrays.asList(testOrder));
+        when(orderRepository.findOrderIdsByUserId(1L, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(1L), PageRequest.of(0, 20), 1));
+        when(orderRepository.findOrderDetailsByIdIn(List.of(1L))).thenReturn(List.of(testOrder));
 
-        // When
-        List<OrderDTO> result = orderService.getOrdersByUserId(1L);
+        OrderPageDTO result = orderService.getOrdersByUserId(1L, 1, null);
 
-        // Then
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getUserId()).isEqualTo(1L);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getUserId()).isEqualTo(1L);
+        assertThat(result.getTotalElements()).isEqualTo(1);
         verify(userRepository).findById(1L);
-        verify(orderRepository).findByUserIdOrderByOrderDateDesc(1L);
+        verify(orderRepository).findOrderIdsByUserId(1L, PageRequest.of(0, 20));
     }
 
     @Test
@@ -187,11 +192,18 @@ class OrderServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> orderService.getOrdersByUserId(999L))
+        assertThatThrownBy(() -> orderService.getOrdersByUserId(999L, 1, null))
                 .isInstanceOf(ResourceNotFoundException.class);
         
         verify(userRepository).findById(999L);
-        verify(orderRepository, never()).findByUserIdOrderByOrderDateDesc(anyLong());
+        verify(orderRepository, never()).findOrderIdsByUserId(anyLong(), any(Pageable.class));
+    }
+
+    @Test
+    void testGetAllOrders_WithInvalidPageSize_ShouldThrowException() {
+        assertThatThrownBy(() -> orderService.getAllOrders(1, 21, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("configured maximum");
     }
 
     @Test

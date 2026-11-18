@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +57,23 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @EntityGraph(attributePaths = {"orderItems.book", "appliedCoupon"})
     @Query("SELECT o FROM Order o WHERE o.user.id = :userId ORDER BY o.orderDate DESC")
     List<Order> findByUserIdOrderByOrderDateDesc(@Param("userId") Long userId);
+
+    @Query(value = "SELECT o.id FROM Order o ORDER BY o.orderDate DESC, o.id DESC",
+            countQuery = "SELECT COUNT(o) FROM Order o")
+    Page<Long> findAllOrderIds(Pageable pageable);
+
+    @Query(value = "SELECT o.id FROM Order o WHERE o.user.id = :userId ORDER BY o.orderDate DESC, o.id DESC",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE o.user.id = :userId")
+    Page<Long> findOrderIdsByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @Query(value = "SELECT o.id FROM Order o WHERE CAST(o.id AS string) LIKE CONCAT(:idPrefix, '%') "
+            + "ORDER BY o.orderDate DESC, o.id DESC",
+            countQuery = "SELECT COUNT(o) FROM Order o WHERE CAST(o.id AS string) LIKE CONCAT(:idPrefix, '%')")
+    Page<Long> findOrderIdsByIdPrefix(@Param("idPrefix") String idPrefix, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"orderItems.book", "appliedCoupon"})
+    @Query("SELECT DISTINCT o FROM Order o WHERE o.id IN :orderIds")
+    List<Order> findOrderDetailsByIdIn(@Param("orderIds") List<Long> orderIds);
 
     @Query("SELECT o FROM Order o WHERE o.orderDate BETWEEN :startDate AND :endDate")
     List<Order> findByOrderDateBetween(@Param("startDate") LocalDateTime startDate, 

@@ -10,6 +10,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.MessageSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -62,6 +66,7 @@ class UserServiceTest {
         testUser.setLastName("Doe");
         testUser.setEmail("john.doe@example.com");
         testUser.setEnabled(true);
+        ReflectionTestUtils.setField(userService, "usersPageSize", 20);
     }
 
     @Test
@@ -234,25 +239,24 @@ class UserServiceTest {
     }
 
     @Test
-    void testGetAllUsers_ShouldReturnUserList() {
-        // Given
-        User user2 = new User();
-        user2.setId(2L);
-        user2.setUsername("janesmith");
-        user2.setFirstName("Jane");
-        user2.setLastName("Smith");
-        
-        List<User> users = Arrays.asList(testUser, user2);
-        when(userRepository.findAll()).thenReturn(users);
+    void testGetAllUsers_ShouldReturnRequestedPageAndUsernameMatches() {
+        var pageable = PageRequest.of(1, 10,
+                Sort.by(Sort.Order.asc("username"), Sort.Order.asc("id")));
+        when(userRepository.findByUsernameContainingIgnoreCase("john", pageable))
+                .thenReturn(new PageImpl<>(List.of(testUser), pageable, 11));
 
-        // When
-        List<User> result = userService.getAllUsers();
+        var result = userService.getAllUsers(2, 10, " john ");
 
-        // Then
-        assertThat(result)
-            .hasSize(2)
-            .containsExactly(testUser, user2);
-        verify(userRepository).findAll();
+        assertThat(result.getContent()).containsExactly(testUser);
+        assertThat(result.getTotalElements()).isEqualTo(11);
+        verify(userRepository).findByUsernameContainingIgnoreCase("john", pageable);
+    }
+
+    @Test
+    void testGetAllUsers_WithInvalidPageSize_ShouldThrowException() {
+        assertThatThrownBy(() -> userService.getAllUsers(1, 21, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("configured maximum");
     }
 
     @Test
