@@ -42,6 +42,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     List<Order> findByUserIdAndStatus(Long userId, OrderStatus status);
 
+    @EntityGraph(attributePaths = {"orderItems.book", "appliedCoupon"})
     @Query("SELECT o FROM Order o WHERE o.user.id = :userId ORDER BY o.orderDate DESC")
     List<Order> findByUserIdOrderByOrderDateDesc(@Param("userId") Long userId);
 
