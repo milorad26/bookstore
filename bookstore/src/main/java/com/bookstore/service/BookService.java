@@ -56,9 +56,7 @@ public class BookService {
         String isbnFilter = normalizeFilter(isbn);
         boolean filtered = titleFilter != null || authorFilter != null || isbnFilter != null;
         Page<Book> bookPage = bookRepository.searchBooks(
-                titleFilter,
-                authorFilter,
-                isbnFilter,
+                titleFilter, authorFilter, isbnFilter,
                 PageRequest.of(page - 1, size, Sort.by("title").ascending().and(Sort.by("id").ascending())));
         if ((page > bookPage.getTotalPages() && !(filtered && page == 1 && bookPage.isEmpty()))
                 || (bookPage.isEmpty() && !filtered)) {

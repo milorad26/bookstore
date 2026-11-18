@@ -4,6 +4,8 @@ import com.bookstore.model.Book;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,23 +13,33 @@ import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Optional;
+import jakarta.persistence.criteria.Predicate;
 
 @Repository
-public interface BookRepository extends JpaRepository<Book, Long> {
+public interface BookRepository extends JpaRepository<Book, Long>, JpaSpecificationExecutor<Book> {
 
-    @Query(value = "select b from Book b where "
-            + "(:title is null or lower(b.title) like lower(concat('%', :title, '%'))) and "
-            + "(:author is null or lower(b.author) like lower(concat('%', :author, '%'))) and "
-            + "(:isbn is null or lower(b.isbn) like lower(concat('%', :isbn, '%')))",
-            countQuery = "select count(b) from Book b where "
-                    + "(:title is null or lower(b.title) like lower(concat('%', :title, '%'))) and "
-                    + "(:author is null or lower(b.author) like lower(concat('%', :author, '%'))) and "
-                    + "(:isbn is null or lower(b.isbn) like lower(concat('%', :isbn, '%')))")
-    Page<Book> searchBooks(@Param("title") String title,
-                           @Param("author") String author,
-                           @Param("isbn") String isbn,
-                           Pageable pageable);
+    default Page<Book> searchBooks(String title, String author, String isbn, Pageable pageable) {
+        Specification<Book> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (title != null && !title.isBlank()) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.<String>get("title")),
+                        "%" + title.trim().toLowerCase(Locale.ROOT) + "%"));
+            }
+            if (author != null && !author.isBlank()) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.<String>get("author")),
+                        "%" + author.trim().toLowerCase(Locale.ROOT) + "%"));
+            }
+            if (isbn != null && !isbn.isBlank()) {
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.<String>get("isbn")),
+                        "%" + isbn.trim().toLowerCase(Locale.ROOT) + "%"));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+        return findAll(specification, pageable);
+    }
 
     @Query("select b from Book b where lower(b.isbn) like lower(concat('%', :isbn, '%'))")
     List<Book> findByIsbn(@Param("isbn") String isbn);

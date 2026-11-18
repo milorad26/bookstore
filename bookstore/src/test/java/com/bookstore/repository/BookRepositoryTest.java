@@ -129,10 +129,13 @@ class BookRepositoryTest {
         assertThat(page.getTotalElements()).isEqualTo(1);
         assertThat(page.getTotalPages()).isEqualTo(1);
 
-        var noMatches = bookRepository.searchBooks(
-                "clean", "hunt", null, PageRequest.of(0, 1));
+        var noMatches = bookRepository.searchBooks("clean", "hunt", null, PageRequest.of(0, 1));
         assertThat(noMatches.getContent()).isEmpty();
         assertThat(noMatches.getTotalElements()).isZero();
+
+        var unfiltered = bookRepository.searchBooks(null, null, null, PageRequest.of(0, 2));
+        assertThat(unfiltered.getContent()).hasSize(2);
+        assertThat(unfiltered.getTotalElements()).isEqualTo(3);
     }
 
     @ParameterizedTest

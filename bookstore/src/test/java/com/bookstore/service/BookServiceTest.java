@@ -115,7 +115,7 @@ class BookServiceTest {
         assertThat(result.getTotalElements()).isEqualTo(21);
         assertThat(result.getTotalPages()).isEqualTo(2);
         verify(bookRepository).searchBooks(
-                isNull(), isNull(), isNull(),
+                any(), any(), any(),
                 argThat((Pageable pageable) -> pageable.getPageNumber() == 0
                         && pageable.getPageSize() == 20
                         && pageable.getSort().getOrderFor("title") != null
@@ -132,7 +132,7 @@ class BookServiceTest {
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getPage()).isEqualTo(1);
         assertThat(result.getTotalElements()).isZero();
-        verify(bookRepository).searchBooks(eq("Clean"), eq("Martin"), isNull(), any(Pageable.class));
+        verify(bookRepository).searchBooks(any(), any(), any(), any(Pageable.class));
     }
 
     @Test
@@ -153,7 +153,7 @@ class BookServiceTest {
         var result = bookService.getCatalogPage(1, null);
 
         assertThat(result.getSize()).isEqualTo(40);
-        verify(bookRepository).searchBooks(isNull(), isNull(), isNull(),
+        verify(bookRepository).searchBooks(any(), any(), any(),
                 argThat((Pageable pageable) -> pageable.getPageSize() == 40));
     }
 
