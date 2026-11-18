@@ -90,7 +90,7 @@ class BookControllerTest {
 
     @Test
     void getCatalogPage_shouldApplyDefaultsAndReturnPageMetadata() throws Exception {
-        when(bookService.getCatalogPage(1, null))
+        when(bookService.getCatalogPage(1, null, null, null, null))
                 .thenReturn(new BookPageDTO(List.of(testBookDTO1), 1, 20, 1, 1));
 
         mockMvc.perform(get("/api/books/page"))
@@ -101,25 +101,40 @@ class BookControllerTest {
                 .andExpect(jsonPath("$.totalElements", is(1)))
                 .andExpect(jsonPath("$.totalPages", is(1)));
 
-        verify(bookService).getCatalogPage(1, null);
+        verify(bookService).getCatalogPage(1, null, null, null, null);
+    }
+
+    @Test
+    void getCatalogPage_shouldPassSearchFiltersToService() throws Exception {
+        when(bookService.getCatalogPage(1, null, "Clean", "Martin", "235088"))
+                .thenReturn(new BookPageDTO(List.of(testBookDTO1), 1, 20, 1, 1));
+
+        mockMvc.perform(get("/api/books/page")
+                        .param("title", "Clean")
+                        .param("author", "Martin")
+                        .param("isbn", "235088"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id", is(1)));
+
+        verify(bookService).getCatalogPage(1, null, "Clean", "Martin", "235088");
     }
 
     @Test
     void getCatalogPage_shouldRejectOutOfRangeParameters() throws Exception {
         mockMvc.perform(get("/api/books/page").param("page", "0"))
                 .andExpect(status().isBadRequest());
-        when(bookService.getCatalogPage(1, 45))
+        when(bookService.getCatalogPage(1, 45, null, null, null))
                 .thenThrow(new IllegalArgumentException("Page size must be between 1 and the configured maximum of 20 books"));
         mockMvc.perform(get("/api/books/page").param("size", "45"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message", containsString("configured maximum of 20 books")));
 
-        verify(bookService).getCatalogPage(1, 45);
+        verify(bookService).getCatalogPage(1, 45, null, null, null);
     }
 
     @Test
     void getCatalogPage_shouldReturnNotFoundForUnavailablePage() throws Exception {
-        when(bookService.getCatalogPage(5, null))
+        when(bookService.getCatalogPage(5, null, null, null, null))
                 .thenThrow(new CatalogPageNotFoundException("Catalog page 5 does not exist. Available pages: 4"));
 
         mockMvc.perform(get("/api/books/page").param("page", "5"))

@@ -2,22 +2,29 @@ import apiClient from './api'
 import { sanitizeErrorMessage } from '../utils/errorHandler'
 
 export const bookService = {
-  getCatalogPage: async (page = 1) => {
+  getCatalogPage: async (page = 1, filters = {}) => {
     try {
-      const response = await apiClient.get('/books/page', { params: { page } })
+      const params = { page }
+      for (const [key, value] of Object.entries(filters)) {
+        if (typeof value === 'string' && value.trim()) params[key] = value.trim()
+      }
+      const response = await apiClient.get('/books/page', { params })
       return response.data
     } catch (error) {
       throw parseError(error)
     }
   },
 
-  getAllBooks: async () => {
-    try {
-      const response = await apiClient.get('/books')
-      return response.data
-    } catch (error) {
-      throw parseError(error)
+  getAllCatalogBooks: async (filters = {}) => {
+    const firstPage = await bookService.getCatalogPage(1, filters)
+    const books = [...firstPage.content]
+
+    for (let page = 2; page <= firstPage.totalPages; page++) {
+      const result = await bookService.getCatalogPage(page, filters)
+      books.push(...result.content)
     }
+
+    return books
   },
 
   getBookById: async (id) => {
@@ -54,40 +61,9 @@ export const bookService = {
     }
   },
 
-  searchByIsbn: async (isbn) => {
-    try {
-      const response = await apiClient.get(`/books/isbn/${encodeURIComponent(isbn)}`)
-      return response.data
-    } catch (error) {
-      throw parseError(error)
-    }
-  },
-
   getLowStockBooks: async () => {
     try {
       const response = await apiClient.get('/books/low-stock')
-      return response.data
-    } catch (error) {
-      throw parseError(error)
-    }
-  },
-
-  searchByTitle: async (title) => {
-    try {
-      const response = await apiClient.get('/books/search/title', {
-        params: { title }
-      })
-      return response.data
-    } catch (error) {
-      throw parseError(error)
-    }
-  },
-
-  searchByAuthor: async (author) => {
-    try {
-      const response = await apiClient.get('/books/search/author', {
-        params: { author }
-      })
       return response.data
     } catch (error) {
       throw parseError(error)
@@ -116,26 +92,6 @@ export const bookService = {
     try {
       const response = await apiClient.delete(`/books/${id}`)
       return response.data
-    } catch (error) {
-      throw parseError(error)
-    }
-  },
-
-  getBooksByCategory: async () => {
-    try {
-      const books = await bookService.getAllBooks()
-      
-      // Group books by category
-      const groupedBooks = books.reduce((acc, book) => {
-        const category = book.category || 'General'
-        if (!acc[category]) {
-          acc[category] = []
-        }
-        acc[category].push(book)
-        return acc
-      }, {})
-      
-      return groupedBooks
     } catch (error) {
       throw parseError(error)
     }
