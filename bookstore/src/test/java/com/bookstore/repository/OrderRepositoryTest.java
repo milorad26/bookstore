@@ -1,6 +1,7 @@
 package com.bookstore.repository;
 
 import com.bookstore.model.*;
+import org.hibernate.Hibernate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -187,6 +188,37 @@ class OrderRepositoryTest {
         // Most recent order should be first
         assertThat(orders.get(0).getOrderDate())
                 .isAfterOrEqualTo(orders.get(1).getOrderDate());
+    }
+
+    @Test
+    void testFindByUserIdOrderByOrderDateDesc_ShouldFetchAssociationsUsedByOrderDto() {
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(testOrder1);
+        orderItem.setBook(testBook1);
+        orderItem.setQuantity(2);
+        orderItem.setPrice(new BigDecimal("29.99"));
+        entityManager.persist(orderItem);
+
+        Coupon coupon = new Coupon();
+        coupon.setCode("TEST-COUPON");
+        coupon.setUser(testUser1);
+        coupon.setValue(new BigDecimal("5.00"));
+        coupon.setExpiryDate(LocalDateTime.now().plusDays(1));
+        entityManager.persist(coupon);
+        testOrder1.setAppliedCoupon(coupon);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Order> orders = orderRepository.findByUserIdOrderByOrderDateDesc(testUser1.getId());
+        Order loadedOrder = orders.stream()
+                .filter(order -> order.getId().equals(testOrder1.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems())).isTrue();
+        assertThat(Hibernate.isInitialized(loadedOrder.getAppliedCoupon())).isTrue();
+        assertThat(Hibernate.isInitialized(loadedOrder.getOrderItems().get(0).getBook())).isTrue();
     }
 
     @Test
