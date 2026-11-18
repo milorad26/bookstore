@@ -36,6 +36,11 @@ public class BookService {
     }
 
     public BookPageDTO getCatalogPage(int page, Integer requestedSize) {
+        return getCatalogPage(page, requestedSize, null, null, null);
+    }
+
+    public BookPageDTO getCatalogPage(int page, Integer requestedSize,
+                                      String title, String author, String isbn) {
         if (page < 1) {
             throw new IllegalArgumentException("Page number must be at least 1");
         }
@@ -46,9 +51,17 @@ public class BookService {
                             + catalogPageSize + " books");
         }
 
-        Page<Book> bookPage = bookRepository.findAll(
+        String titleFilter = normalizeFilter(title);
+        String authorFilter = normalizeFilter(author);
+        String isbnFilter = normalizeFilter(isbn);
+        boolean filtered = titleFilter != null || authorFilter != null || isbnFilter != null;
+        Page<Book> bookPage = bookRepository.searchBooks(
+                titleFilter,
+                authorFilter,
+                isbnFilter,
                 PageRequest.of(page - 1, size, Sort.by("title").ascending().and(Sort.by("id").ascending())));
-        if (bookPage.isEmpty() || page > bookPage.getTotalPages()) {
+        if ((page > bookPage.getTotalPages() && !(filtered && page == 1 && bookPage.isEmpty()))
+                || (bookPage.isEmpty() && !filtered)) {
             throw new CatalogPageNotFoundException(
                     "Catalog page " + page + " does not exist. Available pages: " + bookPage.getTotalPages());
         }
@@ -59,6 +72,10 @@ public class BookService {
                 bookPage.getSize(),
                 bookPage.getTotalElements(),
                 bookPage.getTotalPages());
+    }
+
+    private String normalizeFilter(String filter) {
+        return filter == null || filter.isBlank() ? null : filter.trim();
     }
 
     public List<BookDTO> getLowStockBooks(int threshold) {

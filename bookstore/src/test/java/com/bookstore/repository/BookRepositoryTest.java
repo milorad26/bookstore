@@ -119,6 +119,22 @@ class BookRepositoryTest {
         }
     }
 
+    @Test
+    void testSearchBooks_ShouldApplyCombinedFiltersAndPagination() {
+        var page = bookRepository.searchBooks(
+                "clean", "martin", "235088",
+                PageRequest.of(0, 1, Sort.by("title").ascending().and(Sort.by("id").ascending())));
+
+        assertThat(page.getContent()).containsExactly(testBook1);
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getTotalPages()).isEqualTo(1);
+
+        var noMatches = bookRepository.searchBooks(
+                "clean", "hunt", null, PageRequest.of(0, 1));
+        assertThat(noMatches.getContent()).isEmpty();
+        assertThat(noMatches.getTotalElements()).isZero();
+    }
+
     @ParameterizedTest
     @CsvSource({
         "978-0-13-235088-4, true",

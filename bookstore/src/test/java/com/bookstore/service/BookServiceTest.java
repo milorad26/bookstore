@@ -103,7 +103,7 @@ class BookServiceTest {
 
     @Test
     void getCatalogPage_shouldUseOneBasedPageAndReturnPagedDtos() {
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 20), 21));
 
         var result = bookService.getCatalogPage(1, 20);
@@ -114,11 +114,25 @@ class BookServiceTest {
         assertThat(result.getSize()).isEqualTo(20);
         assertThat(result.getTotalElements()).isEqualTo(21);
         assertThat(result.getTotalPages()).isEqualTo(2);
-        verify(bookRepository).findAll(
+        verify(bookRepository).searchBooks(
+                isNull(), isNull(), isNull(),
                 argThat((Pageable pageable) -> pageable.getPageNumber() == 0
                         && pageable.getPageSize() == 20
                         && pageable.getSort().getOrderFor("title") != null
                         && pageable.getSort().getOrderFor("id") != null));
+    }
+
+    @Test
+    void getCatalogPage_shouldNormalizeFiltersAndAllowEmptyFilteredResults() {
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        var result = bookService.getCatalogPage(1, null, "  Clean ", " Martin  ", " ");
+
+        assertThat(result.getContent()).isEmpty();
+        assertThat(result.getPage()).isEqualTo(1);
+        assertThat(result.getTotalElements()).isZero();
+        verify(bookRepository).searchBooks(eq("Clean"), eq("Martin"), isNull(), any(Pageable.class));
     }
 
     @Test
@@ -133,18 +147,19 @@ class BookServiceTest {
     @Test
     void getCatalogPage_shouldUseConfiguredDefaultAndMaximumSize() {
         ReflectionTestUtils.setField(bookService, "catalogPageSize", 40);
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(0, 40), 1));
 
         var result = bookService.getCatalogPage(1, null);
 
         assertThat(result.getSize()).isEqualTo(40);
-        verify(bookRepository).findAll(argThat((Pageable pageable) -> pageable.getPageSize() == 40));
+        verify(bookRepository).searchBooks(isNull(), isNull(), isNull(),
+                argThat((Pageable pageable) -> pageable.getPageSize() == 40));
     }
 
     @Test
     void getCatalogPage_shouldCalculateTotalPagesFromCurrentCatalogSize() {
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(testBook1), PageRequest.of(5, 20), 120));
 
         var result = bookService.getCatalogPage(6, 20);
@@ -157,7 +172,7 @@ class BookServiceTest {
 
     @Test
     void getCatalogPage_shouldAllowShortFinalPage() {
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(testBook1, testBook2, createBook(3L, "Refactoring")),
                         PageRequest.of(3, 20), 63));
 
@@ -170,14 +185,14 @@ class BookServiceTest {
 
     @Test
     void getCatalogPage_shouldThrowDedicatedExceptionForMissingPageOrEmptyCatalog() {
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(4, 20), 62));
 
         assertThatThrownBy(() -> bookService.getCatalogPage(5, 20))
                 .isInstanceOf(CatalogPageNotFoundException.class)
                 .hasMessageContaining("Available pages: 4");
 
-        when(bookRepository.findAll(any(Pageable.class)))
+        when(bookRepository.searchBooks(any(), any(), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
         assertThatThrownBy(() -> bookService.getCatalogPage(1, 20))
                 .isInstanceOf(CatalogPageNotFoundException.class);

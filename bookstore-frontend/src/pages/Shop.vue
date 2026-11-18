@@ -306,7 +306,6 @@ const { t } = useI18n()
 const books = ref([])
 const booksByCategory = ref({})
 const restockAlertBookIds = ref(new Set())
-const searchResults = ref(null)
 const pageSize = ref(20)
 const currentPage = ref(0)
 const totalElements = ref(0)
@@ -352,15 +351,17 @@ const groupBooksByCategory = (catalogBooks) => catalogBooks.reduce((groups, book
 
 const setViewMode = async (mode) => {
   viewMode.value = mode
-  if (mode === 'all') {
-    await loadBooks(currentPage.value)
-    return
-  }
+  if (mode !== 'categories') return
 
   const requestId = ++loadRequestId
+  const filters = {
+    title: searchTitle.value,
+    author: searchAuthor.value,
+    isbn: searchIsbn.value
+  }
   isLoading.value = true
   try {
-    const catalogBooks = searchResults.value ?? await bookService.getAllBooks()
+    const catalogBooks = await bookService.getAllCatalogBooks(filters)
     if (requestId !== loadRequestId) return
     booksByCategory.value = groupBooksByCategory(catalogBooks)
   } catch (error) {
@@ -374,25 +375,20 @@ const setViewMode = async (mode) => {
 
 const loadBooks = async (page = 0) => {
   const requestId = ++loadRequestId
+  const filters = {
+    title: searchTitle.value,
+    author: searchAuthor.value,
+    isbn: searchIsbn.value
+  }
   isLoading.value = true
   try {
-    if (searchResults.value !== null) {
-      totalElements.value = searchResults.value.length
-      totalPages.value = Math.ceil(totalElements.value / pageSize.value)
-      currentPage.value = Math.min(page, Math.max(totalPages.value - 1, 0))
-      books.value = searchResults.value.slice(
-        currentPage.value * pageSize.value,
-        (currentPage.value + 1) * pageSize.value
-      )
-    } else {
-      const result = await bookService.getCatalogPage(page + 1)
-      if (requestId !== loadRequestId) return
-      pageSize.value = result.size
-      books.value = result.content
-      currentPage.value = result.page - 1
-      totalElements.value = result.totalElements
-      totalPages.value = result.totalPages
-    }
+    const result = await bookService.getCatalogPage(page + 1, filters)
+    if (requestId !== loadRequestId) return
+    pageSize.value = result.size
+    books.value = result.content
+    currentPage.value = result.page - 1
+    totalElements.value = result.totalElements
+    totalPages.value = result.totalPages
     booksByCategory.value = groupBooksByCategory(books.value)
     syncPageToUrl(currentPage.value)
     
@@ -407,10 +403,13 @@ const loadBooks = async (page = 0) => {
 
 const scheduleSearch = (type) => {
   clearTimeout(searchDebounceTimer)
-  searchRequestId++
-  isSearching.value = false
+  const requestId = ++searchRequestId
+  loadRequestId++
+  isSearching.value = true
   activeSearch.value = type
-  searchDebounceTimer = setTimeout(() => searchBooks(type), 250)
+  searchDebounceTimer = setTimeout(() => {
+    if (requestId === searchRequestId) searchBooks(type)
+  }, 250)
 }
 
 const searchBooks = async (type) => {
@@ -419,54 +418,31 @@ const searchBooks = async (type) => {
   showAlert.value = false
   viewMode.value = 'all'
   activeSearch.value = type
-  const activeFilters = [
-    { query: searchTitle.value.trim(), search: bookService.searchByTitle },
-    { query: searchAuthor.value.trim(), search: bookService.searchByAuthor },
-    { query: searchIsbn.value.trim(), search: bookService.searchByIsbn }
-  ].filter(filter => filter.query)
-
-  if (!activeFilters.length) {
-    isSearching.value = false
-    activeSearch.value = ''
-    searchResults.value = null
-    await loadBooks(0)
-    return
-  }
-
   isSearching.value = true
   try {
-    const resultSets = await Promise.all(activeFilters.map(({ query, search }) =>
-      search(query).catch(error => {
-        if (error.status === 404) return []
-        throw error
-      })
-    ))
-    if (requestId !== searchRequestId) return
-
-    const matchingIds = resultSets.slice(1).map(results => new Set(results.map(book => book.id)))
-    searchResults.value = resultSets[0].filter(book =>
-      matchingIds.every(ids => ids.has(book.id))
-    )
     await loadBooks(0)
   } catch (error) {
     if (requestId === searchRequestId) {
       showError(localizedError(error, t, 'errors.loadBooks'))
     }
   } finally {
-    if (requestId === searchRequestId) isSearching.value = false
+    if (requestId === searchRequestId) {
+      isSearching.value = false
+      activeSearch.value = ''
+    }
   }
 }
 
 const resetSearch = () => {
   clearTimeout(searchDebounceTimer)
   searchRequestId++
+  loadRequestId++
   isSearching.value = false
   showAlert.value = false
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
   activeSearch.value = ''
-  searchResults.value = null
   viewMode.value = 'all' // Reset to All Books view
   loadBooks(0)
 }

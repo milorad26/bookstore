@@ -155,6 +155,44 @@
                   </tbody>
                 </table>
               </div>
+
+              <div
+                v-if="!loading && totalElements > 0"
+                class="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4"
+              >
+                <p class="text-muted mb-0" aria-live="polite">
+                  {{ t('shop.showingBooks', { start: rangeStart, end: rangeEnd, total: totalElements }) }}
+                </p>
+                <nav :aria-label="t('shop.pagination')">
+                  <ul class="pagination mb-0">
+                    <li class="page-item" :class="{ disabled: currentPage === 0 }">
+                      <button
+                        class="page-link"
+                        type="button"
+                        :disabled="currentPage === 0"
+                        @click="loadBooks(currentPage - 1)"
+                      >
+                        {{ t('shop.previousPage') }}
+                      </button>
+                    </li>
+                    <li class="page-item disabled" aria-current="page">
+                      <span class="page-link">
+                        {{ t('shop.pageOf', { page: currentPage + 1, pages: totalPages }) }}
+                      </span>
+                    </li>
+                    <li class="page-item" :class="{ disabled: currentPage + 1 >= totalPages }">
+                      <button
+                        class="page-link"
+                        type="button"
+                        :disabled="currentPage + 1 >= totalPages"
+                        @click="loadBooks(currentPage + 1)"
+                      >
+                        {{ t('shop.nextPage') }}
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
             </div>
           </div>
         </div>
@@ -355,7 +393,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { localizedError } from '../utils/localizedError'
@@ -367,6 +405,10 @@ const router = useRouter()
 const { t } = useI18n()
 
 const books = ref([])
+const currentPage = ref(0)
+const pageSize = ref(null)
+const totalElements = ref(0)
+const totalPages = ref(0)
 const lowStockBooks = ref([])
 const loadingAlerts = ref(false)
 const loading = ref(false)
@@ -375,6 +417,8 @@ const activeSearch = ref('')
 const searchTitle = ref('')
 const searchAuthor = ref('')
 const searchIsbn = ref('')
+const rangeStart = computed(() => totalElements.value === 0 ? 0 : currentPage.value * pageSize.value + 1)
+const rangeEnd = computed(() => Math.min((currentPage.value + 1) * pageSize.value, totalElements.value))
 let searchDebounceTimer
 let searchRequestId = 0
 const saving = ref(false)
@@ -412,16 +456,38 @@ const showAlert = (type, message) => {
   }, 5000)
 }
 
-const loadBooks = async () => {
-  const requestId = searchRequestId
+const loadBooks = async (page = 0, expectedRequestId = null) => {
+  clearTimeout(searchDebounceTimer)
+  const requestId = expectedRequestId ?? ++searchRequestId
+  const filters = {
+    title: searchTitle.value,
+    author: searchAuthor.value,
+    isbn: searchIsbn.value
+  }
   loading.value = true
   try {
-    const data = await bookService.getAllBooks()
-    if (requestId === searchRequestId) books.value = data
+    const result = await bookService.getCatalogPage(page + 1, filters)
+    if (requestId === searchRequestId) {
+      books.value = result.content
+      currentPage.value = result.page - 1
+      pageSize.value = result.size
+      totalElements.value = result.totalElements
+      totalPages.value = result.totalPages
+    }
   } catch (error) {
-    showAlert('danger', localizedError(error, t, 'errors.loadBooks'))
+    if (requestId === searchRequestId && error.status === 404 && page > 0) {
+      await loadBooks(page - 1)
+      return
+    }
+    if (requestId === searchRequestId) {
+      showAlert('danger', localizedError(error, t, 'errors.loadBooks'))
+    }
   } finally {
-    if (requestId === searchRequestId) loading.value = false
+    if (requestId === searchRequestId) {
+      loading.value = false
+      isSearching.value = false
+      activeSearch.value = ''
+    }
   }
 }
 
@@ -440,37 +506,10 @@ const loadInventoryAlerts = async () => {
 const searchBooks = (type) => {
   clearTimeout(searchDebounceTimer)
   const requestId = ++searchRequestId
-  const searchValues = {
-    title: searchTitle.value.trim(),
-    author: searchAuthor.value.trim(),
-    isbn: searchIsbn.value.trim()
-  }
-  if (!searchValues[type]) {
-    isSearching.value = false
-    loadBooks()
-    return
-  }
-
   activeSearch.value = type
   isSearching.value = true
-  searchDebounceTimer = setTimeout(async () => {
-    try {
-      let results
-      if (type === 'title') results = await bookService.searchByTitle(searchValues.title)
-      else if (type === 'author') results = await bookService.searchByAuthor(searchValues.author)
-      else results = await bookService.searchByIsbn(searchValues.isbn)
-      if (requestId === searchRequestId) books.value = results
-    } catch (error) {
-      if (requestId === searchRequestId) {
-        books.value = []
-        if (error.status !== 404) showAlert('danger', localizedError(error, t, 'errors.searchBooks'))
-      }
-    } finally {
-      if (requestId === searchRequestId) {
-        isSearching.value = false
-        activeSearch.value = ''
-      }
-    }
+  searchDebounceTimer = setTimeout(() => {
+    if (requestId === searchRequestId) loadBooks(0, requestId)
   }, 250)
 }
 
@@ -482,7 +521,7 @@ const resetSearch = async () => {
   searchTitle.value = ''
   searchAuthor.value = ''
   searchIsbn.value = ''
-  await loadBooks()
+  await loadBooks(0)
 }
 
 const showCreateModal = () => {
@@ -537,7 +576,7 @@ const saveBook = async () => {
       showAlert('success', 'Book created successfully!')
     }
     closeModal()
-    await loadBooks()
+    await loadBooks(currentPage.value)
     await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.saveBook'))
@@ -559,7 +598,7 @@ const deleteBook = async () => {
     await bookService.deleteBook(bookToDelete.value.id)
     showAlert('success', 'Book deleted successfully!')
     closeDeleteModal()
-    await loadBooks()
+    await loadBooks(currentPage.value)
     await loadInventoryAlerts()
   } catch (error) {
     showAlert('danger', localizedError(error, t, 'errors.deleteBook'))

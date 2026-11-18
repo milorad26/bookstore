@@ -37,14 +37,15 @@ public class BookController {
     @Value("${inventory.low-stock-threshold:10}")
     private int lowStockThreshold;
 
-    @Operation(summary = "Get all books", description = "Retrieve a list of all books in the bookstore")
+    @Deprecated
+    @Operation(summary = "Get all books", description = "Legacy unpaginated endpoint. Use GET /api/books/page for paginated results.", deprecated = true)
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of books")
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAllBooks());
     }
 
-    @Operation(summary = "Get a page of catalog books", description = "Page numbers start at 1. The default and maximum page size are configured by CATALOG_PAGE_SIZE (default 20). The total page count is calculated from the current catalog; the final page may contain fewer books.")
+    @Operation(summary = "Get a page of catalog books", description = "Page numbers start at 1. The default and maximum page size are configured by CATALOG_PAGE_SIZE (default 20). Optional title, author, and ISBN filters are combined. The final page may contain fewer books.")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Catalog page retrieved"),
         @ApiResponse(responseCode = "400", description = "Invalid page number or page size"),
@@ -54,8 +55,11 @@ public class BookController {
     public ResponseEntity<BookPageDTO> getCatalogPage(
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @Parameter(description = "Optional; defaults to configured CATALOG_PAGE_SIZE; values above that limit are rejected")
-            @RequestParam(required = false) @Min(1) Integer size) {
-        return ResponseEntity.ok(bookService.getCatalogPage(page, size));
+            @RequestParam(required = false) @Min(1) Integer size,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String author,
+            @RequestParam(required = false) String isbn) {
+        return ResponseEntity.ok(bookService.getCatalogPage(page, size, title, author, isbn));
     }
 
     @Operation(summary = "Get low-stock books", description = "Retrieve books at or below the configured inventory alert threshold")
